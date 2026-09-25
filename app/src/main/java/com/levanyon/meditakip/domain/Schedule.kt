@@ -8,7 +8,22 @@ data class Snapshot(val people: List<PersonEntity> = emptyList(), val medication
  * One expected (or recorded) dose. [personName] is resolved from the people table at computation
  * time; never read `schedule.personName`, which is a stale copy written when the revision was created.
  */
-data class Occurrence(val schedule: MedicationScheduleEntity, val personId: String, val date: LocalDate, val minute: Int, val takenAt: Long? = null, val personName: String = "") {
+data class Occurrence(
+    val schedule: MedicationScheduleEntity, val personId: String, val date: LocalDate, val minute: Int,
+    /** Actual time taken; null when not marked or skipped. */
+    val takenAt: Long? = null, val personName: String = "",
+    /** Recorded status (v2): null = not marked. */
+    val status: LogStatus? = null, val note: String? = null, val recordedAt: Long? = null,
+) {
+    val skipped: Boolean get() = status == LogStatus.SKIPPED
+    /** Taken or skipped: the user has decided about this dose, so reminders and "remaining" ignore it (D3.3). */
+    val handled: Boolean get() = takenAt != null || skipped
+    /** Applies a stored record: TAKEN shows its time; SKIPPED hides takenAt and carries the reason. */
+    fun withLog(log: MedicationLogEntity?): Occurrence = when (log?.status) {
+        null -> this
+        LogStatus.TAKEN -> copy(takenAt = log.takenAt, status = LogStatus.TAKEN, note = log.note, recordedAt = log.recordedAt)
+        LogStatus.SKIPPED -> copy(takenAt = null, status = LogStatus.SKIPPED, note = log.note, recordedAt = log.recordedAt)
+    }
     val key: String get() = "${schedule.id}:${date.toEpochDay()}:$minute"
     val time: LocalTime get() = LocalTime.of(minute / 60, minute % 60)
     fun instant(zone: ZoneId): Instant = date.atTime(time).atZone(zone).toInstant()
@@ -47,7 +62,7 @@ object Schedule {
                 minutes(s.times).forEach { minute ->
                     val item = Occurrence(s, personId, date, minute, personName = names[personId].orEmpty())
                     val completedEarlierRevision = snapshot.logs.any { log -> log.date == day && log.minute == minute && log.scheduleId != s.id && snapshot.schedules.any { old -> old.id == log.scheduleId && old.medicationId == s.medicationId } }
-                    if (!completedEarlierRevision) result[item.key] = item.copy(takenAt = logs[item.key]?.takenAt)
+                    if (!completedEarlierRevision) result[item.key] = item.withLog(logs[item.key])
                 }
             }
         }
@@ -55,7 +70,7 @@ object Schedule {
         snapshot.logs.filter { it.date == day }.forEach { log ->
             val s = snapshot.schedules.find { it.id == log.scheduleId } ?: return@forEach
             val p = meds[s.medicationId]?.personId ?: return@forEach
-            result[log.key] = Occurrence(s, p, date, log.minute, log.takenAt, names[p].orEmpty())
+            result[log.key] = Occurrence(s, p, date, log.minute, personName = names[p].orEmpty()).withLog(log)
         }
         return result.values.sortedWith(compareBy({ it.personName.lowercase(TurkishFormat.locale) }, { it.minute }, { it.schedule.name }))
     }

@@ -208,4 +208,16 @@
     <string name="setup_later">Daha sonra</string>
     <string name="setup_done">İlk ilaç eklendi. Hatırlatmaların hazır olduğunu kontrol edin.</string>
     <string name="setup_check">Kontrol et</string>
+    <!-- Phase 3: skip and late marking -->
+    <string name="skip">Atla</string>
+    <string name="skipped">Atlandı</string>
+    <string name="skip_title">Bu doz atlansın mı?</string>
+    <string name="skip_reason">Not (isteğe bağlı)</string>
+    <string name="skipped_note">Not: %1$s</string>
+    <string name="snackbar_skipped">%1$s atlandı olarak kaydedildi</string>
+    <string name="change_time">Saati değiştir</string>
+    <string name="skip_action_description">%1$s, %2$s, %3$s: Atla</string>
+    <string name="change_time_description">%1$s, %2$s, %3$s: İçildiği saati değiştir</string>
+    <string name="legend_skipped">Atlandı</string>
+    <string name="history_cell_skipped">%1$s %2$s, %3$s: Atlandı</string>
 </resources>

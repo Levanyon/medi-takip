@@ -50,15 +50,38 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun archiveMedication(id: String, onSuccess: () -> Unit = {}) = perform(onSuccess) { repository.archiveMedication(id) }
     fun restorePerson(id: String, onSuccess: () -> Unit = {}) = perform(onSuccess) { repository.restorePerson(id) }
     fun restoreMedication(id: String, onSuccess: () -> Unit = {}) = perform(onSuccess) { repository.restoreMedication(id) }
-    fun taken(item: Occurrence) = completion(item, true)
-    fun undo(item: Occurrence) = completion(item, false)
-    private fun completion(item: Occurrence, taken: Boolean) {
+    /** İçildi; [takenAt] = null means now. */
+    fun taken(item: Occurrence, takenAt: Long? = null) {
+        val at = takenAt ?: System.currentTimeMillis()
+        completion(item, log(item, LogStatus.TAKEN, at), matchTime = takenAt != null) { repository.completions.taken(item, takenAt) }
+    }
+    /** Atla with an optional short reason. */
+    fun skip(item: Occurrence, note: String? = null) =
+        completion(item, log(item, LogStatus.SKIPPED, System.currentTimeMillis(), note?.trim()?.take(NOTE_LIMIT)?.ifBlank { null })) { repository.completions.skip(item, note) }
+    /** Geri Al / Kaydı kaldır. */
+    fun undo(item: Occurrence) = completion(item, null) { repository.completions.undo(item) }
+    /** Saati değiştir (late marking) for a taken dose. */
+    fun setTakenTime(item: Occurrence, takenAt: Long) {
+        val current = snapshot.value.logs.find { it.key == item.key } ?: return
+        completion(item, current.copy(takenAt = takenAt), matchTime = true) { repository.completions.setTakenTime(item, takenAt) }
+    }
+    private fun log(item: Occurrence, status: LogStatus, at: Long, note: String? = null) =
+        MedicationLogEntity(item.key, item.schedule.id, item.date.toEpochDay(), item.minute, at, status, System.currentTimeMillis(), note)
+
+    /**
+     * Shows [expected] immediately (optimistic), writes through the repository, then waits until the
+     * database reports the same state for this dose before dropping the optimistic value.
+     */
+    private fun completion(item: Occurrence, expected: MedicationLogEntity?, matchTime: Boolean = false, write: suspend () -> Unit) {
         if (item.key in pending.value) return
-        pending.update { it + (item.key to if (taken) MedicationLogEntity(item.key, item.schedule.id, item.date.toEpochDay(), item.minute, System.currentTimeMillis()) else null) }
+        pending.update { it + (item.key to expected) }
         viewModelScope.launch {
             try {
-                if (taken) repository.completions.taken(item) else repository.completions.undo(item)
-                stored.first { state -> state.logs.any { it.key == item.key } == taken }
+                write()
+                stored.first { state ->
+                    val saved = state.logs.find { it.key == item.key }
+                    saved?.status == expected?.status && (!matchTime || saved?.takenAt == expected?.takenAt)
+                }
             } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e; error.value = app.getString(R.string.error_save) }
             finally { pending.update { it - item.key } }
             app.reminders.refresh()

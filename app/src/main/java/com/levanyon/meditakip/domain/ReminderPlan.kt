@@ -36,7 +36,7 @@ object ReminderPlan {
         }
         val current = snapshot.schedules.filter { it.effectiveTo == null && it.active }.map { it.id }.toSet()
         val available = snapshot.medications.filter { !it.archived }.map { it.id }.toSet()
-        return dates.flatMap { Schedule.day(snapshot, it) }.filter { it.takenAt == null && it.schedule.id in current && it.schedule.medicationId in available }.flatMap { o ->
+        return dates.flatMap { Schedule.day(snapshot, it) }.filter { !it.handled && it.schedule.id in current && it.schedule.medicationId in available }.flatMap { o ->
             val at = o.instant(zone)
             buildList {
                 add(ReminderEvent(o, at, ReminderKind.FIRST))

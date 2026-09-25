@@ -139,7 +139,7 @@ class Reminders(private val app: MediApp) {
     suspend fun markTakenFromNotification(key: String) {
         val date = occurrenceDate(key) ?: return
         val item = Schedule.day(app.repository.snapshot(), date).find { it.key == key }
-        if (item != null && item.takenAt == null) app.repository.completions.taken(item)
+        if (item != null && !item.handled) app.repository.completions.taken(item)
         notifications.cancel(key, DOSE_ID)
         rebuild(false)
     }

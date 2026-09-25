@@ -168,7 +168,7 @@ class ScreenLayoutTest {
     }
     @Test fun todayBannerLeadsToReminderStatus() {
         var opened = false
-        content { TodayScreen(fixture, date.atTime(7, 0), null, {}, viewModel(), {}, {}, {}, {}, warning = com.levanyon.meditakip.R.string.reminders_need_attention) { opened = true } }
+        content { TodayScreen(fixture, date.atTime(7, 0), null, {}, viewModel(), {}, {}, {}, {}, warning = com.levanyon.meditakip.R.string.reminders_need_attention, openSettings = { opened = true }) }
         lazyScroll("Hatırlatmalar tam çalışmıyor. Düzeltmek için dokunun.")
         compose.onNodeWithText("Düzelt").performClick()
         assertTrue(opened)
@@ -332,6 +332,41 @@ class ScreenLayoutTest {
         compose.onNodeWithText("Bitiş tarihi yok").performScrollTo().performClick()
         val end = org.robolectric.shadows.ShadowDialog.getLatestDialog() as android.app.DatePickerDialog
         assertEquals(todayMillis, end.datePicker.minDate)
+    }
+    @Test fun pendingDoseOffersSkipAndTakenDoseOffersTimeChange() {
+        var skipped = false
+        var retimed = false
+        content {
+            val dose = Schedule.day(fixture, date).first()
+            val taken = dose.copy(takenAt = date.atTime(8, 4).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli(), status = LogStatus.TAKEN)
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                ScheduledDoseRow(dose, true, onSkip = { skipped = true })
+                ScheduledDoseRow(taken, true, onChangeTime = { retimed = true })
+            }
+        }
+        compose.onNodeWithText("Atla").performScrollTo().assertHeightIsAtLeast(MediSize.touch).performClick()
+        compose.onNodeWithText("Saati değiştir").performScrollTo().assertHeightIsAtLeast(MediSize.touch).performClick()
+        assertTrue(skipped); assertTrue(retimed)
+    }
+    @Test fun skippedDoseShowsItsNoteAndCanBeUndone() {
+        var undone = false
+        content {
+            val dose = Schedule.day(fixture, date).first().copy(status = LogStatus.SKIPPED, note = "Dışarıdaydım")
+            Column(Modifier.verticalScroll(rememberScrollState())) { ScheduledDoseRow(dose, true, onUndo = { undone = true }) }
+        }
+        compose.onNodeWithText("Atlandı").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Not: Dışarıdaydım").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("İçildi").assertDoesNotExist()
+        compose.onNodeWithText("Saati değiştir").assertDoesNotExist()
+        compose.onNodeWithText("Geri Al").performScrollTo().performClick()
+        assertTrue(undone)
+    }
+    @Test fun skipDialogPassesTheOptionalNote() {
+        var result: String? = "unset"
+        content { SkipDialog(Schedule.day(fixture, date).first(), {}) { result = it } }
+        compose.onNodeWithText("Not (isteğe bağlı)").performTextInput("Dışarıdaydım")
+        compose.onAllNodesWithText("Atla").filterToOne(hasClickAction()).performScrollTo().performClick()
+        assertEquals("Dışarıdaydım", result)
     }
     @Test fun doseActionsKeepTakenAndUndoCallbacks() {
         content {

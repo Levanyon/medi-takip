@@ -22,7 +22,7 @@ data class DailyProgress(val total: Int, val completed: Int) {
     val remaining get() = total - completed
     val fraction get() = if (total == 0) 0f else completed.toFloat() / total
     val percent get() = if (total == 0) 0 else completed * 100 / total
-    companion object { fun from(items: List<Occurrence>) = DailyProgress(items.size, items.count { it.takenAt != null }) }
+    companion object { fun from(items: List<Occurrence>) = DailyProgress(items.size, items.count { it.handled }) }
 }
 
 object MedicationViews {

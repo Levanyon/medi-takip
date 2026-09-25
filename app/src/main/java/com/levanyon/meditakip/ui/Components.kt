@@ -146,16 +146,21 @@ data class PersonTab(val id: String, val name: String, val remaining: Int = 0, v
     }
 }
 
-enum class DoseStatus { NEXT, PENDING, OVERDUE, TAKEN, MISSED }
+enum class DoseStatus { NEXT, PENDING, OVERDUE, TAKEN, SKIPPED, MISSED }
 
 /**
- * Timeline entry: a status rail on the left and a tonal row with time, medication, dose, status
- * and its action. Every pending dose keeps its own İçildi button; only the highlighted one is filled.
+ * Timeline entry: a status rail on the left and a tonal row with time, medication, dose, status and its
+ * actions. Every pending dose keeps its own İçildi button (only the highlighted one is filled) plus a
+ * quieter Atla. A taken dose offers Saati değiştir and Geri Al; a skipped dose shows its note and Geri Al.
  */
 @Composable
-fun ScheduledDoseRow(item: Occurrence, editable: Boolean = false, busy: Boolean = false, status: DoseStatus = defaultStatus(item, editable), highlight: Boolean = status == DoseStatus.NEXT, last: Boolean = true, onTaken: () -> Unit = {}, onUndo: () -> Unit = {}) {
+fun ScheduledDoseRow(
+    item: Occurrence, editable: Boolean = false, busy: Boolean = false, status: DoseStatus = defaultStatus(item, editable),
+    highlight: Boolean = status == DoseStatus.NEXT, last: Boolean = true,
+    onTaken: () -> Unit = {}, onUndo: () -> Unit = {}, onSkip: () -> Unit = {}, onChangeTime: () -> Unit = {},
+) {
     val scheme = MaterialTheme.colorScheme
-    val completed = item.takenAt != null
+    val completed = item.handled
     val background by animateColorAsState(if (highlight && !completed) scheme.primaryContainer else scheme.surfaceContainerLow, animationSpec = tween(MediMotion.feedbackMillis), label = "doseStatus")
     val foreground = if (highlight && !completed) scheme.onPrimaryContainer else scheme.onSurface
     val lineColor = scheme.outlineVariant
@@ -170,6 +175,7 @@ fun ScheduledDoseRow(item: Occurrence, editable: Boolean = false, busy: Boolean 
         Box(Modifier.width(28.dp).padding(top = MediSpace.page), contentAlignment = Alignment.TopCenter) {
             val (icon, tint) = when (status) {
                 DoseStatus.TAKEN -> Icons.Default.CheckCircle to scheme.primary
+                DoseStatus.SKIPPED -> Icons.Default.DoNotDisturbOn to scheme.onSurfaceVariant
                 DoseStatus.OVERDUE -> Icons.Default.Error to scheme.tertiary
                 DoseStatus.NEXT -> Icons.Default.RadioButtonChecked to scheme.primary
                 else -> Icons.Outlined.Circle to scheme.outline
@@ -186,34 +192,54 @@ fun ScheduledDoseRow(item: Occurrence, editable: Boolean = false, busy: Boolean 
                     Text(item.schedule.name, style = MaterialTheme.typography.titleLarge)
                     Text(item.schedule.dose, style = MaterialTheme.typography.bodyLarge, color = if (highlight && !completed) foreground else scheme.onSurfaceVariant)
                     if (item.schedule.note.isNotBlank() && !completed) Text(item.schedule.note, style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant)
-                    if (editable) {
-                        val description = stringResource(if (completed) R.string.undo_action_description else R.string.dose_action_description, item.personName, item.schedule.name, item.time.toString())
-                        val modifier = Modifier.padding(top = MediSpace.small).fillMaxWidth().heightIn(min = MediSize.primaryAction).semantics { contentDescription = description }
-                        when {
-                            completed -> TextButton(onClick = onUndo, enabled = !busy, shape = MaterialTheme.shapes.large, modifier = Modifier.heightIn(min = MediSize.touch).semantics { contentDescription = description }) {
-                                Icon(Icons.AutoMirrored.Filled.Undo, null); Spacer(Modifier.width(MediSpace.small)); Text(stringResource(R.string.undo), style = MaterialTheme.typography.labelLarge)
-                            }
-                            highlight -> Button(shape = MaterialTheme.shapes.large, onClick = onTaken, enabled = !busy, modifier = modifier) {
-                                Icon(Icons.Default.Check, null); Spacer(Modifier.width(MediSpace.small)); Text(stringResource(R.string.taken), style = MaterialTheme.typography.labelLarge)
-                            }
-                            else -> FilledTonalButton(shape = MaterialTheme.shapes.large, onClick = onTaken, enabled = !busy, modifier = modifier) {
-                                Icon(Icons.Default.Check, null); Spacer(Modifier.width(MediSpace.small)); Text(stringResource(R.string.taken), style = MaterialTheme.typography.labelLarge)
-                            }
-                        }
-                    }
+                    if (item.skipped && !item.note.isNullOrBlank()) Text(stringResource(R.string.skipped_note, item.note), style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant)
+                    if (editable) DoseActions(item, highlight, busy, onTaken, onUndo, onSkip, onChangeTime)
                 }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable private fun DoseActions(item: Occurrence, highlight: Boolean, busy: Boolean, onTaken: () -> Unit, onUndo: () -> Unit, onSkip: () -> Unit, onChangeTime: () -> Unit) {
+    val undoDescription = stringResource(R.string.undo_action_description, item.personName, item.schedule.name, item.time.toString())
+    // FlowRow: side by side when they fit, stacked at large font sizes; nothing is ever clipped.
+    FlowRow(Modifier.fillMaxWidth().padding(top = MediSpace.small), horizontalArrangement = Arrangement.spacedBy(MediSpace.small), verticalArrangement = Arrangement.spacedBy(MediSpace.small)) {
+        if (item.handled) {
+            if (!item.skipped) {
+                val timeDescription = stringResource(R.string.change_time_description, item.personName, item.schedule.name, item.time.toString())
+                TextButton(onClick = onChangeTime, enabled = !busy, shape = MaterialTheme.shapes.large, modifier = Modifier.heightIn(min = MediSize.touch).semantics { contentDescription = timeDescription }) {
+                    Icon(Icons.Default.Schedule, null); Spacer(Modifier.width(MediSpace.small)); Text(stringResource(R.string.change_time), style = MaterialTheme.typography.labelLarge)
+                }
+            }
+            TextButton(onClick = onUndo, enabled = !busy, shape = MaterialTheme.shapes.large, modifier = Modifier.heightIn(min = MediSize.touch).semantics { contentDescription = undoDescription }) {
+                Icon(Icons.AutoMirrored.Filled.Undo, null); Spacer(Modifier.width(MediSpace.small)); Text(stringResource(R.string.undo), style = MaterialTheme.typography.labelLarge)
+            }
+        } else {
+            val takenDescription = stringResource(R.string.dose_action_description, item.personName, item.schedule.name, item.time.toString())
+            val skipDescription = stringResource(R.string.skip_action_description, item.personName, item.schedule.name, item.time.toString())
+            val takenModifier = Modifier.weight(1f).widthIn(min = 160.dp).heightIn(min = MediSize.primaryAction).semantics { contentDescription = takenDescription }
+            if (highlight) Button(shape = MaterialTheme.shapes.large, onClick = onTaken, enabled = !busy, modifier = takenModifier) {
+                Icon(Icons.Default.Check, null); Spacer(Modifier.width(MediSpace.small)); Text(stringResource(R.string.taken), style = MaterialTheme.typography.labelLarge)
+            } else FilledTonalButton(shape = MaterialTheme.shapes.large, onClick = onTaken, enabled = !busy, modifier = takenModifier) {
+                Icon(Icons.Default.Check, null); Spacer(Modifier.width(MediSpace.small)); Text(stringResource(R.string.taken), style = MaterialTheme.typography.labelLarge)
+            }
+            TextButton(onClick = onSkip, enabled = !busy, shape = MaterialTheme.shapes.large, modifier = Modifier.heightIn(min = MediSize.primaryAction).semantics { contentDescription = skipDescription }) {
+                Text(stringResource(R.string.skip), style = MaterialTheme.typography.labelLarge)
             }
         }
     }
 }
 fun defaultStatus(item: Occurrence, editable: Boolean) = when {
     item.takenAt != null -> DoseStatus.TAKEN
+    item.skipped -> DoseStatus.SKIPPED
     editable -> DoseStatus.PENDING
     else -> DoseStatus.MISSED
 }
 @Composable private fun DoseStatusLabel(status: DoseStatus, item: Occurrence) {
     when (status) {
         DoseStatus.TAKEN -> StatusChip(stringResource(R.string.taken_status, TurkishFormat.completed(item.takenAt!!, item.date)), completed = true, showIcon = false)
+        DoseStatus.SKIPPED -> StatusChip(stringResource(R.string.skipped), icon = Icons.Default.DoNotDisturbOn)
         DoseStatus.NEXT -> StatusChip(stringResource(R.string.next_label), icon = Icons.Default.NotificationsActive)
         DoseStatus.OVERDUE -> Surface(shape = CircleShape, color = MaterialTheme.colorScheme.tertiaryContainer, contentColor = MaterialTheme.colorScheme.onTertiaryContainer) {
             Row(Modifier.padding(horizontal = MediSpace.medium, vertical = MediSpace.small), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MediSpace.small)) {

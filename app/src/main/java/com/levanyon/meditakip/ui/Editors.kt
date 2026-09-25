@@ -157,6 +157,18 @@ import java.util.UUID
     }
 }
 
+/** Atla: names the dose, takes an optional short note (e.g. why), and confirms. Reversible with Geri Al. */
+@Composable fun SkipDialog(item: Occurrence, dismiss: () -> Unit, confirm: (String?) -> Unit) {
+    var note by rememberSaveable { mutableStateOf("") }
+    MediDialog(stringResource(R.string.skip_title), dismiss) {
+        Text("${item.personName} · ${item.schedule.name} · ${item.time}", style = MaterialTheme.typography.titleMedium)
+        OutlinedTextField(note, { if (it.length <= NOTE_LIMIT) note = it }, label = { Text(stringResource(R.string.skip_reason)) }, singleLine = true,
+            shape = MaterialTheme.shapes.medium, keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done), modifier = Modifier.fillMaxWidth())
+        PrimaryAction(stringResource(R.string.skip), Icons.Default.DoNotDisturbOn) { confirm(note.ifBlank { null }) }
+        CancelAction(dismiss)
+    }
+}
+
 /** Archiving is reversible (Arşivden Çıkar), so the confirmation uses the normal primary action, not a red one. */
 @Composable fun ArchiveConfirmation(message: String, dismiss: () -> Unit, confirm: () -> Unit) {
     MediDialog(stringResource(R.string.archive_title), dismiss) {

@@ -98,6 +98,7 @@ fun LazyListScope.historyTable(matrix: HistoryMatrix, today: LocalDate, scroll: 
         FlowRow(horizontalArrangement = Arrangement.spacedBy(MediSpace.regular), verticalArrangement = Arrangement.spacedBy(MediSpace.tiny)) {
             LegendItem({ Icon(Icons.Default.CheckCircle, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary) }, stringResource(R.string.legend_taken))
             LegendItem({ Icon(Icons.Outlined.Circle, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.outline) }, stringResource(R.string.legend_open))
+            LegendItem({ Icon(Icons.Default.DoNotDisturbOn, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant) }, stringResource(R.string.legend_skipped))
             LegendItem({ Text("–", color = MaterialTheme.colorScheme.onSurfaceVariant) }, stringResource(R.string.legend_none))
         }
         if (overflows) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MediSpace.small)) {
@@ -154,6 +155,7 @@ fun LazyListScope.historyTable(matrix: HistoryMatrix, today: LocalDate, scroll: 
     val description = when {
         occurrence == null -> stringResource(R.string.history_cell_none, column.name, column.time.toString(), date)
         occurrence.takenAt != null -> stringResource(R.string.history_cell_taken, occurrence.schedule.name, column.time.toString(), date, TurkishFormat.completed(occurrence.takenAt, occurrence.date))
+        occurrence.skipped -> stringResource(R.string.history_cell_skipped, occurrence.schedule.name, column.time.toString(), date)
         else -> stringResource(R.string.history_cell_open, occurrence.schedule.name, column.time.toString(), date)
     }
     val base = Modifier.width(width).heightIn(min = MediSize.primaryAction).fillMaxHeight()
@@ -165,6 +167,10 @@ fun LazyListScope.historyTable(matrix: HistoryMatrix, today: LocalDate, scroll: 
             occurrence.takenAt != null -> {
                 Icon(Icons.Default.CheckCircle, null, Modifier.size(22.dp), tint = scheme.primary)
                 Text(TurkishFormat.time(occurrence.takenAt), style = MaterialTheme.typography.labelLarge, color = scheme.onSurface)
+            }
+            occurrence.skipped -> {
+                Icon(Icons.Default.DoNotDisturbOn, null, Modifier.size(22.dp), tint = scheme.onSurfaceVariant)
+                Text(stringResource(R.string.skipped), style = MaterialTheme.typography.labelLarge, color = scheme.onSurfaceVariant)
             }
             else -> Icon(Icons.Outlined.Circle, null, Modifier.size(22.dp), tint = scheme.outline)
         }
@@ -180,7 +186,11 @@ fun LazyListScope.historyTable(matrix: HistoryMatrix, today: LocalDate, scroll: 
         Text(occurrence.schedule.dose, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         LabelValue(stringResource(R.string.detail_date), TurkishFormat.longWeekdayDate(occurrence.date))
         LabelValue(stringResource(R.string.detail_planned), occurrence.time.toString())
-        LabelValue(stringResource(R.string.detail_taken), occurrence.takenAt?.let { TurkishFormat.completed(it, occurrence.date) } ?: stringResource(R.string.not_marked))
+        LabelValue(stringResource(R.string.detail_taken), when {
+            occurrence.takenAt != null -> TurkishFormat.completed(occurrence.takenAt, occurrence.date)
+            occurrence.skipped -> stringResource(R.string.skipped) + (occurrence.note?.let { " · $it" } ?: "")
+            else -> stringResource(R.string.not_marked)
+        })
         SecondaryAction(stringResource(R.string.ok), action = dismiss)
     }
 }

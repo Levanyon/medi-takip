@@ -21,7 +21,9 @@ import com.levanyon.meditakip.data.PersonEntity
 import com.levanyon.meditakip.domain.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.time.Instant
 import java.time.LocalDateTime
+import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 
 private const val TODAY = 0
@@ -100,6 +102,24 @@ private const val SETTINGS = 3
         val name = MedicationViews.latestRevision(snapshot, id)?.name.orEmpty()
         vm.restoreMedication(id) { inform(context.getString(R.string.medication_restored, name)) }
     }
+    var skipping by remember { mutableStateOf<Occurrence?>(null) }
+    val pickerContext = rememberPickerContext()
+    // Late marking (D3.5): the actual time on the dose's own date, never in the future.
+    fun pickTakenTime(item: Occurrence) {
+        val current = item.takenAt?.let { Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalTime() } ?: item.time
+        android.app.TimePickerDialog(pickerContext, { _, hour, minute ->
+            val chosen = item.date.atTime(hour, minute).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            vm.setTakenTime(item, minOf(chosen, System.currentTimeMillis()))
+        }, current.hour, current.minute, true).show()
+    }
+    fun skipDose(item: Occurrence, note: String?) {
+        vm.skip(item, note)
+        scope.launch {
+            snackbar.currentSnackbarData?.dismiss()
+            val result = snackbar.showSnackbar(context.getString(R.string.snackbar_skipped, item.schedule.name), context.getString(R.string.undo), duration = SnackbarDuration.Long)
+            if (result == SnackbarResult.ActionPerformed) vm.undo(item)
+        }
+    }
     fun markTaken(item: Occurrence) {
         vm.taken(item)
         scope.launch {
@@ -131,7 +151,7 @@ private const val SETTINGS = 3
                 section == SETTINGS && reminderStatus -> ReminderStatusScreen(vm, access, ::back)
                 section == SETTINGS -> SettingsScreen(vm) { reminderStatus = true }
                 else -> TodayScreen(snapshot, now, selectedPerson, vm::selectPerson, vm, ::markTaken,
-                    addPerson = { addPerson(true) }, addMedication = { addMedication(it) }, manage = ::openPerson,
+                    addPerson = { addPerson(true) }, addMedication = { addMedication(it) }, manage = ::openPerson, skip = { skipping = it }, changeTime = ::pickTakenTime,
                     warning = if (health.working) null else R.string.reminders_need_attention,
                     openSettings = { section = SETTINGS; reminderStatus = true })
             }
@@ -152,6 +172,7 @@ private const val SETTINGS = 3
             vm.medication(person, snapshot.schedules.find { it.id == editScheduleId }?.medicationId, schedule) { medicationPersonId = null; if (setupPending) finishFirstSetup() }
         } }
     } }
+    skipping?.let { item -> SkipDialog(item, { skipping = null }) { note -> skipping = null; skipDose(item, note) } }
     if (choosePerson) MediDialog(stringResource(R.string.choose_person), { choosePerson = false }) {
         snapshot.people.filter { !it.archived }.forEach { person ->
             SecondaryAction(person.name) { medicationPersonId = person.id; choosePerson = false }
@@ -171,7 +192,7 @@ private const val SETTINGS = 3
 @Composable fun TodayScreen(
     snapshot: Snapshot, now: LocalDateTime, selectedPersonId: String?, selectPerson: (String) -> Unit, vm: AppViewModel,
     markTaken: (Occurrence) -> Unit, addPerson: () -> Unit, addMedication: (String?) -> Unit, manage: (String) -> Unit,
-    warning: Int? = null, openSettings: () -> Unit = {}
+    warning: Int? = null, openSettings: () -> Unit = {}, skip: (Occurrence) -> Unit = {}, changeTime: (Occurrence) -> Unit = {}
 ) {
     val today = now.toLocalDate()
     val people = snapshot.people.filter { !it.archived }
@@ -180,7 +201,7 @@ private const val SETTINGS = 3
     val doses = entries.filter { it.personId == person?.id }.sortedWith(compareBy({ it.minute }, { it.schedule.name }))
     val minute = now.hour * 60 + now.minute
     // The single dose that deserves the strongest emphasis: the earliest one not yet taken.
-    val focus = doses.firstOrNull { it.takenAt == null }
+    val focus = doses.firstOrNull { !it.handled }
     LazyColumn(contentPadding = ScreenPadding, verticalArrangement = Arrangement.spacedBy(MediSpace.medium)) {
         item { ScreenHeading(stringResource(R.string.today), TurkishFormat.longWeekdayDate(today)) }
         if (warning != null) item {
@@ -197,7 +218,7 @@ private const val SETTINGS = 3
             return@LazyColumn
         }
         item {
-            val tabs = people.map { p -> PersonTab(p.id, p.name, entries.count { it.personId == p.id && it.takenAt == null }) }
+            val tabs = people.map { p -> PersonTab(p.id, p.name, entries.count { it.personId == p.id && !it.handled }) }
             PersonSelector(tabs, person.id, selectPerson)
         }
         if (doses.isEmpty()) {
@@ -208,12 +229,13 @@ private const val SETTINGS = 3
             itemsIndexed(doses, key = { _, it -> it.key }) { index, item ->
                 val status = when {
                     item.takenAt != null -> DoseStatus.TAKEN
+                    item.skipped -> DoseStatus.SKIPPED
                     item.minute < minute -> DoseStatus.OVERDUE
                     item == focus -> DoseStatus.NEXT
                     else -> DoseStatus.PENDING
                 }
                 ScheduledDoseRow(item, editable = true, status = status, highlight = item == focus, last = index == doses.lastIndex,
-                    onTaken = { markTaken(item) }, onUndo = { vm.undo(item) })
+                    onTaken = { markTaken(item) }, onUndo = { vm.undo(item) }, onSkip = { skip(item) }, onChangeTime = { changeTime(item) })
             }
         }
         item { Box(Modifier.padding(top = MediSpace.small)) { QuietAction(stringResource(R.string.edit_medications, person.name), Icons.Default.Edit) { manage(person.id) } } }
