@@ -1,19 +1,19 @@
 # MediTakip
 
-Current update: **V1.1**. The existing app now uses a Turkish interface with five sections, dedicated medication/person details, medication usage history and first-launch permission onboarding. See [V1.1 changes and verification](docs/V1.1.md). Existing Room data is retained; upgrade with the same signing key without uninstalling.
+The app has four main sections: **Bugün · Kişiler · Geçmiş · Ayarlar**. Medications are managed under each person (Kişiler → person → medication), and Geçmiş shows a person-based date × medication table. Work follows [docs/ROADMAP.md](docs/ROADMAP.md); stable project rules are in [CLAUDE.md](CLAUDE.md); the current code state is described in [docs/AUDIT.md](docs/AUDIT.md). Existing Room data is retained across updates signed with the same key.
 
 Offline native Android medication schedule tracker for families. Package: `com.levanyon.meditakip`. Android 8.0+ (API 26). Kotlin, Compose Material 3, MVVM, Room. No Firebase, network permission, cloud services, ads or analytics. It displays only user-entered schedules and provides no medical advice.
 
 ## Features
 
-- Multiple people with notes and initial avatars; add/edit/delete.
-- Medications with plain-text dose, notes, multiple 24-hour times, weekdays, inclusive start/end dates, and active status.
-- Today grouped by person, completion counts, remaining count, percentage, Taken and Undo.
-- History with day details, last 30 days and a date picker for earlier days.
+- Multiple people with notes and initial avatars; add, edit, archive and restore (Arşivle / Arşivden Çıkar).
+- Medications under each person with plain-text dose, notes, multiple 24-hour times, weekdays, start/end dates (today or later) and active status; archive and restore.
+- Bugün: person selector, that person's timeline for today, progress summary, İçildi and Geri Al.
+- Geçmiş: person selector (archived people included) and a date × (medication, time) table; tapping a cell shows its details.
 - Local notifications, optional second reminder (15/30/60/120 minutes), Android notification/exact-alarm settings, system/light/dark theme.
 - Versioned schedules and UTC completion timestamps persisted by Room.
 
-Schedule changes take effect today. Previous days are preserved; today's completed entries are retained. Deleting a person or medication archives it, stops future schedules and retains history. Dates before a medication was first entered are not fabricated as historical schedules. Times follow the phone's current time zone. DST gaps shift forward; repeated local times occur once at the earlier offset.
+Schedule changes take effect today. Previous days are preserved; today's completed entries are retained. Archiving a person or medication stops future schedules and retains history; nothing with history is ever hard-deleted. Dates before a medication was first entered are not fabricated as historical schedules. Times follow the phone's current time zone. DST gaps shift forward; repeated local times occur once at the earlier offset.
 
 Local backup export/import is deferred to V2. `data/LocalBackup.kt` defines the boundary and validation requirements. Android cloud backup and automatic device transfer are disabled. Uninstalling or clearing app storage removes records.
 
@@ -33,12 +33,11 @@ From Android Studio's PowerShell terminal:
 .\gradlew.bat testDebugUnitTest lintDebug assembleDebug
 ```
 
-This workspace also has an ignored, project-local Windows toolchain in `.tools`. To use it from PowerShell on this machine:
+This workspace also has an ignored, project-local Windows toolchain in `.tools`. To use it from PowerShell on this machine, dot-source `tools\env.ps1` first:
 
 ```powershell
-$env:JAVA_HOME = "$PWD\.tools\jdk\jdk-17.0.18+8"
-$env:GRADLE_USER_HOME = "$PWD\.tools\gradle-home"
-.\gradlew.bat testDebugUnitTest lintDebug assembleDebug assembleRelease
+. .\tools\env.ps1
+.\gradlew.bat testDebugUnitTest assembleDebug --offline
 ```
 
 `assembleRelease` produces an **unsigned** release APK unless you supply your own signing configuration. An unsigned APK cannot be installed. No release key or password is provided in this project.
@@ -66,7 +65,7 @@ No Google Play Console or paid account is needed. Android's official [signing gu
 3. Copy the APK to the phone's **Download** folder using Windows File Explorer.
 4. Open the phone's Files app, open Downloads, and tap the APK.
 5. If prompted, allow **Install unknown apps / Allow from this source** for that Files app, return to the installer, and tap **Install**. You can turn that permission off afterward.
-6. Open MediTakip and complete the Turkish welcome screens. Use **Kişiler** to add a person and **İlaçlar** to add medication. In **Ayarlar > Bildirim ve Hatırlatmalar**, allow notifications on Android 13+ and optionally allow **Alarm ve Hatırlatıcılar** on Android 12+. Without exact access, Android may delay reminders.
+6. Open MediTakip and complete the Turkish welcome screens. Use **Kişiler** to add a person, then open that person and tap **İlaç Ekle**. In **Ayarlar > Bildirim ve Hatırlatmalar**, allow notifications on Android 13+ and optionally allow **Alarm ve Hatırlatıcılar** on Android 12+. Without exact access, Android may delay reminders.
 7. Enter a test schedule a few minutes ahead, close the app normally, lock the phone, and verify delivery. Check a reboot and optional retry using `docs/DEVICE-TESTS.md` before relying on your phone's reminder configuration.
 
 Alternative USB debugging installation: enable Developer options and USB debugging, authorize the Windows computer on the phone, then run:
@@ -76,7 +75,7 @@ Alternative USB debugging installation: enable Developer options and USB debuggi
 & "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe" install -r .\app\build\outputs\apk\debug\app-debug.apk
 ```
 
-Updates signed with the same key retain app data. A debug build cannot be replaced by a release signed with a different key. Uninstalling the debug build first removes its data; use a signed release before entering records you intend to keep.
+Updates signed with the same key retain app data. The debug builds installed so far are signed with the Android debug key at `%USERPROFILE%\.android\debug.keystore`; keep a backup of that file, because without it a new build cannot be installed over the existing app. A debug build cannot be replaced by a release signed with a different key. Uninstalling the debug build first removes its data; use a signed release before entering records you intend to keep.
 
 ## Reminder behavior and limitations
 
