@@ -131,17 +131,47 @@ class ScreenLayoutTest {
         compose.onNodeWithText("İlacı Arşivle").performClick()
         assertTrue(deleted)
     }
-    @Test fun settingsContainOnlySettingsAndKeepPermissionActions() {
-        var requested = false
-        val access = PermissionAccess(PermissionState(false, false, PermissionAction.REQUEST, PermissionAction.SETTINGS, false), false, { requested = true }, {})
-        content { SettingsScreen(viewModel(), access) }
-        lazyScroll("İzin Ver")
-        compose.onNodeWithText("İzin Ver").performClick()
-        assertTrue(requested)
+    @Test fun settingsContainOnlySettingsAndLeadToReminderStatus() {
+        var opened = false
+        content { SettingsScreen(viewModel()) { opened = true } }
+        lazyScroll("Hatırlatma Durumu")
+        compose.onNodeWithText("Hatırlatma Durumu").performClick()
+        assertTrue(opened)
+        lazyScroll("İkinci Hatırlatma")
         lazyScroll("Görünüm")
         lazyScroll("Uygulama Hakkında")
         lazyScroll("MediTakip 1.1")
         compose.onNodeWithText("İlaç ve Kişi Yönetimi").assertDoesNotExist()
+    }
+    @Test fun reminderStatusShowsEachRequirementWithFixAndTests() {
+        var requested = false
+        val access = PermissionAccess(PermissionState(true, true, PermissionAction.NONE, PermissionAction.NONE, false), false, { requested = true }, {})
+        var model: AppViewModel? = null
+        content { ReminderStatusScreen(viewModel<AppViewModel>().also { model = it }, access) {} }
+        // Switch reminders off through the same ViewModel the screen uses.
+        compose.runOnIdle { model!!.settings(AppSettings(notifications = false)) }
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Kapalı").fetchSemanticsNodes().isNotEmpty() }
+        lazyScroll("Dikkat gerekiyor")
+        lazyScroll("Kapalı")
+        // Turning reminders back on is one tap on its Düzelt button.
+        compose.onAllNodesWithText("Düzelt").onFirst().performScrollTo().assertHeightIsAtLeast(MediSize.primaryAction).performClick()
+        // Observe what the user sees: the row switches from "Kapalı" to "Açık".
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Açık").fetchSemanticsNodes().isNotEmpty() }
+        lazyScroll("Bildirim izni")
+        lazyScroll("Tam zamanında hatırlatma")
+        lazyScroll("Pil kısıtlaması")
+        lazyScroll("Test bildirimi gönder")
+        compose.onNodeWithText("Test bildirimi gönder").performClick()
+        lazyScroll("Test bildirimi gönderildi. Bildirim alanına bakın.")
+        lazyScroll("1 dakika sonra test hatırlatması")
+        assertFalse(requested)
+    }
+    @Test fun todayBannerLeadsToReminderStatus() {
+        var opened = false
+        content { TodayScreen(fixture, date.atTime(7, 0), null, {}, viewModel(), {}, {}, {}, {}, warning = com.levanyon.meditakip.R.string.reminders_need_attention) { opened = true } }
+        lazyScroll("Hatırlatmalar tam çalışmıyor. Düzeltmek için dokunun.")
+        compose.onNodeWithText("Düzelt").performClick()
+        assertTrue(opened)
     }
     @Test fun historySmallTableIsCenteredNotStretched() {
         val single = fixture.copy(schedules = listOf(schedule.copy(times = "08:00")))

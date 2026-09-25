@@ -59,3 +59,12 @@ Decisions the developer made in advance are marked **(developer)**.
 - Asking directly (`ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`) needs the extra permission `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`. The project rules say no new permissions without asking.
 - `ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS` needs no permission. The screen explains in plain Turkish what to select there.
 - The Samsung "sleeping apps" steps are written instructions, shown on Samsung devices.
+
+**D2.10 Hatırlatma Durumu reads the in-app switch from the ViewModel.**
+- System state (notification permission, exact alarms, battery) is re-read every 2 seconds while a screen that shows it is open. That covers returning from the Android settings screens.
+- The in-app "Hatırlatmaları Etkinleştir" value comes directly from the ViewModel, so a Düzelt tap shows its result at once instead of up to 2 seconds later.
+- Found through a test that only failed when the whole test class ran: two sources of truth for the same value.
+
+**D2.11 Ayarlar keeps only a summary row.**
+- The permission rows, battery, Samsung guidance and test buttons moved to the Hatırlatma Durumu screen. Ayarlar shows one row: "Hatırlatmalar hazır" or "Dikkat gerekiyor".
+- The Bugün banner appears only when reminders cannot work: reminders off, notifications blocked, or no exact alarms. Battery optimization alone does not trigger it, because it is on by default for every app and would make the banner permanent.

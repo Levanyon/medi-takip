@@ -38,6 +38,7 @@ private const val SETTINGS = 3
     var section by rememberSaveable { mutableIntStateOf(TODAY) }
     var personId by rememberSaveable { mutableStateOf<String?>(null) }
     var medicationId by rememberSaveable { mutableStateOf<String?>(null) }
+    var reminderStatus by rememberSaveable { mutableStateOf(false) }
     var editPersonId by rememberSaveable { mutableStateOf<String?>(null) }
     var personEditor by rememberSaveable { mutableStateOf(false) }
     var choosePerson by rememberSaveable { mutableStateOf(false) }
@@ -57,8 +58,9 @@ private const val SETTINGS = 3
     LaunchedEffect(Unit) { while (true) { now = LocalDateTime.now().truncatedTo(ChronoUnit.MINUTES); delay(1000) } }
     val today = now.toLocalDate()
     val formOpen = personEditor || medicationPersonId != null
-    fun back() { when { medicationId != null -> medicationId = null; personId != null -> personId = null; else -> section = TODAY } }
-    BackHandler(!formOpen && (medicationId != null || personId != null || section != TODAY)) { back() }
+    fun back() { when { medicationId != null -> medicationId = null; personId != null -> personId = null; reminderStatus -> reminderStatus = false; else -> section = TODAY } }
+    BackHandler(!formOpen && (medicationId != null || personId != null || reminderStatus || section != TODAY)) { back() }
+    val health = rememberReminderHealth(settings.notifications)
     fun addPerson(thenMedication: Boolean) { editPersonId = null; personEditor = true; continueToMedication = thenMedication }
     fun addMedication(forPerson: String?) {
         editScheduleId = null
@@ -102,7 +104,7 @@ private const val SETTINGS = 3
         snackbarHost = { SnackbarHost(snackbar) },
         bottomBar = {
             MediNavigationBar(labels.map { stringResource(it) }, icons, section, selectedIcons) { index ->
-                section = index; personId = null; medicationId = null
+                section = index; personId = null; medicationId = null; reminderStatus = false
             }
         }) { padding ->
         MediContent(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
@@ -113,11 +115,12 @@ private const val SETTINGS = 3
                 } ?: LaunchedEffect(personId) { personId = null }
                 section == PEOPLE -> PeopleScreen(snapshot, { personId = it }) { addPerson(false) }
                 section == HISTORY -> HistoryScreen(snapshot, today, selectedPerson, vm::selectPerson) { section = PEOPLE }
-                section == SETTINGS -> SettingsScreen(vm, access)
+                section == SETTINGS && reminderStatus -> ReminderStatusScreen(vm, access, ::back)
+                section == SETTINGS -> SettingsScreen(vm) { reminderStatus = true }
                 else -> TodayScreen(snapshot, now, selectedPerson, vm::selectPerson, vm, ::markTaken,
                     addPerson = { addPerson(true) }, addMedication = { addMedication(it) }, manage = ::openPerson,
-                    warning = when { !access.state.notifications -> R.string.notifications_blocked; !settings.notifications -> R.string.reminders_disabled; else -> null },
-                    openSettings = { section = SETTINGS })
+                    warning = if (health.working) null else R.string.reminders_need_attention,
+                    openSettings = { section = SETTINGS; reminderStatus = true })
             }
         }
     }

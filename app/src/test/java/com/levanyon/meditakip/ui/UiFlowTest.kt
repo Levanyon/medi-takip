@@ -2,6 +2,7 @@ package com.levanyon.meditakip.ui
 
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.Density
@@ -84,11 +85,17 @@ class UiFlowTest {
         val message = "Anne arşivden çıkarıldı. Arşivde 2 ilacı var, aşağıdaki \"Arşivlenen ilaçlar\" bölümünden geri alabilirsiniz."
         compose.waitUntil(5_000) { compose.onAllNodesWithText(message).fetchSemanticsNodes().isNotEmpty() }
     }
-    @Test fun grantedPermissionRowsHideUnnecessaryActions() {
-        compose.setContent { MediTheme("Light") { PermissionStatusRow("Bildirimler", true, false, false, {}) } }
+    @Test fun satisfiedRequirementShowsNoFixButton() {
+        compose.setContent { MediTheme("Light") { StatusRow("Bildirim izni", true, "İzin verildi", "İzin yok", androidx.compose.material.icons.Icons.Default.Notifications) {} } }
         compose.onNodeWithText("İzin verildi").assertExists()
-        compose.onNodeWithText("Ayarları Aç").assertDoesNotExist()
-        compose.onNodeWithText("İzin Ver").assertDoesNotExist()
+        compose.onNodeWithText("Düzelt").assertDoesNotExist()
+    }
+    @Test fun missingRequirementExplainsAndOffersFix() {
+        var fixed = false
+        compose.setContent { MediTheme("Light") { StatusRow("Bildirim izni", false, "İzin verildi", "İzin yok", androidx.compose.material.icons.Icons.Default.Notifications) { fixed = true } } }
+        compose.onNodeWithText("İzin yok").assertExists()
+        compose.onNodeWithText("Düzelt").performClick()
+        org.junit.Assert.assertTrue(fixed)
     }
     @Test fun onboardingSkipsPermissionStepsThatAreAlreadyGranted() {
         compose.setContent { MediTheme("Light") { Onboarding(viewModel()) } }

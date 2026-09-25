@@ -12,22 +12,34 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.levanyon.meditakip.R
 import com.levanyon.meditakip.domain.*
 
 /** Ayarlar holds only application settings: reminders, appearance and a short about section. */
-@Composable fun SettingsScreen(vm: AppViewModel, access: PermissionAccess) {
+@Composable fun SettingsScreen(vm: AppViewModel, openReminderStatus: () -> Unit = {}) {
     val value by vm.settings.collectAsStateWithLifecycle()
+    val health = rememberReminderHealth(value.notifications)
     LazyColumn(contentPadding = ScreenPadding, verticalArrangement = Arrangement.spacedBy(MediSpace.medium)) {
         item { ScreenHeading(stringResource(R.string.settings), stringResource(R.string.settings_subtitle)) }
         item { SectionHeader(stringResource(R.string.reminder_settings)) }
-        item { SettingsSurface {
-            SettingToggle(stringResource(R.string.enable_notifications), value.notifications) { vm.settings(value.copy(notifications = it)) }
-            PermissionStatusRow(stringResource(R.string.notifications), access.state.notifications, access.busy, access.state.notificationAction == PermissionAction.REQUEST, access.notifications, stringResource(R.string.permission_ok_notifications))
-            PermissionStatusRow(stringResource(R.string.exact_alarms), access.state.exact, access.busy, false, access.exact, stringResource(R.string.permission_ok_exact))
-            if (!access.state.exact) Text(stringResource(R.string.exact_fallback), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        } }
+        item { SettingsSurface { SettingToggle(stringResource(R.string.enable_notifications), value.notifications) { vm.settings(value.copy(notifications = it)) } } }
+        // Permissions, battery, Samsung guidance and tests live on one dedicated screen (Phase 2.3).
+        item {
+            val ok = health.working
+            Surface(onClick = openReminderStatus, shape = MaterialTheme.shapes.large, color = if (ok) MaterialTheme.colorScheme.surfaceContainerLow else MaterialTheme.colorScheme.tertiaryContainer,
+                modifier = Modifier.fillMaxWidth().heightIn(min = MediSize.primaryAction)) {
+                Row(Modifier.padding(MediSpace.page), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MediSpace.regular)) {
+                    Icon(if (ok) Icons.Default.CheckCircle else Icons.Default.Error, null, tint = if (ok) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onTertiaryContainer)
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(stringResource(R.string.reminder_status_title), style = MaterialTheme.typography.titleMedium)
+                        Text(stringResource(if (ok) R.string.reminder_status_ok else R.string.reminder_status_attention), style = MaterialTheme.typography.bodyMedium)
+                    }
+                    Icon(Icons.Default.ChevronRight, null)
+                }
+            }
+        }
         item { SettingsSurface {
             Text(stringResource(R.string.second_reminder), style = MaterialTheme.typography.titleMedium)
             SettingToggle(stringResource(R.string.retry_enabled), value.retry) { vm.settings(value.copy(retry = it)) }
@@ -50,22 +62,6 @@ import com.levanyon.meditakip.domain.*
             item { Text(stringResource(text), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
         item { Text(stringResource(R.string.version_label), style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = MediSpace.small)) }
-    }
-}
-/** Granted permissions collapse to one reassuring line; only missing ones show an action. */
-@Composable fun PermissionStatusRow(label: String, granted: Boolean, busy: Boolean, request: Boolean, action: () -> Unit, grantedText: String? = null) {
-    Column(verticalArrangement = Arrangement.spacedBy(MediSpace.small)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MediSpace.medium)) {
-            Icon(if (granted) Icons.Default.CheckCircle else Icons.Default.ErrorOutline, null, tint = if (granted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary)
-            Column {
-                Text(label, style = MaterialTheme.typography.titleMedium)
-                Text(if (granted) grantedText ?: stringResource(R.string.permission_granted) else stringResource(R.string.permission_required),
-                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-        if (!granted) FilledTonalButton(shape = MaterialTheme.shapes.large, onClick = action, enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = MediSize.primaryAction)) {
-            Text(stringResource(if (request) R.string.grant_permission else R.string.open_settings), style = MaterialTheme.typography.labelLarge)
-        }
     }
 }
 @Composable private fun SettingsSurface(content: @Composable ColumnScope.() -> Unit) {
