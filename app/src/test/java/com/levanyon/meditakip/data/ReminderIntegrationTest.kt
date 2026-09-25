@@ -55,4 +55,15 @@ class ReminderIntegrationTest {
         app.reminders.rebuild(false)
         assertEquals(0, notificationManager.activeNotifications.size)
     }
+    @Test fun notificationUsesCurrentPersonNameAfterRename() = runBlocking {
+        // B2: the schedule revision still stores "Mother"; the notification must use the people table.
+        val time = LocalDateTime.now().withSecond(0).withNano(0)
+        add(time)
+        app.repository.savePerson(PersonEntity("p", "Annem"))
+        app.preferences.nextAlarm = time.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        app.reminders.rebuild(true)
+        val text = app.getSystemService(NotificationManager::class.java).activeNotifications.single().notification.extras.getCharSequence(android.app.Notification.EXTRA_TEXT).toString()
+        assertTrue("Notification should name the renamed person: $text", text.startsWith("Annem • A"))
+        assertFalse(text.contains("Mother"))
+    }
 }

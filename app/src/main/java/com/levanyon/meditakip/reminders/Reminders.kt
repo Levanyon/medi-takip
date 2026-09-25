@@ -55,7 +55,7 @@ class Reminders(private val app: MediApp) {
     }
     private fun show(event: ReminderEvent) {
         val o = event.occurrence
-        val summary = app.getString(R.string.notification_person_medication, o.schedule.personName, o.schedule.name)
+        val summary = app.getString(R.string.notification_person_medication, o.personName, o.schedule.name)
         val time = app.getString(R.string.notification_time, o.time.toString())
         val content = "$summary\n${TurkishFormat.date(o.date)} • $time" + if (event.retry) "\n" + app.getString(R.string.notification_retry_body, o.schedule.name) else ""
         val open = PendingIntent.getActivity(app, 0, Intent(app, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)

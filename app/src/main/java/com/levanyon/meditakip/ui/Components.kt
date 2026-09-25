@@ -177,7 +177,7 @@ fun ScheduledDoseRow(item: Occurrence, editable: Boolean = false, busy: Boolean 
                     Text(item.schedule.dose, style = MaterialTheme.typography.bodyLarge, color = if (highlight && !completed) foreground else scheme.onSurfaceVariant)
                     if (item.schedule.note.isNotBlank() && !completed) Text(item.schedule.note, style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant)
                     if (editable) {
-                        val description = stringResource(if (completed) R.string.undo_action_description else R.string.dose_action_description, item.schedule.personName, item.schedule.name, item.time.toString())
+                        val description = stringResource(if (completed) R.string.undo_action_description else R.string.dose_action_description, item.personName, item.schedule.name, item.time.toString())
                         val modifier = Modifier.padding(top = MediSpace.small).fillMaxWidth().heightIn(min = MediSize.primaryAction).semantics { contentDescription = description }
                         when {
                             completed -> TextButton(onClick = onUndo, enabled = !busy, shape = MaterialTheme.shapes.large, modifier = Modifier.heightIn(min = MediSize.touch).semantics { contentDescription = description }) {

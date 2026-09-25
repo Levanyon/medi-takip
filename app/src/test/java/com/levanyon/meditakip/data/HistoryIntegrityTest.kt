@@ -84,6 +84,15 @@ class HistoryIntegrityTest {
         assertEquals(unchangedPast, rows(s, d))
         assertEquals(1, s.logs.size)
     }
+    @Test fun renamingPersonUpdatesEveryDoseWithoutTouchingRevisions() = runBlocking {
+        seed()
+        repo(d).savePerson(person.copy(name = "Annem"))
+        val s = snapshot()
+        // B2: names come from `people`; the denormalized revision column keeps its old value and is not read.
+        assertEquals(listOf("Annem", "Annem"), Schedule.day(s, d).map { it.personName })
+        assertEquals("Anne", s.schedules.single().personName)
+        assertEquals(unchangedPast, rows(s, d))
+    }
     @Test fun sameDayEditAppliesFromTodayAndKeepsTakenDose() = runBlocking {
         val id = seed()
         repo(d).saveMedication(person, id, base.copy(times = "09:00"))
