@@ -94,4 +94,17 @@ object HistoryMatrices {
         val ids = snapshot.medications.filter { it.personId == personId }.map { it.id }.toSet()
         return snapshot.schedules.filter { it.medicationId in ids }.minOfOrNull { it.effectiveFrom }?.let(LocalDate::ofEpochDay)
     }
+    /**
+     * Last day that can hold history for this person, or null while any medication is still running
+     * (then the table ends today). Lets History open an archived person at their final records
+     * instead of a run of empty recent days.
+     */
+    fun lastDay(snapshot: Snapshot, personId: String): LocalDate? {
+        val ids = snapshot.medications.filter { it.personId == personId }.map { it.id }.toSet()
+        val revisions = snapshot.schedules.filter { it.medicationId in ids }
+        if (revisions.isEmpty() || revisions.any { it.effectiveTo == null }) return null
+        val revisionIds = revisions.map { it.id }.toSet()
+        val lastLog = snapshot.logs.filter { it.scheduleId in revisionIds }.maxOfOrNull { it.date } ?: Long.MIN_VALUE
+        return LocalDate.ofEpochDay(maxOf(revisions.maxOf { it.effectiveTo!! }, lastLog))
+    }
 }

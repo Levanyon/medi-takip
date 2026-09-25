@@ -84,6 +84,38 @@ class HistoryIntegrityTest {
         assertEquals(unchangedPast, rows(s, d))
         assertEquals(1, s.logs.size)
     }
+    @Test fun restoringMedicationKeepsPastAndLeavesArchivedDaysEmpty() = runBlocking {
+        val id = seed()
+        repo(d.plusDays(1)).archiveMedication(id)
+        repo(d.plusDays(3)).restoreMedication(id)
+        val s = snapshot()
+        assertFalse(s.medications.single().archived)
+        assertEquals(unchangedPast, rows(s, d))
+        assertEquals(emptyList<String>(), rows(s, d.plusDays(1)))
+        assertEquals(emptyList<String>(), rows(s, d.plusDays(2)))
+        assertEquals(listOf("08:00 Parol 1 tablet ○", "20:00 Parol 1 tablet ○"), rows(s, d.plusDays(3)))
+        assertEquals(2, s.schedules.size)
+        assertEquals(1, s.logs.size)
+        // Reminders resume for the restored medication.
+        val events = ReminderPlan.events(s, AppSettings(), d.plusDays(3).atTime(7, 0).atZone(ZoneId.systemDefault()).toInstant(), ZoneId.systemDefault())
+        assertTrue(events.any { it.occurrence.date == d.plusDays(3) && it.occurrence.minute == 480 })
+    }
+    @Test fun restoringPersonRestoresOnlyThePerson() = runBlocking {
+        val id = seed()
+        repo(d.plusDays(1)).archivePerson(person)
+        assertEquals(d, HistoryMatrices.lastDay(snapshot(), "p"))
+        // Medications cannot come back while their person is archived.
+        assertThrows(IllegalArgumentException::class.java) { runBlocking { repo(d.plusDays(2)).restoreMedication(id) } }
+        repo(d.plusDays(2)).restorePerson("p")
+        val s = snapshot()
+        assertFalse(s.people.single().archived)
+        assertTrue(s.medications.single().archived)
+        assertEquals(unchangedPast, rows(s, d))
+        assertEquals(emptyList<String>(), rows(s, d.plusDays(2)))
+        repo(d.plusDays(2)).restoreMedication(id)
+        assertNull(HistoryMatrices.lastDay(snapshot(), "p"))
+        assertEquals(unchangedPast, rows(snapshot(), d))
+    }
     @Test fun renamingPersonUpdatesEveryDoseWithoutTouchingRevisions() = runBlocking {
         seed()
         repo(d).savePerson(person.copy(name = "Annem"))

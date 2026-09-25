@@ -47,4 +47,25 @@ class Repository(private val db: MediDatabase, private val clock: Clock = Clock.
         dao.medications().filter { it.personId == person.id }.forEach { archiveMedication(it.id) }
         dao.savePerson(person.copy(archived = true))
     }
+    /** Restores only the person. Their archived medications stay archived and are restored one by one. */
+    suspend fun restorePerson(personId: String) = db.withTransaction {
+        dao.people().find { it.id == personId }?.let { dao.savePerson(it.copy(archived = false)) }
+    }
+    /**
+     * Restores an archived medication. Past revisions are never touched: a copy of the newest revision
+     * becomes effective from today, so the days spent in the archive stay empty in history.
+     * The owner must be active (restore the person first).
+     */
+    suspend fun restoreMedication(id: String) = db.withTransaction {
+        val medication = dao.medications().find { it.id == id } ?: return@withTransaction
+        val person = dao.people().single { it.id == medication.personId }
+        require(!person.archived) { "Restore the person before their medication" }
+        val schedules = dao.schedules().filter { it.medicationId == id }
+        val latest = MedicationViews.latestRevision(Snapshot(schedules = schedules), id) ?: return@withTransaction
+        dao.saveMedication(medication.copy(archived = false))
+        if (latest.effectiveTo != null) {
+            val today = LocalDate.now(clock).toEpochDay()
+            dao.saveSchedule(latest.copy(id = UUID.randomUUID().toString(), personName = person.name, effectiveFrom = today, effectiveTo = null))
+        }
+    }
 }

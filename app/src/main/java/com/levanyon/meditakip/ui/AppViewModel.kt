@@ -46,6 +46,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun archivePerson(person: PersonEntity, onSuccess: () -> Unit = {}) = perform(onSuccess) { repository.archivePerson(person) }
     fun medication(person: PersonEntity, id: String?, schedule: MedicationScheduleEntity, onSuccess: () -> Unit = {}) = perform(onSuccess) { repository.saveMedication(person, id, schedule) }
     fun archiveMedication(id: String, onSuccess: () -> Unit = {}) = perform(onSuccess) { repository.archiveMedication(id) }
+    fun restorePerson(id: String, onSuccess: () -> Unit = {}) = perform(onSuccess) { repository.restorePerson(id) }
+    fun restoreMedication(id: String, onSuccess: () -> Unit = {}) = perform(onSuccess) { repository.restoreMedication(id) }
     fun taken(item: Occurrence) = completion(item, true)
     fun undo(item: Occurrence) = completion(item, false)
     private fun completion(item: Occurrence, taken: Boolean) {
