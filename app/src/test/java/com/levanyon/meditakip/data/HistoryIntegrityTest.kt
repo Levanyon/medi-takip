@@ -95,10 +95,30 @@ class HistoryIntegrityTest {
     }
     @Test fun sameDayEditAppliesFromTodayAndKeepsTakenDose() = runBlocking {
         val id = seed()
-        repo(d).saveMedication(person, id, base.copy(times = "09:00"))
+        repo(d).saveMedication(person, id, base.copy(name = "Parol Forte", times = "09:00"))
         val s = snapshot()
-        // Rule: an edit applies from today. The taken 08:00 stays (from its log); the untaken 20:00 is replaced.
-        assertEquals(listOf("08:00 Parol 1 tablet ✓", "09:00 Parol 1 tablet ○"), rows(s, d))
+        // Rule: an edit applies from today. The taken 08:00 stays (from its log, with the old name);
+        // the untaken 20:00 is replaced by the new revision's 09:00.
+        assertEquals(listOf("08:00 Parol 1 tablet ✓", "09:00 Parol Forte 1 tablet ○"), rows(s, d))
         assertEquals(1, s.logs.size)
+        // B4: the replaced revision is "never effective" (effectiveTo = effectiveFrom - 1), stored, not deleted.
+        val (old, new) = s.schedules
+        assertTrue(old.isNeverEffective)
+        assertEquals(old.effectiveFrom - 1, old.effectiveTo)
+        assertFalse(new.isNeverEffective)
+        // It never yields planned doses: not tomorrow, not in reminders.
+        assertEquals(listOf("09:00 Parol Forte 1 tablet ○"), rows(s, d.plusDays(1)))
+        val events = ReminderPlan.events(s, AppSettings(), d.atTime(7, 0).atZone(ZoneId.systemDefault()).toInstant(), ZoneId.systemDefault())
+        assertTrue(events.none { it.occurrence.schedule.id == old.id })
+    }
+    @Test fun editAndArchiveOnTheSameDayStillFindsTheNewestRevision() = runBlocking {
+        val id = seed()
+        repo(d).saveMedication(person, id, base.copy(name = "Parol Forte"))
+        repo(d).deleteMedication(id)
+        val s = snapshot()
+        // Both revisions now share effectiveFrom and are closed; insertion order decides which is newest.
+        assertTrue(s.schedules.all { it.isNeverEffective })
+        assertEquals("Parol Forte", MedicationViews.latestRevision(s, id)?.name)
+        assertEquals(listOf("08:00 Parol 1 tablet ✓"), rows(s, d))
     }
 }

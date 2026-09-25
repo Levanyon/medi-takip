@@ -17,6 +17,14 @@ data class Occurrence(val schedule: MedicationScheduleEntity, val personId: Stri
 enum class ScheduleValidation { NAME, DOSE, DAYS, DATES, TIMES }
 class ScheduleValidationException(val reason: ScheduleValidation) : IllegalArgumentException()
 
+/**
+ * A revision whose validity interval is empty (`effectiveTo = effectiveFrom - 1`). This happens when a
+ * medication is edited or archived on the same day the revision was created: the rule is "an edit
+ * applies from today", so the replaced revision was never in effect. It never produces planned doses,
+ * but doses already recorded against it stay visible through their logs (with its own name and dose).
+ */
+val MedicationScheduleEntity.isNeverEffective: Boolean get() = effectiveTo != null && effectiveTo < effectiveFrom
+
 object Schedule {
     fun minutes(text: String): List<Int> = text.split(',').map { LocalTime.parse(it.trim()).let { t -> t.hour * 60 + t.minute } }.distinct().sorted()
     fun validate(s: MedicationScheduleEntity) {

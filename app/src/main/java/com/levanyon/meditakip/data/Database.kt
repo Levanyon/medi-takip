@@ -27,11 +27,13 @@ data class DispatchEntity(@PrimaryKey val key: String, val sentAt: Long)
 interface AppDao {
     @Query("SELECT * FROM people") fun observePeople(): Flow<List<PersonEntity>>
     @Query("SELECT * FROM medications") fun observeMedications(): Flow<List<MedicationEntity>>
-    @Query("SELECT * FROM schedules") fun observeSchedules(): Flow<List<MedicationScheduleEntity>>
+    // ORDER BY rowid = insertion order; revisions are never re-inserted (@Upsert updates in place),
+    // so the last revision in the list is the newest one (see MedicationViews.latestRevision).
+    @Query("SELECT * FROM schedules ORDER BY rowid") fun observeSchedules(): Flow<List<MedicationScheduleEntity>>
     @Query("SELECT * FROM logs") fun observeLogs(): Flow<List<MedicationLogEntity>>
     @Query("SELECT * FROM people") suspend fun people(): List<PersonEntity>
     @Query("SELECT * FROM medications") suspend fun medications(): List<MedicationEntity>
-    @Query("SELECT * FROM schedules") suspend fun schedules(): List<MedicationScheduleEntity>
+    @Query("SELECT * FROM schedules ORDER BY rowid") suspend fun schedules(): List<MedicationScheduleEntity>
     @Query("SELECT * FROM logs") suspend fun logs(): List<MedicationLogEntity>
     @Upsert suspend fun savePerson(person: PersonEntity)
     @Upsert suspend fun saveMedication(medication: MedicationEntity)

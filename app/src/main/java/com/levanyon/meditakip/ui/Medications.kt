@@ -26,7 +26,7 @@ import java.time.LocalDate
 fun MedicationDetail(snapshot: Snapshot, medicationId: String, today: LocalDate, back: () -> Unit, edit: (PersonEntity, MedicationScheduleEntity) -> Unit, delete: () -> Unit) {
     val medication = snapshot.medications.find { it.id == medicationId } ?: return
     val person = snapshot.people.find { it.id == medication.personId } ?: return
-    val schedule = snapshot.schedules.filter { it.medicationId == medicationId }.let { list -> list.find { it.effectiveTo == null } ?: list.maxByOrNull { it.effectiveFrom } } ?: return
+    val schedule = MedicationViews.latestRevision(snapshot, medicationId) ?: return
     val matrix = remember(snapshot, medicationId, today) { HistoryMatrices.build(snapshot, person.id, today.minusDays(6), today, medicationId) }
     var opened by remember { mutableStateOf<Occurrence?>(null) }
     val editable = !medication.archived && !person.archived

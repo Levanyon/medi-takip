@@ -27,6 +27,17 @@ data class DailyProgress(val total: Int, val completed: Int) {
 data class HistoryDay(val date: LocalDate, val items: List<Occurrence>)
 
 object MedicationViews {
+    /**
+     * The newest revision of a medication: the open one if it exists, otherwise the last of those with the
+     * latest `effectiveFrom`. Relies on `snapshot.schedules` being in insertion order (DAO: ORDER BY rowid),
+     * which breaks the tie when a medication was edited and archived on the same day.
+     */
+    fun latestRevision(snapshot: Snapshot, medicationId: String): MedicationScheduleEntity? {
+        val list = snapshot.schedules.filter { it.medicationId == medicationId }
+        list.lastOrNull { it.effectiveTo == null }?.let { return it }
+        val newest = list.maxOfOrNull { it.effectiveFrom } ?: return null
+        return list.last { it.effectiveFrom == newest }
+    }
     fun current(snapshot: Snapshot): List<MedicationScheduleEntity> {
         val people = snapshot.people.filter { !it.archived }.map { it.id }.toSet()
         val ids = snapshot.medications.filter { !it.archived && it.personId in people }.map { it.id }.toSet()
@@ -71,7 +82,7 @@ object HistoryMatrices {
         val days = generateSequence(through) { it.minusDays(1) }.takeWhile { it >= from }
             .map { date -> date to Schedule.day(snapshot, date).filter { it.personId == personId && (medicationId == null || it.schedule.medicationId == medicationId) } }
             .filter { it.second.isNotEmpty() }.toList()
-        val latest = snapshot.schedules.groupBy { it.medicationId }.mapValues { (_, list) -> list.maxBy { it.effectiveFrom } }
+        val latest = snapshot.schedules.map { it.medicationId }.distinct().associateWith { MedicationViews.latestRevision(snapshot, it)!! }
         val columns = days.flatMap { it.second }.map { it.schedule.medicationId to it.minute }.distinct().map { (id, minute) ->
             val schedule = latest.getValue(id)
             HistoryColumn(id, minute, schedule.name, schedule.dose)

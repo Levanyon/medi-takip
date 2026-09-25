@@ -24,6 +24,12 @@ class Repository(private val db: MediDatabase, private val clock: Clock = Clock.
     })
     suspend fun snapshot() = db.withTransaction { Snapshot(dao.people(), dao.medications(), dao.schedules(), dao.logs()) }
     suspend fun savePerson(person: PersonEntity) { require(person.name.isNotBlank()); dao.savePerson(person.copy(name = person.name.trim())) }
+    /**
+     * Creates a medication or edits one. An edit never changes an existing revision: it closes the open
+     * revision at yesterday (`effectiveTo = today - 1`) and inserts a new one effective from today.
+     * Editing on the day a revision was created therefore leaves a "never-effective" revision
+     * (`effectiveTo = effectiveFrom - 1`, see [isNeverEffective]); its recorded doses stay visible.
+     */
     suspend fun saveMedication(person: PersonEntity, medicationId: String?, schedule: MedicationScheduleEntity) = db.withTransaction {
         Schedule.validate(schedule)
         val id = medicationId ?: UUID.randomUUID().toString()
