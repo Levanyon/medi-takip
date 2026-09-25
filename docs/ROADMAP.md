@@ -32,9 +32,9 @@ Useful commands:
 
 Goal: understand exactly what exists before changing anything, and make every later change safe.
 
-- [ ] Confirm the working tree is clean; create git tag `baseline-v1`.
-- [ ] Ensure Room `exportSchema = true` and the schema location is configured (e.g. `app/schemas`). Generate and commit the version 1 schema JSON before any schema change. (Migration tests depend on it.)
-- [ ] Write `docs/AUDIT.md` containing:
+- [x] Confirm the working tree is clean; create git tag `baseline-v1`.
+- [x] Ensure Room `exportSchema = true` and the schema location is configured (e.g. `app/schemas`). Generate and commit the version 1 schema JSON before any schema change. (Migration tests depend on it.)
+- [x] Write `docs/AUDIT.md` containing:
   - module / package map and the MVVM layers
   - every Room entity, its fields, relations and indices
   - how "today's doses" are computed (which function, which inputs)
@@ -42,9 +42,11 @@ Goal: understand exactly what exists before changing anything, and make every la
   - how reminders/notifications currently work (or that they do not exist)
   - existing tests and what they cover
   - bugs, risks and gaps compared to this roadmap
-- [ ] Create or tighten `CLAUDE.md` in the repo root: concise (target under ~150 lines), containing only stable rules (product purpose, stack, navigation, data safety, form rules, History rules, Windows rules, commands). Design details stay in `DESIGN.md`.
+- [x] Create or tighten `CLAUDE.md` in the repo root: concise (target under ~150 lines), containing only stable rules (product purpose, stack, navigation, data safety, form rules, History rules, Windows rules, commands). Design details stay in `DESIGN.md`.
 
 Done when: project builds, `AUDIT.md` and `CLAUDE.md` exist, v1 schema is committed, developer has reviewed the audit.
+
+Status (2026-09-25): all items complete; 64/64 tests pass; waiting for the developer to review `docs/AUDIT.md`. Also added: `tools/env.ps1` (project-local JDK/Gradle), `.gitattributes`.
 
 ## Phase 1 — Data correctness and history integrity
 
