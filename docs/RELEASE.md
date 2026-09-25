@@ -11,7 +11,10 @@ Debug builds are a separate app (`com.levanyon.meditakip.debug`, shown as "MediT
 | Key file | `%USERPROFILE%\AndroidKeys\meditakip\meditakip-release.p12` (PKCS12, RSA 4096, valid 30 years) |
 | Alias | `meditakip` |
 | Gradle settings | `%USERPROFILE%\AndroidKeys\meditakip\keystore.properties` (contains the password; never in the repository) |
-| Certificate SHA-256 | *(filled in after the key is created)* |
+| Certificate SHA-256 | `84:E8:0A:AC:3A:16:C7:9B:01:F5:8B:28:23:5C:6F:71:DF:E7:AC:68:96:F6:72:F8:83:F9:9D:06:87:E9:81:7F` |
+| apksigner form | `84e80aac3a16c79b01f58b28235c6f71dfe7ac6896f672f883f99d0687e9817f` |
+| Certificate DN | `CN=MediTakip, O=MediTakip, C=TR` |
+| Created / backed up | 2026-09-25 (two places, confirmed by the developer) |
 
 The SHA-256 fingerprint is public information. It identifies the key and is used to check backups and APKs.
 

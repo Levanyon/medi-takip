@@ -40,27 +40,27 @@ This workspace also has an ignored, project-local Windows toolchain in `.tools`.
 .\gradlew.bat testDebugUnitTest assembleDebug --offline
 ```
 
-`assembleRelease` produces an **unsigned** release APK unless you supply your own signing configuration. An unsigned APK cannot be installed. No release key or password is provided in this project.
+## Release signing
 
-## Create your release key and signed APK in Android Studio
+The phone runs the **release** build, signed with MediTakip's own release key: alias `meditakip`, certificate SHA-256 `84:E8:0A:AC:…:87:E9:81:7F` (full value in `docs/RELEASE.md`).
 
-1. Choose **Build > Generate Signed Bundle / APK**.
-2. Choose **APK**, then **Next**; select the `app` module.
-3. Under **Key store path**, click **Create new**.
-4. Choose a location outside this repository, for example `C:\Users\YOUR_NAME\AndroidKeys\MediTakip-release.jks`. Create that folder first if necessary.
-5. Set a strong keystore password and key password. Use alias `meditakip`. Choose validity of at least 25 years and complete the certificate identity fields. Store the passwords securely.
-6. Finish key creation, select the key, and click **Next**. Choose **release** and a destination folder you can find. Enable V1/V2 signing if your Studio version shows signature-version checkboxes.
-7. Click **Create/Finish**. Open the output using the build notification's **Locate** link. It is normally `app/release/app-release.apk`, or the destination you selected.
-8. Rename the **signed** APK to `MediTakip-release.apk`. Renaming does not affect its signature. Never rename `app-release-unsigned.apk` and mistake it for a signed build.
-9. Keep an offline copy of the keystore and its passwords. All updates to an installed release must use that same key and package name. Increment `versionCode` for later releases.
+- The key and its password live outside the repository, in `%USERPROFILE%\AndroidKeys\meditakip\`, and are backed up in two places.
+- **Do not create a second key.** An update signed with a different key cannot be installed over the app.
+- Everything about the key, backups, building and verifying is in [docs/RELEASE.md](docs/RELEASE.md).
 
-Optional command-line signing configuration: create an ignored `keystore.properties` locally with `storeFile` (use forward slashes in the Windows path), `storePassword`, `keyAlias`, and `keyPassword`. Then `gradlew.bat assembleRelease` signs the release. Never commit that file, credentials, `.jks`, `.keystore`, `.p12`, or `.pfx` files; `.gitignore` excludes them.
+```powershell
+. .\tools\env.ps1
+.\gradlew.bat assembleRelease --offline
+```
 
-No Google Play Console or paid account is needed. Android's official [signing guide](https://developer.android.com/studio/publish/app-signing) and [APK build guide](https://developer.android.com/build/build-for-release) describe these workflows.
+- The APK is written to `app\build\outputs\apk\release\app-release.apk`.
+- Without a configured key, `assembleRelease` stops with an error instead of producing an unsigned APK.
+- Debug builds install as a separate app, "MediTakip (debug)" (`com.levanyon.meditakip.debug`), and never replace the real one.
+- No Google Play Console or paid account is needed.
 
 ## Install on a physical Android phone
 
-1. Build `app-debug.apk` for testing, or create `MediTakip-release.apk` as above for ongoing use.
+1. Build `app-release.apk` as above. For real use, always install the release APK.
 2. Connect the unlocked phone to Windows by USB and choose **File transfer** on the phone.
 3. Copy the APK to the phone's **Download** folder using Windows File Explorer.
 4. Open the phone's Files app, open Downloads, and tap the APK.
@@ -71,11 +71,11 @@ No Google Play Console or paid account is needed. Android's official [signing gu
 Alternative USB debugging installation: enable Developer options and USB debugging, authorize the Windows computer on the phone, then run:
 
 ```powershell
-& "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe" devices
-& "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe" install -r .\app\build\outputs\apk\debug\app-debug.apk
+& ".tools\android-sdk\platform-tools\adb.exe" devices
+& ".tools\android-sdk\platform-tools\adb.exe" install -r .\app\build\outputs\apk\release\app-release.apk
 ```
 
-Updates signed with the same key retain app data. The debug builds installed so far are signed with the Android debug key at `%USERPROFILE%\.android\debug.keystore`; keep a backup of that file, because without it a new build cannot be installed over the existing app. A debug build cannot be replaced by a release signed with a different key. Uninstalling the debug build first removes its data; use a signed release before entering records you intend to keep.
+Updates signed with the same release key keep the app's data: install them over the existing app **without uninstalling**. The one-time switch from the old debug-signed app to the release app (September 2026) required an uninstall. That was accepted because the app was not in real use yet.
 
 ## Reminder behavior and limitations
 

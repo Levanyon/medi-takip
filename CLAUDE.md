@@ -96,6 +96,14 @@ The JDK, Gradle distribution and Android SDK live in the git-ignored `.tools\` f
 - Robolectric tests run with an English JVM locale (a Conscrypt workaround); the app itself always forces Turkish.
 - During development, run targeted tests. Run the full suite and `assembleDebug` once at the end of a phase. Run lint only when needed.
 
+## Release signing
+
+- The phone runs the **release** build, signed with the key in `%USERPROFILE%\AndroidKeys\meditakip\` (certificate SHA-256 `84:E8:0A:AC:...:87:E9:81:7F`, full value in `docs/RELEASE.md`). Never create, replace or rotate this key.
+- Never read, print, copy or commit `keystore.properties` or the `.p12` file. The developer runs `tools\new-release-key.ps1` themselves.
+- `assembleRelease` must fail when no key is configured. Never make it produce an unsigned or debug-signed release.
+- Before handing over an APK, check with `apksigner verify --print-certs` that its SHA-256 matches `docs/RELEASE.md`. Never leave an APK signed with any other key in `app\build\outputs\apk\release`.
+- Debug builds are a separate app (`.debug` suffix). Real use always gets the release APK, installed over the existing app without uninstalling.
+
 ## Git
 
 - Branch `main`. The baseline tag is `baseline-v1`.
