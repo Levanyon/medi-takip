@@ -115,3 +115,59 @@ Decisions the developer made in advance are marked **(developer)**.
 **D5.6 Glossary.**
 - `DESIGN.md` now has the glossary table (use and never-use terms).
 - Strings were aligned to it: "aktif ilaç" became "ilaç kullanımda"; the follow-up settings text uses "alındı olarak işaretlenmedi"; onboarding says "Tam Zamanında Hatırlatma", matching the status screen.
+
+---
+
+## Phase 3 — Daily-use features and schema v2
+
+### Plan
+1. **Schema v2 in one migration (1→2)** (developer): dose-log `status` and `recordedAt`, a revision-order column (R12), stock fields. Migration test first, then features.
+2. Log status plumbing: taken or skipped, the actual time and the recording time. Every screen and reminders treat a skipped dose as "handled".
+3. **Bugün:** `Atla` with an optional short reason; `Saati değiştir` on a taken dose (late marking); `Geri Al` for both.
+4. **Geçmiş:** tapping a cell allows `İçildi olarak işaretle` (with time), `Atla`, `Saati değiştir` and `Kaydı kaldır`, with a confirmation for past days. The legend gains `Atlandı`.
+5. **Stock (optional per medication):** quantity, amount per dose, low threshold. İçildi decrements and Geri Al restores. `Stok ekle`. Bugün shows "Parol azalıyor · ~5 gün". One notification when the threshold is reached.
+6. Repeat the Phase 5 accessibility matrix for the new screens and dialogs. (Required by the new order: Phase 5 ran first.)
+
+### Decisions
+
+**D3.1 Migration 1→2 adds columns only; nothing is rebuilt or deleted.**
+- `logs`:
+  - `status TEXT NOT NULL DEFAULT 'TAKEN'`: every existing record was a taken dose.
+  - `recordedAt INTEGER NOT NULL DEFAULT 0`, then `UPDATE logs SET recordedAt = takenAt`: for old records the best available value.
+  - `note TEXT`: the optional skip reason, NULL for existing rows.
+- `schedules`: `sequence INTEGER NOT NULL DEFAULT 0`, then `UPDATE schedules SET sequence = rowid`. This keeps today's rowid order as permanent data (R12).
+- `medications`: `stockEnabled` (0), `stockQuantity` (0.0), `stockPerDose` (1.0), `stockThreshold` (0.0). Stock is off for everyone.
+- `ALTER TABLE … ADD COLUMN` never touches existing values, so there is no copy-and-swap and no risk of losing rows. The migration runs inside Room's transaction: it either fully succeeds or leaves version 1 untouched.
+
+**D3.2 Migration test without `room-testing`.**
+- The developer pre-approved `room-testing`. It is not needed.
+- The test creates a database with the **exact v1 statements** from the committed `1.json`, inserts realistic v1 data (people, archived items, revisions including a never-effective one, logs) with plain SQL, then opens it through Room with `MIGRATION_1_2`.
+- Room validates every table against the v2 entities when it opens the database, and throws if the migration left anything different. The test then checks every row and value.
+- `MigrationTestHelper` would read schema JSON from instrumentation assets, which unit tests cannot easily provide.
+- Result: one fewer dependency, and an equally strict check.
+
+**D3.3 A skipped dose is a log row with status `SKIPPED`.**
+- `takenAt` is `NOT NULL` in v1. Making it nullable would need a table rebuild in SQLite, so for a skipped dose it holds the moment of skipping (same as `recordedAt`).
+- The app never shows `takenAt` for skipped doses: `Occurrence.takenAt` is `null` for them and `Occurrence.skipped` is `true`.
+- Reminders, the next-dose highlight and "remaining" counts treat taken or skipped as **handled**.
+
+**D3.4 Progress counts handled doses.** "3 / 5 tamamlandı" counts taken and skipped doses, because both are decisions the user has made. The rows themselves say which is which (✓ İçildi or Atlandı).
+
+**D3.5 Late marking.**
+- `İçildi` stays one tap and records "now". A taken row gets `Saati değiştir`: a time picker, default the current recorded time.
+- The chosen time is stored as `takenAt` on the dose's own date. `recordedAt` stays the moment the entry was made, so late marking can be told apart.
+- In Geçmiş, marking a past dose asks for the time; the default is the planned time.
+
+**D3.6 Correcting history needs confirmation for past days only.** Today's doses behave like Bugün: undo is always available. For earlier days a short dialog names the date before anything is written or removed. "Kaydı kaldır" deletes only that one dose record (as Geri Al does); schedules and other days are never touched.
+
+**D3.7 Stock lives on the medication, not on the schedule revision.**
+- Stock is current state, not a definition. It must not be versioned or rolled back by an edit.
+- `saveMedication` now **keeps** the existing stock fields, archive state and ids when a schedule is edited. Before this it re-created the medication row with defaults, which would have reset the stock.
+- Amounts are decimals, so half tablets work.
+- A dose decrements exactly `stockPerDose`, only when a new taken record is actually inserted. A repeated tap or notification action inserts nothing, so it never decrements twice. Undo and "Kaydı kaldır" of a taken dose add the same amount back.
+- Stock may go below 0; the UI shows 0. This keeps undo exactly reversible.
+- Days left = quantity ÷ (amount per dose × average doses per day over the week). A medication is "low" when a threshold is set (> 0) and quantity ≤ threshold.
+
+**D3.8 One low-stock notification per crossing.**
+- When a medication goes low, one notification says "Parol azalıyor" / "Anne · yaklaşık 5 günlük ilaç kaldı". It is neutral and gives no advice.
+- It is not repeated until the stock goes above the threshold again (e.g. after `Stok ekle`). The "already notified" set lives in preferences.

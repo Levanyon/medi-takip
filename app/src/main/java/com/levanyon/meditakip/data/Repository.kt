@@ -6,22 +6,50 @@ import kotlinx.coroutines.flow.combine
 import java.time.*
 import java.util.UUID
 
-interface CompletionStore {
-    suspend fun insert(log: MedicationLogEntity)
-    suspend fun delete(key: String)
-}
-class CompletionRepository(private val store: CompletionStore, private val clock: Clock = Clock.systemUTC()) {
-    suspend fun taken(item: Occurrence) = store.insert(MedicationLogEntity(item.key, item.schedule.id, item.date.toEpochDay(), item.minute, clock.millis()))
-    suspend fun undo(item: Occurrence) = store.delete(item.key)
-}
+/** Longest stored skip reason (a short note, not a diary). */
+const val NOTE_LIMIT = 80
 
 class Repository(private val db: MediDatabase, private val clock: Clock = Clock.systemDefaultZone()) {
     private val dao = db.dao()
     val snapshots = combine(dao.observePeople(), dao.observeMedications(), dao.observeSchedules(), dao.observeLogs(), ::Snapshot)
-    val completions = CompletionRepository(object : CompletionStore {
-        override suspend fun insert(log: MedicationLogEntity) = dao.insertLog(log)
-        override suspend fun delete(key: String) = dao.undo(key)
-    })
+    val completions = Completions()
+
+    /**
+     * Dose records (docs/DECISIONS.md D3.3–D3.7). Every operation is one transaction that keeps stock in
+     * step: only a newly inserted TAKEN record decrements it, and removing a TAKEN record restores it.
+     * All operations are idempotent: repeating them never duplicates a record or a stock change.
+     */
+    inner class Completions {
+        /** İçildi. [takenAt] defaults to now; late marking passes the real time. Returns false if already recorded. */
+        suspend fun taken(item: Occurrence, takenAt: Long? = null): Boolean = db.withTransaction {
+            val now = clock.millis()
+            val inserted = dao.insertLog(MedicationLogEntity(item.key, item.schedule.id, item.date.toEpochDay(), item.minute, takenAt ?: now, LogStatus.TAKEN, now)) != -1L
+            if (inserted) changeStock(item, -1)
+            inserted
+        }
+        /** Atla, with an optional short reason. Returns false if the dose already has a record. */
+        suspend fun skip(item: Occurrence, note: String? = null): Boolean = db.withTransaction {
+            val now = clock.millis()
+            dao.insertLog(MedicationLogEntity(item.key, item.schedule.id, item.date.toEpochDay(), item.minute, now, LogStatus.SKIPPED, now, note?.trim()?.take(NOTE_LIMIT)?.ifBlank { null })) != -1L
+        }
+        /** Geri Al / Kaydı kaldır: removes this one dose record; a removed TAKEN record gives its stock back. */
+        suspend fun undo(item: Occurrence): Boolean = db.withTransaction {
+            val existing = dao.log(item.key) ?: return@withTransaction false
+            dao.undo(item.key)
+            if (existing.status == LogStatus.TAKEN) changeStock(item, +1)
+            true
+        }
+        /** Saati değiştir: corrects the actual time of a TAKEN record; recordedAt keeps the original entry time. */
+        suspend fun setTakenTime(item: Occurrence, takenAt: Long): Boolean = db.withTransaction {
+            val existing = dao.log(item.key)?.takeIf { it.status == LogStatus.TAKEN } ?: return@withTransaction false
+            dao.updateLog(existing.copy(takenAt = takenAt))
+            true
+        }
+        private suspend fun changeStock(item: Occurrence, direction: Int) {
+            val medication = dao.medications().find { it.id == item.schedule.medicationId } ?: return
+            if (medication.stockEnabled) dao.adjustStock(medication.id, direction * medication.stockPerDose)
+        }
+    }
     suspend fun snapshot() = db.withTransaction { Snapshot(dao.people(), dao.medications(), dao.schedules(), dao.logs()) }
     suspend fun savePerson(person: PersonEntity) { require(person.name.isNotBlank()); dao.savePerson(person.copy(name = person.name.trim())) }
     /**
@@ -35,8 +63,10 @@ class Repository(private val db: MediDatabase, private val clock: Clock = Clock.
         val id = medicationId ?: UUID.randomUUID().toString()
         val today = LocalDate.now(clock).toEpochDay()
         dao.schedules().filter { it.medicationId == id && it.effectiveTo == null }.forEach { dao.saveSchedule(it.copy(effectiveTo = today - 1)) }
-        dao.saveMedication(MedicationEntity(id, person.id))
-        dao.saveSchedule(schedule.copy(id = UUID.randomUUID().toString(), medicationId = id, personName = person.name, effectiveFrom = today, effectiveTo = null))
+        // Keep the existing medication row (stock, archive state): an edit only adds a schedule revision (D3.7).
+        val existing = dao.medications().find { it.id == id }
+        dao.saveMedication(existing?.copy(personId = person.id) ?: MedicationEntity(id, person.id))
+        dao.saveSchedule(schedule.copy(id = UUID.randomUUID().toString(), medicationId = id, personName = person.name, effectiveFrom = today, effectiveTo = null, sequence = dao.maxSequence() + 1))
     }
     suspend fun archiveMedication(id: String) = db.withTransaction {
         val today = LocalDate.now(clock).toEpochDay()
@@ -65,7 +95,7 @@ class Repository(private val db: MediDatabase, private val clock: Clock = Clock.
         dao.saveMedication(medication.copy(archived = false))
         if (latest.effectiveTo != null) {
             val today = LocalDate.now(clock).toEpochDay()
-            dao.saveSchedule(latest.copy(id = UUID.randomUUID().toString(), personName = person.name, effectiveFrom = today, effectiveTo = null))
+            dao.saveSchedule(latest.copy(id = UUID.randomUUID().toString(), personName = person.name, effectiveFrom = today, effectiveTo = null, sequence = dao.maxSequence() + 1))
         }
     }
 }

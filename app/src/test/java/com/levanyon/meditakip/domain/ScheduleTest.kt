@@ -30,20 +30,13 @@ class ScheduleTest {
         val overlap = Occurrence(s, "p", LocalDate.of(2026, 10, 25), 150)
         assertEquals(ZoneOffset.ofHours(2), overlap.instant(zone).atZone(zone).offset)
     }
-    @Test fun takenIsIdempotentUndoPersists() = runTest {
-        val values = mutableMapOf<String, MedicationLogEntity>()
-        val store = object : CompletionStore {
-            override suspend fun insert(log: MedicationLogEntity) { values.putIfAbsent(log.key, log) }
-            override suspend fun delete(key: String) { values.remove(key) }
-        }
+    @Test fun takenLogIsReflectedAndItsRemovalClearsIt() {
+        // Idempotent Taken/Undo with stock is covered on a real database in data/RepositoryTest.
         val instant = Instant.parse("2026-09-21T06:10:00Z")
-        val repo = CompletionRepository(store, Clock.fixed(instant, ZoneOffset.UTC))
         val item = Schedule.day(snapshot(), date).first()
-        repo.taken(item); repo.taken(item)
-        assertEquals(1, values.size)
-        assertEquals(instant.toEpochMilli(), Schedule.day(snapshot(logs = values.values.toList()), date).first().takenAt)
-        repo.undo(item)
-        assertNull(Schedule.day(snapshot(logs = values.values.toList()), date).first().takenAt)
+        val log = MedicationLogEntity(item.key, item.schedule.id, date.toEpochDay(), item.minute, instant.toEpochMilli())
+        assertEquals(instant.toEpochMilli(), Schedule.day(snapshot(logs = listOf(log)), date).first().takenAt)
+        assertNull(Schedule.day(snapshot(logs = emptyList()), date).first().takenAt)
     }
     @Test(expected = IllegalArgumentException::class) fun rejectsInvalidRange() { Schedule.validate(s.copy(end = s.start - 1)) }
 }

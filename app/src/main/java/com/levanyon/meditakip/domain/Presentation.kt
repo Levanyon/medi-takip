@@ -27,15 +27,14 @@ data class DailyProgress(val total: Int, val completed: Int) {
 
 object MedicationViews {
     /**
-     * The newest revision of a medication: the open one if it exists, otherwise the last of those with the
-     * latest `effectiveFrom`. Relies on `snapshot.schedules` being in insertion order (DAO: ORDER BY rowid),
-     * which breaks the tie when a medication was edited and archived on the same day.
+     * The newest revision of a medication: the open one if it exists, otherwise the one with the highest
+     * `sequence` (v2, AUDIT R12). Equal sequences (in-memory data, or rows from before v2) fall back to list
+     * order, which the DAO provides as `ORDER BY sequence, rowid`.
      */
     fun latestRevision(snapshot: Snapshot, medicationId: String): MedicationScheduleEntity? {
         val list = snapshot.schedules.filter { it.medicationId == medicationId }
         list.lastOrNull { it.effectiveTo == null }?.let { return it }
-        val newest = list.maxOfOrNull { it.effectiveFrom } ?: return null
-        return list.last { it.effectiveFrom == newest }
+        return list.withIndex().maxWithOrNull(compareBy({ it.value.sequence }, { it.index }))?.value
     }
     fun current(snapshot: Snapshot): List<MedicationScheduleEntity> {
         val people = snapshot.people.filter { !it.archived }.map { it.id }.toSet()
