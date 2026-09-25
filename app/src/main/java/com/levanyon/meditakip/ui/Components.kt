@@ -203,19 +203,22 @@ fun ScheduledDoseRow(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable private fun DoseActions(item: Occurrence, highlight: Boolean, busy: Boolean, onTaken: () -> Unit, onUndo: () -> Unit, onSkip: () -> Unit, onChangeTime: () -> Unit) {
     val undoDescription = stringResource(R.string.undo_action_description, item.personName, item.schedule.name, item.time.toString())
-    // FlowRow: side by side when they fit, stacked at large font sizes; nothing is ever clipped.
-    FlowRow(Modifier.fillMaxWidth().padding(top = MediSpace.small), horizontalArrangement = Arrangement.spacedBy(MediSpace.small), verticalArrangement = Arrangement.spacedBy(MediSpace.small)) {
-        if (item.handled) {
+    if (item.handled) {
+        // Quiet, text-only secondary actions: one line at normal sizes, wrapping (never clipping) at large fonts.
+        FlowRow(Modifier.fillMaxWidth().padding(top = MediSpace.small), horizontalArrangement = Arrangement.spacedBy(MediSpace.small), verticalArrangement = Arrangement.spacedBy(MediSpace.tiny)) {
             if (!item.skipped) {
                 val timeDescription = stringResource(R.string.change_time_description, item.personName, item.schedule.name, item.time.toString())
                 TextButton(onClick = onChangeTime, enabled = !busy, shape = MaterialTheme.shapes.large, modifier = Modifier.heightIn(min = MediSize.touch).semantics { contentDescription = timeDescription }) {
-                    Icon(Icons.Default.Schedule, null); Spacer(Modifier.width(MediSpace.small)); Text(stringResource(R.string.change_time), style = MaterialTheme.typography.labelLarge)
+                    Text(stringResource(R.string.change_time), style = MaterialTheme.typography.labelLarge)
                 }
             }
             TextButton(onClick = onUndo, enabled = !busy, shape = MaterialTheme.shapes.large, modifier = Modifier.heightIn(min = MediSize.touch).semantics { contentDescription = undoDescription }) {
-                Icon(Icons.AutoMirrored.Filled.Undo, null); Spacer(Modifier.width(MediSpace.small)); Text(stringResource(R.string.undo), style = MaterialTheme.typography.labelLarge)
+                Text(stringResource(R.string.undo), style = MaterialTheme.typography.labelLarge)
             }
-        } else {
+        }
+    } else {
+        // FlowRow: İçildi and Atla side by side when they fit, stacked at large font sizes; nothing is ever clipped.
+        FlowRow(Modifier.fillMaxWidth().padding(top = MediSpace.small), horizontalArrangement = Arrangement.spacedBy(MediSpace.small), verticalArrangement = Arrangement.spacedBy(MediSpace.small)) {
             val takenDescription = stringResource(R.string.dose_action_description, item.personName, item.schedule.name, item.time.toString())
             val skipDescription = stringResource(R.string.skip_action_description, item.personName, item.schedule.name, item.time.toString())
             val takenModifier = Modifier.weight(1f).widthIn(min = 160.dp).heightIn(min = MediSize.primaryAction).semantics { contentDescription = takenDescription }

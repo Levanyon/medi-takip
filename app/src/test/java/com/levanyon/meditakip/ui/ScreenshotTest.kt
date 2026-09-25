@@ -50,8 +50,8 @@ class ScreenshotTest(private val screen: String, private val dark: Boolean) {
     private val schedules = listOf(rev("s1", "m1", "Tansiyon İlacı", "1 tablet", "08:00"), rev("s2", "m2", "Parol", "1 tablet", "13:00,20:00"), rev("s3", "m3", "D Vitamini", "1 damla", "09:00"))
     private fun taken(s: String, day: LocalDate, minute: Int, late: Int) =
         MedicationLogEntity("$s:${day.toEpochDay()}:$minute", s, day.toEpochDay(), minute, day.atStartOfDay().plusMinutes(minute + late.toLong()).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli())
-    private val snapshot = Snapshot(listOf(anne, kardes), listOf(MedicationEntity("m1", "p"), MedicationEntity("m2", "p"), MedicationEntity("m3", "k")), schedules,
-        (1L..8L).flatMap { d -> val day = date.minusDays(d); listOfNotNull(taken("s1", day, 480, 4), if (d % 3 != 0L) taken("s2", day, 780, 2) else null, if (d % 2 == 0L) taken("s2", day, 1200, 9) else null) } + taken("s1", date, 480, 4))
+    private val snapshot = Snapshot(listOf(anne, kardes), listOf(MedicationEntity("m1", "p"), MedicationEntity("m2", "p", stockEnabled = true, stockQuantity = 7.0, stockThreshold = 8.0), MedicationEntity("m3", "k")), schedules,
+        (1L..8L).flatMap { d -> val day = date.minusDays(d); listOfNotNull(taken("s1", day, 480, 4), if (d % 3 != 0L) taken("s2", day, 780, 2) else null, if (d % 2 == 0L) taken("s2", day, 1200, 9) else null) } + taken("s1", date, 480, 4) + MedicationLogEntity("s2:${date.minusDays(3).toEpochDay()}:1200", "s2", date.minusDays(3).toEpochDay(), 1200, 0, LogStatus.SKIPPED, note = "Dışarıdaydık"))
 
     @Before fun gate() { Assume.assumeTrue(System.getenv("MEDITAKIP_SCREENSHOTS") != null) }
     @After fun close() {
