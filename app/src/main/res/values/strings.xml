@@ -8,7 +8,7 @@
     <string name="taken">İçildi</string>
     <string name="taken_checked">✓ İçildi</string>
     <string name="pending">Bekliyor</string>
-    <string name="not_marked">İçildi olarak işaretlenmedi</string>
+    <string name="not_marked">Alındı olarak işaretlenmedi</string>
     <string name="taken_at">İçildi: %1$s</string>
     <string name="undo">Geri Al</string>
     <string name="save">Kaydet</string>
@@ -191,7 +191,7 @@
     <string name="history_hint_scroll">Diğer ilaçları görmek için tabloyu yana kaydırın.</string>
     <string name="history_date_header">Tarih</string>
     <string name="history_cell_taken">%1$s %2$s, %3$s: İçildi, %4$s</string>
-    <string name="history_cell_open">%1$s %2$s, %3$s: İçildi olarak işaretlenmedi</string>
+    <string name="history_cell_open">%1$s %2$s, %3$s: Alındı olarak işaretlenmedi</string>
     <string name="history_cell_none">%1$s %2$s, %3$s: Planlanmamış</string>
     <string name="legend_taken">İçildi</string>
     <string name="legend_open">İşaretlenmedi</string>

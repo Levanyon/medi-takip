@@ -168,8 +168,8 @@ class ScreenLayoutTest {
         compose.onNodeWithText("08:05").performClick()
         compose.onNodeWithText("Planlanan").assertIsDisplayed()
         compose.onNodeWithText("Tamam").performScrollTo().performClick()
-        compose.onAllNodes(hasContentDescription("İçildi olarak işaretlenmedi", substring = true)).onFirst().performScrollTo().performClick()
-        compose.onNodeWithText("İçildi olarak işaretlenmedi").assertIsDisplayed()
+        compose.onAllNodes(hasContentDescription("Alındı olarak işaretlenmedi", substring = true)).onFirst().performScrollTo().performClick()
+        compose.onNodeWithText("Alındı olarak işaretlenmedi").assertIsDisplayed()
     }
     @Test fun historyCellDetailShowsTheRevisionValidOnThatDate() {
         // B1: Parol 1 tablet until yesterday, renamed "Parol 500" / 2 tablet from today.
