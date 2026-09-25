@@ -1,6 +1,7 @@
 package com.levanyon.meditakip.ui
 
 import androidx.compose.runtime.*
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
@@ -86,4 +87,31 @@ class AccessibilityTest(private val scale: Float) {
     @Test fun personForm() { show { PersonEditor(anne, {}, {}) {} }; reachable("Kaydet"); reachable("Kişiyi Arşivle") }
     @Test fun medicationForm() { show { MedicationEditor(anne, schedule, {}) { _, _ -> } }; reachable("Saat Ekle"); reachable("Kaydet") }
     @Test fun onboarding() { show { Onboarding(viewModel()) }; reachable("İlk kişiyi ekle"); reachable("Daha sonra") }
+
+    // Phase 3 screens and dialogs (the Phase 5 checks repeated, because Phase 5 ran first).
+    private val takenMorning get() = Schedule.day(snapshot, date).first().withLog(MedicationLogEntity("x", "s", date.toEpochDay(), 480, date.atTime(8, 2).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()))
+    private val skippedEvening get() = Schedule.day(snapshot, date).last().withLog(MedicationLogEntity("y", "s", date.toEpochDay(), 1200, 0, LogStatus.SKIPPED, note = "Dışarıdaydık"))
+    private val stocked get() = snapshot.copy(medications = listOf(MedicationEntity("m", "p", stockEnabled = true, stockQuantity = 3.0, stockThreshold = 4.0)))
+    @Test fun doseRowsWithSkipAndTimeChange() {
+        show {
+            androidx.compose.foundation.layout.Column(androidx.compose.ui.Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState())) {
+                ScheduledDoseRow(Schedule.day(snapshot, date).first(), true)
+                ScheduledDoseRow(takenMorning, true)
+                ScheduledDoseRow(skippedEvening, true)
+            }
+        }
+        reachable("Atla"); reachable("Saati değiştir"); reachable("Not: Dışarıdaydık")
+    }
+    @Test fun skipDialog() { show { SkipDialog(Schedule.day(snapshot, date).first(), {}, dateNotice = "22 Eylül 2026, Uzun İsimli Tansiyon İlacı 08:00: Atlandı olarak işaretlenecek.") {} }; reachable("Not (isteğe bağlı)"); reachable("İptal") }
+    @Test fun historyCorrectionDialog() { show { HistoryCellDetail(Schedule.day(snapshot, date.minusDays(2)).first(), {}, date, object : DoseCorrections {
+        override fun taken(item: Occurrence, takenAt: Long?) {}; override fun skip(item: Occurrence, note: String?) {}
+        override fun undo(item: Occurrence) {}; override fun setTakenTime(item: Occurrence, takenAt: Long) {} }) }
+        reachable("İçildi olarak işaretle"); reachable("İptal") }
+    @Test fun stockInDetailAndToday() { show { MedicationDetail(stocked, "m", date, {}, { _, _ -> }, {}) }; reachable("Stok ekle") }
+    @Test fun stockBannerOnToday() { show { TodayScreen(stocked, date.atTime(7, 0), "p", {}, viewModel(), {}, {}, {}, {}) }; reachable("Uzun İsimli Tansiyon İlacı azalıyor · ~1 gün") }
+    @Test fun addStockDialog() { show { AddStockDialog({}) {} }; reachable("Eklenecek miktar"); reachable("İptal") }
+    @Test fun medicationFormWithStock() {
+        show { MedicationEditor(anne, schedule, {}, initialStock = StockSettings(true, 30.0, 1.0, 5.0)) { _, _ -> } }
+        reachable("Stok takibi"); reachable("Bu miktara inince haber ver"); reachable("Kaydet")
+    }
 }
