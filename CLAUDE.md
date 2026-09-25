@@ -26,8 +26,11 @@ Packages: `data` (Room, repository, preferences) · `domain` (pure Kotlin, no An
 
 - Never use destructive migrations or `fallbackToDestructiveMigration`. Never silently reset data.
 - Every schema change: bump the version, write an explicit `Migration(n, n+1)`, add a migration test, and commit the new schema JSON in `app/schemas/`. Never edit a committed schema JSON.
-- Never hard-delete anything that has history. Deleting a person or medication means archiving it.
+- Never hard-delete anything that has history. Removing a person or medication means archiving it ("Arşivle"). Restoring it ("Arşivden Çıkar") adds a new revision effective from today and never reopens or edits a past revision. Restoring a person does not restore their medications.
 - Schedules are versioned. An edit closes the current revision (`effectiveTo`) and inserts a new one. Never update a past revision in place.
+- A revision with `effectiveTo = effectiveFrom − 1` is "never effective" (it was edited or archived on the day it was created). It is valid data: never "repair" or delete it. See `isNeverEffective`.
+- Pick the newest revision only with `MedicationViews.latestRevision`. It relies on schedules being read `ORDER BY rowid`.
+- Person names are always read from `people` (use `Occurrence.personName`). The column `schedules.personName` is still written but never read.
 - Logs (dose records) are keyed by revision, scheduled date and scheduled minute. `takenAt` is the actual instant in epoch millis. Dates are epoch-day, times are minutes-of-day. Use `java.time` and never hardcode a timezone.
 - Past history must never change because of a later edit, rename, deactivation or archive. This includes what screens display for past dates.
 
@@ -60,12 +63,12 @@ Packages: `data` (Room, repository, preferences) · `domain` (pure Kotlin, no An
 - The date column stays fixed while the medication columns scroll horizontally together, sharing one `ScrollState`.
 - A small table is centered. Columns scale with font size, and no column may become unreachable.
 - Cell states: ✓ with the actual time, ○ not marked, – not planned. Tapping a cell opens its details.
-- A past cell must show the name and dose that were valid on that date. (This is currently violated: AUDIT B1. Fix it in Phase 1.)
+- A past cell must show the name and dose that were valid on that date.
 
 ## Terminology (Turkish glossary)
 
 - Button: **İçildi**. Undo: **Geri Al**.
-- History state: **Alındı olarak işaretlenmedi**. The code still says "İçildi olarak işaretlenmedi" (AUDIT R8). Taken: "✓ İçildi • 08:04".
+- History state: **Alındı olarak işaretlenmedi**. Taken: "✓ İçildi • 08:04".
 - Planned: **Planlanan**. Inactive medication: **Durduruldu**. Archive: **Arşivle** (the Phase 3 skip will be **Atlandı**).
 - Never use threatening or judgmental wording.
 

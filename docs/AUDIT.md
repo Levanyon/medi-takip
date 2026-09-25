@@ -2,6 +2,21 @@
 
 Audit date: 2026-09-25 · Baseline: git tag `baseline-v1` (commit `bbcf4a5`) · Room schema version 1 (identity hash `813dea27…`).
 
+> **Resolution status (Phase 1, 2026-09-25).** The sections below describe the baseline. Since then:
+>
+> | Finding | Status |
+> |---|---|
+> | B1 cell detail showed latest dose | Fixed: the detail shows the occurrence's own revision |
+> | B2 stale person name | Fixed: `Occurrence.personName` comes from `people`; the revision column is no longer read |
+> | B3 archived history hidden, no restore | Fixed: archived people selectable in Geçmiş; "Arşivdekiler" and "Arşivlenen ilaçlar" sections; Arşivden Çıkar |
+> | B4 same-day edit interval | Kept by design: "never-effective revision" (`isNeverEffective`), documented and tested. Also fixed a related tie: newest revision is now deterministic (`ORDER BY rowid`, `MedicationViews.latestRevision`) |
+> | B5 past start dates | Fixed: date pickers start at today |
+> | R7 "Sil" wording | Fixed: "Arşivle" / "Arşivden Çıkar" |
+> | R8 terminology | Fixed in History ("Alındı olarak işaretlenmedi"); notification text left for Phase 2 |
+> | R11 stale docs | Fixed: README, ARCHITECTURE; V1.1 marked historical |
+>
+> Regression guard: `data/HistoryIntegrityTest`. Schema is still version 1.
+
 This document describes the code **as it is**, so later phases can change it safely. Findings marked **[verified]** were confirmed by running a throwaway Robolectric probe against a real in-memory Room database (see §4.3); the probe itself was not committed.
 
 ---

@@ -54,39 +54,41 @@ Goal: past history must never change or disappear because of a later edit. This 
 
 ### 1.1 Single source of truth for expected doses
 
-- [ ] One pure Kotlin domain function (no Android dependencies), e.g. `expectedDoses(personId, date): List<ExpectedDose>`, used by Today, History and Reminders. No screen computes schedules on its own.
-- [ ] Unit tests: weekday selection, start date, end date, inactive medication, multiple times per day, dates across midnight, schedule changed in the middle of a period.
+- [x] One pure Kotlin domain function (no Android dependencies), e.g. `expectedDoses(personId, date): List<ExpectedDose>`, used by Today, History and Reminders. No screen computes schedules on its own. *(Exists as `Schedule.day`; verified in the audit.)*
+- [x] Unit tests: weekday selection, start date, end date, inactive medication, multiple times per day, dates across midnight, schedule changed in the middle of a period. *(ScheduleTest, ReminderTest and HistoryIntegrityTest.)*
 
 ### 1.2 Schedule changes must not rewrite the past
 
 Choose, justify and implement the simplest design that guarantees correctness (present options to the developer first). Recommended default:
 
-- [ ] Schedule versioning: schedules have `validFrom` / `validTo`. Editing a schedule closes the current version (`validTo = yesterday` or today, decide and document) and creates a new one. History for a past date uses the version valid on that date.
-- [ ] Dose logs store the scheduled date and scheduled time they belong to, not only a medication id and a timestamp.
+- [x] Schedule versioning: schedules have `validFrom` / `validTo`. Editing a schedule closes the current version (`validTo = yesterday` or today, decide and document) and creates a new one. History for a past date uses the version valid on that date. *(Exists: `effectiveFrom/effectiveTo`, closed at yesterday. Same-day case = never-effective revision.)*
+- [x] Dose logs store the scheduled date and scheduled time they belong to, not only a medication id and a timestamp.
 
 ### 1.3 Log model — moved to Phase 3 (decision 2026-09-25)
 
 The `status` and `recordedAt` columns and their migration are added together in Phase 3 (section 3.0), in a single `Migration(1, 2)`. Phase 1 makes **no schema change**; the database stays at version 1.
 
-- [ ] Use `java.time`. Store dates as epoch-day or ISO string, times as minutes-of-day, instants as epoch millis. Do not hardcode a timezone. (The v1 schema already follows this; keep it that way.)
+- [x] Use `java.time`. Store dates as epoch-day or ISO string, times as minutes-of-day, instants as epoch millis. Do not hardcode a timezone. (The v1 schema already follows this; keep it that way.)
 
 ### 1.4 Deletion policy
 
-- [ ] A medication or person that has any history is never hard-deleted. The action is **Arşivle**: the item is hidden from Bugün and the lists, but stays visible in History. ("Hard delete only when there is no history" is **deferred**; for now archiving is the only removal.)
-- [ ] Archived items can be restored. Restoring a person restores only the person; medications are restored one by one from Kişi Detay → "Arşivlenen ilaçlar".
+- [x] A medication or person that has any history is never hard-deleted. The action is **Arşivle**: the item is hidden from Bugün and the lists, but stays visible in History. ("Hard delete only when there is no history" is **deferred**; for now archiving is the only removal.)
+- [x] Archived items can be restored. Restoring a person restores only the person; medications are restored one by one from Kişi Detay → "Arşivlenen ilaçlar".
 
 ### 1.5 Phase 1 scope: fixes from `docs/AUDIT.md` (decision 2026-09-25)
 
-- [ ] B1: a History cell's detail shows the name and dose of the revision that was valid on that date.
-- [ ] B2: a person's name is always read from `people` (notifications, TalkBack, sorting). `schedules.personName` is still written but never read.
-- [ ] B3 + R7: archived people appear in the History selector labeled "Arşivde"; archived medications get their own section in Kişi Detay; restoring from the archive works; "Sil" becomes "Arşivle".
-- [ ] B4: the rule stays "an edit applies from today". A revision with `effectiveTo = effectiveFrom − 1` is a documented, tested "never-effective revision".
-- [ ] B5: the start-date picker does not allow past dates.
-- [ ] R8: History shows "Alındı olarak işaretlenmedi".
-- [ ] R11: README and docs no longer describe the old five-tab layout.
-- [ ] The Phase 0 scenario probe becomes a permanent regression test (`HistoryIntegrityTest`).
+- [x] B1: a History cell's detail shows the name and dose of the revision that was valid on that date.
+- [x] B2: a person's name is always read from `people` (notifications, TalkBack, sorting). `schedules.personName` is still written but never read.
+- [x] B3 + R7: archived people appear in the History selector labeled "Arşivde"; archived medications get their own section in Kişi Detay; restoring from the archive works; "Sil" becomes "Arşivle".
+- [x] B4: the rule stays "an edit applies from today". A revision with `effectiveTo = effectiveFrom − 1` is a documented, tested "never-effective revision".
+- [x] B5: the start-date picker does not allow past dates.
+- [x] R8: History shows "Alındı olarak işaretlenmedi".
+- [x] R11: README and docs no longer describe the old five-tab layout.
+- [x] The Phase 0 scenario probe becomes a permanent regression test (`HistoryIntegrityTest`).
 
 Done when: all tests pass, and editing, archiving or restoring on a test device leaves old History rows unchanged.
+
+Status (2026-09-25): all Phase 1 items are implemented and covered by tests. Waiting for the manual check on the Samsung phone (see the Phase 1 report).
 
 ## Phase 2 — Reliable reminders
 

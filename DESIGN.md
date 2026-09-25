@@ -36,7 +36,8 @@ Navigation is fixed at four destinations. Medications always belong to a person;
   - Kişiler shows PersonRows and an always-visible "Kişi Ekle".
   - Kişi Detay contains only identity, Düzenle, "İlaç Ekle" and MedicationRows. It never shows today's timeline.
   - İlaç Detayı shows, in order: name, person, dose and status; then times and days in one tonal section; then Düzenle; then the quieter "Diğer bilgiler" (dates, note); then "Son 7 gün" as the history matrix; and finally İlacı Sil.
-  - Deleting a person happens in the person editor.
+  - "Kişiyi Arşivle" is in the person editor; "İlacı Arşivle" is at the end of İlaç Detayı. The confirmation uses the primary color, because archiving is reversible.
+  - Archived people are listed under "Arşivdekiler" in Kişiler, and archived medications under "Arşivlenen ilaçlar" in Kişi Detay. "Arşivden Çıkar" restores a person on their own, and a medication only when its person is active. After a person is restored, a snackbar says how many of their medications are still archived.
 - **Geçmiş.** It has the same PersonSelector and a date × (medication, time) matrix built by HistoryMatrices from real schedules and logs. It is read-only and creates no records.
   - Rows are dates, with "Bugün" or the weekday. Each row is a lazy item.
   - The date column stays outside a horizontal scroll that all rows and the sticky header share through one ScrollState.
@@ -46,7 +47,7 @@ Navigation is fixed at four destinations. Medications always belong to a person;
 - **Ayarlar.** Only Bildirim ve Hatırlatmalar, Görünüm and Uygulama Hakkında.
 - **Forms (FormScreen).** Forms are drawn in the activity window over the hidden scaffold. The header applies top and horizontal safeDrawing. The body scrolls, and Kaydet is placed *inside* it after the fields. Bottom safeDrawing (navigation bar, gesture area, IME) is applied inside the scroll, so Kaydet can always be scrolled clear of three-button navigation and the keyboard. Do not use Dialog windows or pinned bottom bars for forms, because Dialog-window insets were unreliable on Samsung devices.
   - The medication form shows name, dose, times and days first. Dates, note and "İlaç kullanımda" sit under "Diğer seçenekler".
-- **Wording.** Always say "İçildi" (never "Alındı") and "Durduruldu" for inactive. Avoid threatening words.
+- **Wording.** Follow the glossary in `CLAUDE.md`. The button is "İçildi". The not-marked history state is "Alındı olarak işaretlenmedi". Inactive is "Durduruldu". Removing something is "Arşivle" or "Arşivden Çıkar", never "Sil". Avoid threatening words.
 
 ## Motion
 
