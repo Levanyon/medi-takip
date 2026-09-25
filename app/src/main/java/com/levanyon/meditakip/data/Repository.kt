@@ -82,6 +82,14 @@ class Repository(private val db: MediDatabase, private val clock: Clock = Clock.
         dao.medications().filter { it.personId == person.id }.forEach { archiveMedication(it.id) }
         dao.savePerson(person.copy(archived = true))
     }
+    /**
+     * Replaces all data with a validated backup in one transaction: either everything is replaced or
+     * nothing changes (DECISIONS D4.3). Insert order follows the foreign keys.
+     */
+    suspend fun replaceAll(content: Snapshot) = db.withTransaction {
+        dao.clearLogs(); dao.clearSchedules(); dao.clearMedications(); dao.clearPeople(); dao.clearDispatches()
+        dao.insertPeople(content.people); dao.insertMedications(content.medications); dao.insertSchedules(content.schedules); dao.insertLogs(content.logs)
+    }
     /** Restores only the person. Their archived medications stay archived and are restored one by one. */
     suspend fun restorePerson(personId: String) = db.withTransaction {
         dao.people().find { it.id == personId }?.let { dao.savePerson(it.copy(archived = false)) }

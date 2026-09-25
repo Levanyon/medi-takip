@@ -193,3 +193,43 @@ Decisions the developer made in advance are marked **(developer)**.
 - İlaç Detayı: "Kalan: 12 · yaklaşık 6 gün", an "Azalıyor" text and icon when low (never colour alone), and `Stok ekle`.
 - Bugün: one line per low medication of the selected person, "Parol azalıyor · ~5 gün". It opens the medication.
 - Known limitation: the form saves the amount it was opened with. If a dose is marked from a notification *while the form is open*, saving afterwards overwrites that one decrement. This is rare, and visible in the detail screen, where it can be corrected with Stok ekle.
+
+---
+
+## Phase 4 — Backup, restore and reports
+
+### Plan
+1. **Backup format and codec:** versioned JSON built with the platform's `org.json` (no library). Covers people, medications (incl. stock), every schedule revision (incl. `sequence`), every dose record and the reminder/appearance settings.
+2. **Restore:** read, validate everything, show a preview, and only after explicit confirmation replace all data in **one** transaction. Tests: a round trip and every validation rule.
+3. **Ayarlar → Yedekleme:** `Yedek al` (Storage Access Framework save dialog, no storage permission), `Yedekten geri yükle`, "Son yedek: …", and a gentle reminder after 30 days (also one calm line at the end of Bugün).
+4. **Android backup:** evaluate Auto Backup; allow only device-to-device transfer, never cloud.
+5. **Doktor raporu:** a PDF per person with the medications in use and the last 30 days, drawn with `PdfDocument`, shared through the share sheet (`FileProvider` from `androidx.core`, already a dependency). Neutral wording, fixed footer.
+
+### Decisions
+
+**D4.1 Format.**
+- One JSON object: `format = "meditakip-backup"`, `formatVersion = 1`, `schemaVersion = 2`, `exportedAt`, `appVersion`, then `people`, `medications`, `schedules`, `logs` and `settings`.
+- Values are stored exactly as in the database: epoch days, minutes of the day, epoch milliseconds and enum names.
+- **Excluded:** reminder dispatch records, snoozes, the next-alarm time, the low-stock "already notified" set, the reminder problem log, onboarding flags and the last selected person. These are device-local runtime state and are rebuilt after a restore.
+
+**D4.2 Restore validates everything before touching data.**
+- The file is at most 10 MB, and the `format` / `formatVersion` must be known. Checks:
+  - Unique, non-blank ids.
+  - Every reference resolves: medication → person, revision → medication, record → revision.
+  - Record keys match `<scheduleId>:<date>:<minute>`.
+  - Dates are plausible, minutes are 0–1439, times parse, day masks are 1–127, `end ≥ start`.
+  - A revision interval is valid or never-effective (`effectiveTo ≥ effectiveFrom − 1`).
+  - Statuses are known, stock numbers are finite, and the amount per dose is > 0 when tracking is on.
+  - Each medication has distinct `sequence` values (AUDIT R12).
+- Any problem → a plain Turkish message, and nothing is changed.
+
+**D4.3 Replace-all, in one transaction, after a preview and a confirmation.**
+- The preview shows: backup date, number of people, medications and records, and the first and last record date.
+- The confirmation says clearly that the current data on this phone is replaced.
+- The replacement deletes and inserts inside one Room transaction, so it either fully succeeds or leaves the current data untouched.
+- **Safety copy:** just before replacing, the current data is written to a private file in app storage (`before-restore.json`, only the latest one is kept), so a wrong file does not cause irreversible loss.
+- After restoring, reminders and runtime state are rebuilt.
+
+**D4.4 "Son yedek" and a gentle reminder.**
+- The time of the last successful backup is stored locally.
+- After 30 days, as long as there is at least one person, Ayarlar shows the reminder, and so does one calm line at the **end** of Bugün (never at the top, never a notification).

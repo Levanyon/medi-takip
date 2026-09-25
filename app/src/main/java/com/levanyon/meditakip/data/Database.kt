@@ -73,6 +73,16 @@ interface AppDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun dispatched(value: DispatchEntity)
     // AUDIT R10: dispatch records only prevent duplicate delivery within 24 h; older ones are pruned.
     @Query("DELETE FROM dispatches WHERE sentAt < :cutoff") suspend fun pruneDispatches(cutoff: Long)
+    // Restore from a backup (Phase 4): replace everything inside one transaction (Repository.replaceAll).
+    @Query("DELETE FROM logs") suspend fun clearLogs()
+    @Query("DELETE FROM schedules") suspend fun clearSchedules()
+    @Query("DELETE FROM medications") suspend fun clearMedications()
+    @Query("DELETE FROM people") suspend fun clearPeople()
+    @Query("DELETE FROM dispatches") suspend fun clearDispatches()
+    @Insert suspend fun insertPeople(values: List<PersonEntity>)
+    @Insert suspend fun insertMedications(values: List<MedicationEntity>)
+    @Insert suspend fun insertSchedules(values: List<MedicationScheduleEntity>)
+    @Insert suspend fun insertLogs(values: List<MedicationLogEntity>)
 }
 
 @Database(entities = [PersonEntity::class, MedicationEntity::class, MedicationScheduleEntity::class, MedicationLogEntity::class, DispatchEntity::class], version = 2, exportSchema = true)

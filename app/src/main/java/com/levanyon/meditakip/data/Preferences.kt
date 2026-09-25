@@ -30,6 +30,11 @@ class Preferences(context: Context) {
     var nextAlarm: Long
         get() = prefs.getLong("nextAlarm", 0)
         set(value) { prefs.edit().putLong("nextAlarm", value).apply() }
+    /** Time of the last successful backup (epoch millis), 0 = never (DECISIONS D4.4). */
+    var lastBackupAt: Long
+        get() = prefs.getLong("lastBackupAt", 0)
+        set(value) { prefs.edit().putLong("lastBackupAt", value).apply(); lastBackup.value = value }
+    val lastBackup = MutableStateFlow(prefs.getLong("lastBackupAt", 0))
     /** Medications whose low-stock notification was shown and that are still low (DECISIONS D3.8). */
     var lowStockNotified: Set<String>
         get() = prefs.getStringSet("lowStockNotified", emptySet()).orEmpty()
