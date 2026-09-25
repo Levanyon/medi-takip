@@ -280,7 +280,7 @@ class ScreenLayoutTest {
     }
     @Test fun historyWithoutPeopleOrRecordsShowsPolishedEmptyStates() {
         var people = false
-        content { HistoryScreen(Snapshot(), date, null, {}) { people = true } }
+        content { HistoryScreen(Snapshot(), date, null, {}, goToPeople = { people = true }) }
         lazyScroll("Henüz kişi eklenmemiş")
         lazyScroll("Kişilere Git")
         compose.onNodeWithText("Kişilere Git").performClick()

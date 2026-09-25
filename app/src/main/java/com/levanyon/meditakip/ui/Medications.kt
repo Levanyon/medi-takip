@@ -23,7 +23,7 @@ import java.time.LocalDate
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun MedicationDetail(snapshot: Snapshot, medicationId: String, today: LocalDate, back: () -> Unit, edit: (PersonEntity, MedicationScheduleEntity) -> Unit, archive: () -> Unit, restore: () -> Unit = {}) {
+fun MedicationDetail(snapshot: Snapshot, medicationId: String, today: LocalDate, back: () -> Unit, edit: (PersonEntity, MedicationScheduleEntity) -> Unit, archive: () -> Unit, corrections: DoseCorrections? = null, restore: () -> Unit = {}) {
     val medication = snapshot.medications.find { it.id == medicationId } ?: return
     val person = snapshot.people.find { it.id == medication.personId } ?: return
     val schedule = MedicationViews.latestRevision(snapshot, medicationId) ?: return
@@ -91,5 +91,5 @@ fun MedicationDetail(snapshot: Snapshot, medicationId: String, today: LocalDate,
             if (editable) item { Box(Modifier.padding(top = MediSpace.large)) { QuietAction(stringResource(R.string.archive_medication), Icons.Default.Archive, action = archive) } }
         }
     }
-    opened?.let { HistoryCellDetail(it) { opened = null } }
+    opened?.let { HistoryCellDetail(it, { opened = null }, today, corrections) }
 }

@@ -158,13 +158,19 @@ import java.util.UUID
 }
 
 /** Atla: names the dose, takes an optional short note (e.g. why), and confirms. Reversible with Geri Al. */
-@Composable fun SkipDialog(item: Occurrence, dismiss: () -> Unit, confirm: (String?) -> Unit) {
+/**
+ * [dateNotice]: for a past day, the dialog also names the date, so it doubles as the confirmation that
+ * history is being changed (no second dialog; DECISIONS D3.6).
+ */
+@Composable fun SkipDialog(item: Occurrence, dismiss: () -> Unit, dateNotice: String? = null, confirm: (String?) -> Unit) {
     var note by rememberSaveable { mutableStateOf("") }
+    val focus = LocalFocusManager.current
     MediDialog(stringResource(R.string.skip_title), dismiss) {
         Text("${item.personName} · ${item.schedule.name} · ${item.time}", style = MaterialTheme.typography.titleMedium)
+        dateNotice?.let { Text(it, style = MaterialTheme.typography.bodyLarge) }
         OutlinedTextField(note, { if (it.length <= NOTE_LIMIT) note = it }, label = { Text(stringResource(R.string.skip_reason)) }, singleLine = true,
             shape = MaterialTheme.shapes.medium, keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done), modifier = Modifier.fillMaxWidth())
-        PrimaryAction(stringResource(R.string.skip), Icons.Default.DoNotDisturbOn) { confirm(note.ifBlank { null }) }
+        PrimaryAction(stringResource(R.string.skip), Icons.Default.DoNotDisturbOn) { focus.clearFocus(); confirm(note.ifBlank { null }) }
         CancelAction(dismiss)
     }
 }

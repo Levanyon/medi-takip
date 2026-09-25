@@ -220,4 +220,13 @@
     <string name="change_time_description">%1$s, %2$s, %3$s: İçildiği saati değiştir</string>
     <string name="legend_skipped">Atlandı</string>
     <string name="history_cell_skipped">%1$s %2$s, %3$s: Atlandı</string>
+    <!-- Phase 3: correcting history -->
+    <string name="history_mark_taken">İçildi olarak işaretle</string>
+    <string name="history_remove">Kaydı kaldır</string>
+    <string name="history_confirm_title">Geçmiş kayıt değiştirilsin mi?</string>
+    <string name="history_confirm_action">Değiştir</string>
+    <string name="history_confirm_taken">%1$s, %2$s: İçildi olarak işaretlenecek (saat %3$s).</string>
+    <string name="history_confirm_skip">%1$s, %2$s: Atlandı olarak işaretlenecek.</string>
+    <string name="history_confirm_time">%1$s, %2$s: İçildiği saat %3$s olarak değiştirilecek.</string>
+    <string name="history_confirm_remove">%1$s, %2$s: Kayıt kaldırılacak; doz işaretlenmemiş görünecek.</string>
 </resources>

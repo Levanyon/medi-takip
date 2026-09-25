@@ -10,7 +10,15 @@ import com.levanyon.meditakip.domain.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
-class AppViewModel(application: Application) : AndroidViewModel(application) {
+/** The dose-record operations screens may call; implemented by [AppViewModel], faked in tests. */
+interface DoseCorrections {
+    fun taken(item: Occurrence, takenAt: Long? = null)
+    fun skip(item: Occurrence, note: String? = null)
+    fun undo(item: Occurrence)
+    fun setTakenTime(item: Occurrence, takenAt: Long)
+}
+
+class AppViewModel(application: Application) : AndroidViewModel(application), DoseCorrections {
     private val app = application as MediApp
     private val repository = app.repository
     val settings = app.preferences.state
@@ -51,17 +59,17 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun restorePerson(id: String, onSuccess: () -> Unit = {}) = perform(onSuccess) { repository.restorePerson(id) }
     fun restoreMedication(id: String, onSuccess: () -> Unit = {}) = perform(onSuccess) { repository.restoreMedication(id) }
     /** İçildi; [takenAt] = null means now. */
-    fun taken(item: Occurrence, takenAt: Long? = null) {
+    override fun taken(item: Occurrence, takenAt: Long?) {
         val at = takenAt ?: System.currentTimeMillis()
         completion(item, log(item, LogStatus.TAKEN, at), matchTime = takenAt != null) { repository.completions.taken(item, takenAt) }
     }
     /** Atla with an optional short reason. */
-    fun skip(item: Occurrence, note: String? = null) =
+    override fun skip(item: Occurrence, note: String?) =
         completion(item, log(item, LogStatus.SKIPPED, System.currentTimeMillis(), note?.trim()?.take(NOTE_LIMIT)?.ifBlank { null })) { repository.completions.skip(item, note) }
     /** Geri Al / Kaydı kaldır. */
-    fun undo(item: Occurrence) = completion(item, null) { repository.completions.undo(item) }
+    override fun undo(item: Occurrence) = completion(item, null) { repository.completions.undo(item) }
     /** Saati değiştir (late marking) for a taken dose. */
-    fun setTakenTime(item: Occurrence, takenAt: Long) {
+    override fun setTakenTime(item: Occurrence, takenAt: Long) {
         val current = snapshot.value.logs.find { it.key == item.key } ?: return
         completion(item, current.copy(takenAt = takenAt), matchTime = true) { repository.completions.setTakenTime(item, takenAt) }
     }

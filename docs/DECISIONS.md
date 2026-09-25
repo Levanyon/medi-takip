@@ -171,3 +171,18 @@ Decisions the developer made in advance are marked **(developer)**.
 **D3.8 One low-stock notification per crossing.**
 - When a medication goes low, one notification says "Parol azalıyor" / "Anne · yaklaşık 5 günlük ilaç kaldı". It is neutral and gives no advice.
 - It is not repeated until the stock goes above the threshold again (e.g. after `Stok ekle`). The "already notified" set lives in preferences.
+
+**D3.9 Correcting history: actions per state, one window at a time.**
+- A Geçmiş cell's detail offers actions based on the dose's state:
+  - not marked: `İçildi olarak işaretle` (time picker, default the planned time) and `Atla`
+  - taken: `Saati değiştir` and `Kaydı kaldır`
+  - skipped: `Kaydı kaldır`
+- For past days, the confirmation names the date and the exact change ("22 Eylül 2026, Parol 08:00: İçildi olarak işaretlenecek (saat 08:00)"). Nothing is written before it.
+- For Atla, the skip window itself shows that line and serves as the confirmation, so the user never sees two windows in a row.
+- Future dates cannot be changed.
+- Screens call a small `DoseCorrections` interface: `AppViewModel` implements it, and tests use a recording fake.
+
+**D3.10 A Robolectric test bug, not an app bug.**
+- Closing a Compose dialog that contains a text field froze tests whose config set a screen-size qualifier. This is a known Robolectric issue (robolectric/robolectric#8460).
+- Removing the text field made the freeze disappear. The same flows pass in a test class without the qualifier (`SkipDialogFlowTest`).
+- Layout at small sizes is still covered by the qualifier-based layout and accessibility tests.

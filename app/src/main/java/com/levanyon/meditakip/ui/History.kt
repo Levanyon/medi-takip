@@ -32,12 +32,17 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.levanyon.meditakip.R
 import com.levanyon.meditakip.domain.*
+import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.ui.platform.LocalContext
+import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
+import java.time.ZoneId
 
 private const val DAYS_PER_PAGE = 14
 
 /** Geçmiş: pick a person, then read many days at a glance in one date × medication matrix. */
-@Composable fun HistoryScreen(snapshot: Snapshot, today: LocalDate, selectedPersonId: String?, selectPerson: (String) -> Unit, goToPeople: () -> Unit) {
+@Composable fun HistoryScreen(snapshot: Snapshot, today: LocalDate, selectedPersonId: String?, selectPerson: (String) -> Unit, goToPeople: () -> Unit, corrections: DoseCorrections? = null) {
     // Archived people stay selectable (after the active ones) so their history is never hidden.
     val people = snapshot.people.filter { !it.archived } + snapshot.people.filter { it.archived }
     val person = people.find { it.id == selectedPersonId } ?: people.firstOrNull()
@@ -66,7 +71,7 @@ private const val DAYS_PER_PAGE = 14
             if (earliest != null && from > earliest) item { Box(Modifier.padding(top = MediSpace.medium)) { SecondaryAction(stringResource(R.string.older_records)) { daysShown += DAYS_PER_PAGE } } }
         }
     }
-    opened?.let { HistoryCellDetail(it) { opened = null } }
+    opened?.let { HistoryCellDetail(it, { opened = null }, today, corrections) }
 }
 
 /** Column sizes grow with the user's font scale (capped) so cells never become unreadably narrow. */
@@ -178,11 +183,42 @@ fun LazyListScope.historyTable(matrix: HistoryMatrix, today: LocalDate, scroll: 
 }
 
 /**
- * Details of one dose. Name and dose come from the occurrence's own schedule revision — the one
- * valid on that date — never from the column label (which shows the latest revision).
+ * Details of one dose, and (when [corrections] are given) the ways to correct it (Phase 3, DECISIONS D3.5/D3.6).
+ * Name and dose come from the occurrence's own schedule revision — the one valid on that date — never
+ * from the column label (which shows the latest revision). Changes to past days are confirmed first;
+ * future days cannot be changed.
  */
-@Composable fun HistoryCellDetail(occurrence: Occurrence, dismiss: () -> Unit) {
-    MediDialog(occurrence.schedule.name, dismiss) {
+@Composable fun HistoryCellDetail(occurrence: Occurrence, dismiss: () -> Unit, today: LocalDate? = null, corrections: DoseCorrections? = null) {
+    val context = LocalContext.current
+    val pickerContext = rememberPickerContext()
+    val editable = corrections != null && today != null && !occurrence.date.isAfter(today)
+    val past = today != null && occurrence.date.isBefore(today)
+    var skipping by remember { mutableStateOf(false) }
+    var confirmation by remember { mutableStateOf<Pair<String, () -> Unit>?>(null) }
+    val date = TurkishFormat.date(occurrence.date)
+    val dose = "${occurrence.schedule.name} ${occurrence.time}"
+    /** Past days: ask first, naming the date and the change. Today: act at once (like Bugün, Geri Al works). */
+    fun apply(description: String, action: () -> Unit) {
+        if (past) confirmation = description to action else { action(); dismiss() }
+    }
+    fun pickTime(initial: LocalTime, then: (Long, LocalTime) -> Unit) {
+        android.app.TimePickerDialog(pickerContext, { _, hour, minute ->
+            val chosen = occurrence.date.atTime(hour, minute).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            val at = minOf(chosen, System.currentTimeMillis()) // never in the future
+            then(at, Instant.ofEpochMilli(at).atZone(ZoneId.systemDefault()).toLocalTime().withSecond(0).withNano(0))
+        }, initial.hour, initial.minute, true).show()
+    }
+    // Exactly one dialog at a time; a plain when (no early returns) keeps Compose groups balanced.
+    val pending = confirmation
+    when {
+        pending != null -> MediDialog(stringResource(R.string.history_confirm_title), { confirmation = null }) {
+            Text(pending.first, style = MaterialTheme.typography.bodyLarge)
+            PrimaryAction(stringResource(R.string.history_confirm_action), Icons.Default.Check) { pending.second(); confirmation = null; dismiss() }
+            CancelAction { confirmation = null }
+        }
+        skipping && corrections != null ->
+            SkipDialog(occurrence, { skipping = false }, dateNotice = if (past) context.getString(R.string.history_confirm_skip, date, dose) else null) { note -> corrections.skip(occurrence, note); dismiss() }
+        else -> MediDialog(occurrence.schedule.name, dismiss) {
         Text(occurrence.schedule.dose, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         LabelValue(stringResource(R.string.detail_date), TurkishFormat.longWeekdayDate(occurrence.date))
         LabelValue(stringResource(R.string.detail_planned), occurrence.time.toString())
@@ -191,6 +227,25 @@ fun LazyListScope.historyTable(matrix: HistoryMatrix, today: LocalDate, scroll: 
             occurrence.skipped -> stringResource(R.string.skipped) + (occurrence.note?.let { " · $it" } ?: "")
             else -> stringResource(R.string.not_marked)
         })
-        SecondaryAction(stringResource(R.string.ok), action = dismiss)
+        if (editable && corrections != null) {
+            when {
+                !occurrence.handled -> {
+                    PrimaryAction(stringResource(R.string.history_mark_taken), Icons.Default.Check) {
+                        pickTime(occurrence.time) { at, time -> apply(context.getString(R.string.history_confirm_taken, date, dose, time.toString())) { corrections.taken(occurrence, at) } }
+                    }
+                    SecondaryAction(stringResource(R.string.skip)) { skipping = true }
+                }
+                occurrence.takenAt != null -> {
+                    SecondaryAction(stringResource(R.string.change_time)) {
+                        val current = Instant.ofEpochMilli(occurrence.takenAt).atZone(ZoneId.systemDefault()).toLocalTime()
+                        pickTime(current) { at, time -> apply(context.getString(R.string.history_confirm_time, date, dose, time.toString())) { corrections.setTakenTime(occurrence, at) } }
+                    }
+                    QuietAction(stringResource(R.string.history_remove), Icons.AutoMirrored.Filled.Undo) { apply(context.getString(R.string.history_confirm_remove, date, dose)) { corrections.undo(occurrence) } }
+                }
+                else -> QuietAction(stringResource(R.string.history_remove), Icons.AutoMirrored.Filled.Undo) { apply(context.getString(R.string.history_confirm_remove, date, dose)) { corrections.undo(occurrence) } }
+            }
+            CancelAction(dismiss)
+        } else SecondaryAction(stringResource(R.string.ok), action = dismiss)
+    }
     }
 }
