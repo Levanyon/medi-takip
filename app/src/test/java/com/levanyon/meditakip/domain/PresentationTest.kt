@@ -18,16 +18,16 @@ class PresentationTest {
     @Test fun completionShowsRealLocalTime() { assertEquals("08:04", TurkishFormat.time(Instant.parse("2026-09-21T05:04:00Z").toEpochMilli(), ZoneId.of("Europe/Istanbul"))) }
     @Test fun completionOnAnotherDateIsExplicit() { assertEquals("22 Eylül 2026 • 00:04", TurkishFormat.completed(Instant.parse("2026-09-21T21:04:00Z").toEpochMilli(), date, ZoneId.of("Europe/Istanbul"))) }
     @Test fun historyIncludesRevisionsAndUnmarkedDoses() {
-        val history = MedicationViews.history(snapshot, "m", date, date.plusDays(1))
-        assertEquals(listOf("B", "A"), history.map { it.items.first().schedule.name })
-        assertEquals(4, history.sumOf { it.items.size })
-        assertTrue(history.all { it.items.all { item -> item.takenAt == null } })
+        val matrix = HistoryMatrices.build(snapshot, "p", date, date.plusDays(1), medicationId = "m")
+        assertEquals(listOf("B", "A"), matrix.rows.map { row -> row.cells.values.first().schedule.name })
+        assertEquals(4, matrix.rows.sumOf { it.cells.size })
+        assertTrue(matrix.rows.all { row -> row.cells.values.all { it.takenAt == null } })
     }
     @Test fun historyUsesExistingCompletionTimestampAndFiltersOtherMedications() {
         val item = Schedule.day(snapshot, date).first()
         val state = snapshot.copy(logs = listOf(MedicationLogEntity(item.key, "old", date.toEpochDay(), 480, 1234)))
-        assertEquals(1234L, MedicationViews.history(state, "m", date, date).single().items.first().takenAt)
-        assertTrue(MedicationViews.history(state, "other", date, date).isEmpty())
+        assertEquals(1234L, HistoryMatrices.build(state, "p", date, date, medicationId = "m").rows.single().cells.values.first { it.minute == 480 }.takenAt)
+        assertTrue(HistoryMatrices.build(state, "p", date, date, medicationId = "other").rows.isEmpty())
     }
     @Test fun progressCountsOccurrencesNotMedicationNames() {
         val items = Schedule.day(snapshot, date)

@@ -105,3 +105,13 @@ Decisions the developer made in advance are marked **(developer)**.
 - `ContrastTest` computes the WCAG 2.1 ratio of every text/background pair the app uses, in both themes: 4.5:1 for text, 3:1 for status markers. The existing palette already passes; no colours changed.
 - `AccessibilityTest` renders 10 main screens at font scales 1.0, 1.3, 1.5 and 2.0 on a 320 dp phone (40 cases). The primary action must be reachable. Every tappable element must have a text or TalkBack label and a layout size of at least 48 × 48 dp.
 - The size check uses the element's layout size, not its visible part, because an element half scrolled out of a list is full size once the user reaches it.
+**D5.5 Clean-up and documented lint exceptions.**
+- Lint found 60 unused strings, all from earlier designs. They were deleted.
+- `MedicationViews.history` was unused since the History table replaced it. It was removed, and its two tests now run against `HistoryMatrices`.
+- `app/lint.xml` ignores two checks, with reasons:
+  - `PluralsCandidate`: Turkish uses the singular after numbers ("2 ilaç").
+  - `UseKtx`: style-only suggestions.
+
+**D5.6 Glossary.**
+- `DESIGN.md` now has the glossary table (use and never-use terms).
+- Strings were aligned to it: "aktif ilaç" became "ilaç kullanımda"; the follow-up settings text uses "alındı olarak işaretlenmedi"; onboarding says "Tam Zamanında Hatırlatma", matching the status screen.

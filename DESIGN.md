@@ -49,6 +49,31 @@ Navigation is fixed at four destinations. Medications always belong to a person;
   - The medication form shows name, dose, times and days first. Dates, note and "İlaç kullanımda" sit under "Diğer seçenekler".
 - **Wording.** Follow the glossary in `CLAUDE.md`. The button is "İçildi". The not-marked history state is "Alındı olarak işaretlenmedi". Inactive is "Durduruldu". Removing something is "Arşivle" or "Arşivden Çıkar", never "Sil". Avoid threatening words.
 
+## Turkish glossary
+
+This is the single source for UI, notification and report wording.
+
+| Concept | Use exactly | Never |
+|---|---|---|
+| Mark a dose as taken (button, notification action) | **İçildi** | Alındı, Aldım, Tamam |
+| Taken state | **✓ İçildi • 08:04** | |
+| Undo a mark | **Geri Al** | Sil, İptal |
+| History: dose not marked | **Alındı olarak işaretlenmedi** (short legend: İşaretlenmedi) | Unutuldu, Kaçırıldı, İçilmedi |
+| Follow-up notification text | **henüz alındı olarak işaretlenmedi** | |
+| Skipped dose (Phase 3) | **Atla** (action), **Atlandı** (state) | |
+| Scheduled time | **Planlanan** | |
+| Medication in use or stopped | **Kullanımda**, **Durduruldu** | Aktif, Pasif |
+| Remove a person or medication | **Arşivle**; state **Arşivde**; reverse **Arşivden Çıkar** | Sil |
+| Next dose | **Sıradaki** | |
+| Past due and not marked (today) | **Saati geçti** | Gecikti, Kaçırıldı |
+| Snooze | **10 dk ertele**; state **Ertelendi** | |
+| Reminder health | **Hatırlatma Durumu**; action **Düzelt** | |
+| Save, cancel | **Kaydet**, **İptal** | |
+
+- Never give or imply medical advice.
+- Never judge the user: no "kaçırdınız", and no warnings about health consequences.
+- A number is followed by the singular noun ("2 ilaç").
+
 ## Motion
 
 Use short color feedback (160ms) and progress interpolation (240ms), with no bouncing, perpetual animation or decorative page transitions. Use Compose animation APIs and native Material interaction feedback, which follow Android animator duration scale (including disabled animations). Do not introduce manually timed animation loops. State changes and actions must remain understandable without motion.

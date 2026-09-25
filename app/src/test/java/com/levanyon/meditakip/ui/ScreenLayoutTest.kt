@@ -100,7 +100,7 @@ class ScreenLayoutTest {
         compose.onNodeWithText("Kişi Ekle").performClick()
         assertTrue(added)
         lazyScroll("Kardeş")
-        compose.onAllNodesWithText("1 aktif ilaç").assertCountEquals(2)
+        compose.onAllNodesWithText("1 ilaç kullanımda").assertCountEquals(2)
         compose.onNodeWithText("Kardeş").performClick()
         assertEquals("k", opened)
     }

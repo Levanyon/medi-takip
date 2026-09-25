@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Documented lint exceptions (docs/DECISIONS.md D5.5). Everything else must stay warning-free. -->
+<lint>
+    <!-- Turkish does not pluralise nouns after a number ("2 ilaç", "3 kişi"); plurals resources would be wrong. -->
+    <issue id="PluralsCandidate" severity="ignore"/>
+    <!-- Style-only suggestions to use KTX helpers (SharedPreferences.edit {}, String.toUri); no behaviour change. -->
+    <issue id="UseKtx" severity="ignore"/>
+</lint>

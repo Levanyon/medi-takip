@@ -179,17 +179,19 @@ Done when: backup restored successfully on a second device or emulator.
 
 Goal: comfortable for a non-technical user, consistent everywhere.
 
-- [ ] First-run onboarding: add first person → add first medication → enable reminders (links to Hatırlatma Durumu). Skippable.
-- [ ] Touch targets ≥ 48dp (primary actions larger). Test at font scale 1.0, 1.3, 1.5 and 2.0 on every screen; nothing clipped, Kaydet always reachable.
-- [ ] TalkBack: meaningful content descriptions, logical focus order.
-- [ ] Status never communicated by color alone (icon + text).
-- [ ] WCAG AA contrast in light and dark theme.
-- [ ] Empty states that tell the user the next action.
-- [ ] Turkish copy glossary in `DESIGN.md` (e.g. button "İçildi", history "Alındı olarak işaretlenmedi", "Atlandı", "Arşivle") and apply it consistently.
-- [ ] App icon, app name, SplashScreen API, edge-to-edge verified.
-- [ ] Remove prototype leftovers, debug text, unused code.
+- [x] First-run onboarding: add first person → add first medication → enable reminders (links to Hatırlatma Durumu). Skippable.
+- [x] Touch targets ≥ 48dp (primary actions larger). Test at font scale 1.0, 1.3, 1.5 and 2.0 on every screen; nothing clipped, Kaydet always reachable.
+- [x] TalkBack: meaningful content descriptions, logical focus order.
+- [x] Status never communicated by color alone (icon + text).
+- [x] WCAG AA contrast in light and dark theme.
+- [x] Empty states that tell the user the next action.
+- [x] Turkish copy glossary in `DESIGN.md` (e.g. button "İçildi", history "Alındı olarak işaretlenmedi", "Atlandı", "Arşivle") and apply it consistently.
+- [x] App icon, app name, SplashScreen API, edge-to-edge verified.
+- [x] Remove prototype leftovers, debug text, unused code.
 
 Done when: full manual pass on the real phone at two font sizes, both themes.
+
+Status (2026-09-25): implemented; automated checks: contrast (WCAG AA), 40-case font-scale/touch-target matrix, screenshots reviewed (light/dark). Real-phone pass pending (combined checklist). Decisions D5.1–D5.6.
 
 ## Phase 6 — Quality and release
 

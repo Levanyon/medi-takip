@@ -24,7 +24,6 @@ data class DailyProgress(val total: Int, val completed: Int) {
     val percent get() = if (total == 0) 0 else completed * 100 / total
     companion object { fun from(items: List<Occurrence>) = DailyProgress(items.size, items.count { it.takenAt != null }) }
 }
-data class HistoryDay(val date: LocalDate, val items: List<Occurrence>)
 
 object MedicationViews {
     /**
@@ -42,14 +41,6 @@ object MedicationViews {
         val people = snapshot.people.filter { !it.archived }.map { it.id }.toSet()
         val ids = snapshot.medications.filter { !it.archived && it.personId in people }.map { it.id }.toSet()
         return snapshot.schedules.filter { it.medicationId in ids && it.effectiveTo == null }.sortedBy { it.name.lowercase(TurkishFormat.locale) }
-    }
-    fun history(snapshot: Snapshot, medicationId: String, from: LocalDate, through: LocalDate): List<HistoryDay> {
-        if (from > through) return emptyList()
-        val schedules = snapshot.schedules.filter { it.medicationId == medicationId }
-        val ids = schedules.map { it.id }.toSet()
-        val subset = snapshot.copy(medications = snapshot.medications.filter { it.id == medicationId }, schedules = schedules, logs = snapshot.logs.filter { it.scheduleId in ids })
-        return generateSequence(through) { it.minusDays(1) }.takeWhile { it >= from }
-            .map { HistoryDay(it, Schedule.day(subset, it)) }.filter { it.items.isNotEmpty() }.toList()
     }
 }
 
