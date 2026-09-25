@@ -25,11 +25,13 @@ Packages: `data` (Room, repository, preferences) · `domain` (pure Kotlin, no An
 ## Data safety (absolute)
 
 - Never use destructive migrations or `fallbackToDestructiveMigration`. Never silently reset data.
-- Every schema change: bump the version, write an explicit `Migration(n, n+1)`, add a migration test, and commit the new schema JSON in `app/schemas/`. Never edit a committed schema JSON.
+- Every schema change: bump the version, write an explicit `Migration(n, n+1)`, add a migration test, and commit the new schema JSON in `app/schemas/`. Never edit a committed schema JSON. Current schema: version 2 (`MIGRATION_1_2`, tested by `MigrationTest` against the committed `1.json`).
 - Never hard-delete anything that has history. Removing a person or medication means archiving it ("Arşivle"). Restoring it ("Arşivden Çıkar") adds a new revision effective from today and never reopens or edits a past revision. Restoring a person does not restore their medications.
 - Schedules are versioned. An edit closes the current revision (`effectiveTo`) and inserts a new one. Never update a past revision in place.
 - A revision with `effectiveTo = effectiveFrom − 1` is "never effective" (it was edited or archived on the day it was created). It is valid data: never "repair" or delete it. See `isNeverEffective`.
-- Pick the newest revision only with `MedicationViews.latestRevision`. It relies on schedules being read `ORDER BY rowid`. This is temporary: Phase 3.0 replaces it with a persistent revision-order column (AUDIT R12). Until then, never run `VACUUM` or re-insert schedule rows.
+- Pick the newest revision only with `MedicationViews.latestRevision`. It uses the persistent `sequence` column (schema v2; new revisions get max + 1). The DAO reads schedules `ORDER BY sequence, rowid`.
+- Dose records have a status: `TAKEN` or `SKIPPED` (with an optional note). `recordedAt` is when the entry was made, and `takenAt` is the actual time. A dose has at most one record.
+- Stock changes only through `Repository.Completions` (a newly inserted TAKEN record decrements it once; removing it restores it) and `addStock`. An edit without stock settings keeps the stock.
 - Person names are always read from `people` (use `Occurrence.personName`). The column `schedules.personName` is still written but never read.
 - Logs (dose records) are keyed by revision, scheduled date and scheduled minute. `takenAt` is the actual instant in epoch millis. Dates are epoch-day, times are minutes-of-day. Use `java.time` and never hardcode a timezone.
 - Past history must never change because of a later edit, rename, deactivation or archive. This includes what screens display for past dates.
@@ -69,7 +71,7 @@ Packages: `data` (Room, repository, preferences) · `domain` (pure Kotlin, no An
 
 - Button: **İçildi**. Undo: **Geri Al**.
 - History state: **Alındı olarak işaretlenmedi**. Taken: "✓ İçildi • 08:04".
-- Planned: **Planlanan**. Inactive medication: **Durduruldu**. Archive: **Arşivle** (the Phase 3 skip will be **Atlandı**).
+- Planned: **Planlanan**. Inactive medication: **Durduruldu**. Archive: **Arşivle**. Skip: **Atla**, state **Atlandı**. Stock: **Stok ekle**, low **Azalıyor**.
 - Never use threatening or judgmental wording.
 
 ## Accessibility

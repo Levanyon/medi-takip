@@ -143,23 +143,25 @@ Goal: handle what really happens in daily life.
 
 ### 3.0 Log model and schema v2 (moved from Phase 1)
 
-- [ ] Log status as an enum-like field: `TAKEN`, `SKIPPED`.
-- [ ] Store `takenAt` (actual time) separately from the scheduled time, plus `recordedAt` (when the entry was made), so late marking can be told apart.
-- [ ] Revision order as data: add a persistent ordering column to `schedules` (for example `sequence: Long`, increasing per insert, or `createdAt` epoch millis). Decide which one in the Phase 3 plan. The migration fills existing rows in current `rowid` order. `MedicationViews.latestRevision` then uses this column instead of relying on `ORDER BY rowid`. (AUDIT R12)
-- [ ] An explicit `Migration(1, 2)` that converts existing data without loss (existing logs become `TAKEN` with `recordedAt = takenAt`; the revision-order column is filled from `rowid` order).
-- [ ] A migration test: insert realistic v1 data, migrate, and assert that every person, medication, schedule and log survived with correct values. (Needs a test dependency such as `androidx.room:room-testing`; ask before adding it.)
-- [ ] Verify on a real device that already contains v1 data before merging.
+- [x] Log status as an enum-like field: `TAKEN`, `SKIPPED`.
+- [x] Store `takenAt` (actual time) separately from the scheduled time, plus `recordedAt` (when the entry was made), so late marking can be told apart.
+- [x] Revision order as data: add a persistent ordering column to `schedules` (for example `sequence: Long`, increasing per insert, or `createdAt` epoch millis). Decide which one in the Phase 3 plan. The migration fills existing rows in current `rowid` order. `MedicationViews.latestRevision` then uses this column instead of relying on `ORDER BY rowid`. (AUDIT R12)
+- [x] An explicit `Migration(1, 2)` that converts existing data without loss (existing logs become `TAKEN` with `recordedAt = takenAt`; the revision-order column is filled from `rowid` order).
+- [x] A migration test: insert realistic v1 data, migrate, and assert that every person, medication, schedule and log survived with correct values. (Needs a test dependency such as `androidx.room:room-testing`; ask before adding it.)
+- [ ] Verify on a real device that already contains v1 data before merging. *(Pending: combined device checklist.)*
 
 ### 3.1 Features
 
-- [ ] Late marking: when marking a dose, actual time defaults to now but can be changed (she often marks later). Stored in `takenAt`.
-- [ ] Atla (skip) with optional short reason. History shows it distinctly from "not marked". Update the History legend.
-- [ ] Correcting history: tapping a History cell allows marking taken / skipped / clearing, with confirmation for past days. Keep existing Taken/Undo on Bugün.
-- [ ] Stock tracking (optional per medication): current quantity, amount per dose, low-stock threshold. Taking a dose decrements stock; undo restores it. Bugün shows "Parol azalıyor · ~5 gün" and a notification when threshold is reached. "Stok ekle" action.
-- [ ] Snackbar undo for reversible actions; confirmation dialogs for irreversible ones.
-- [ ] Because Phase 5 ran before this phase, repeat the Phase 5 accessibility checks for every new screen and dialog: font scales 1.0–2.0, 48 dp touch targets, TalkBack, contrast, and never color alone.
+- [x] Late marking: when marking a dose, actual time defaults to now but can be changed (she often marks later). Stored in `takenAt`.
+- [x] Atla (skip) with optional short reason. History shows it distinctly from "not marked". Update the History legend.
+- [x] Correcting history: tapping a History cell allows marking taken / skipped / clearing, with confirmation for past days. Keep existing Taken/Undo on Bugün.
+- [x] Stock tracking (optional per medication): current quantity, amount per dose, low-stock threshold. Taking a dose decrements stock; undo restores it. Bugün shows "Parol azalıyor · ~5 gün" and a notification when threshold is reached. "Stok ekle" action.
+- [x] Snackbar undo for reversible actions; confirmation dialogs for irreversible ones.
+- [x] Because Phase 5 ran before this phase, repeat the Phase 5 accessibility checks for every new screen and dialog: font scales 1.0–2.0, 48 dp touch targets, TalkBack, contrast, and never color alone.
 
 Done when: features tested with unit tests (stock math, status transitions) and on device.
+
+Status (2026-09-25): implemented; schema v2 via one migration (MigrationTest on committed v1 schema + realistic data); 209 tests pass; decisions D3.1–D3.11. Device checks pending (combined checklist).
 
 ## Phase 4 — Backup, restore and reports
 

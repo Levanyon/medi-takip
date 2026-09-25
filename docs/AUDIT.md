@@ -15,7 +15,21 @@ Audit date: 2026-09-25 · Baseline: git tag `baseline-v1` (commit `bbcf4a5`) · 
 > | R8 terminology | Fixed in History ("Alındı olarak işaretlenmedi"); notification text left for Phase 2 |
 > | R11 stale docs | Fixed: README, ARCHITECTURE; V1.1 marked historical |
 >
-> Regression guard: `data/HistoryIntegrityTest`. Schema is still version 1.
+> Regression guard: `data/HistoryIntegrityTest`.
+>
+> **Later phases (2026-09-25):**
+>
+> | Finding | Status |
+> |---|---|
+> | R1 exact alarms on Android 14+ | Fixed (Phase 2): `USE_EXACT_ALARM` on 13+, `setAlarmClock` |
+> | R3 swallowed reminder errors | Fixed (Phase 2): `ReminderLog`, shown on Hatırlatma Durumu |
+> | R4 no migration path | Fixed (Phase 3): schema v2, `MIGRATION_1_2`, `MigrationTest` |
+> | R5 follow-up off by default | Fixed (Phase 2): on by default, 30 min |
+> | R6 late marking impossible | Fixed (Phase 3): Saati değiştir; history correction |
+> | R10 dispatches grow forever | Fixed (Phase 2): pruned after 7 days |
+> | R12 revision order depends on rowid | Fixed (Phase 3): persistent `sequence` column |
+>
+> Decisions are recorded in `docs/DECISIONS.md`.
 
 This document describes the code **as it is**, so later phases can change it safely. Findings marked **[verified]** were confirmed by running a throwaway Robolectric probe against a real in-memory Room database (see §4.3); the probe itself was not committed.
 
