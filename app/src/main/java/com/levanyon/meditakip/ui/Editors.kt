@@ -59,9 +59,14 @@ import java.util.UUID
     var error by rememberSaveable { mutableStateOf<Int?>(null) }
     // Advanced fields start open only when they already hold non-default values.
     var advanced by rememberSaveable { mutableStateOf(schedule != null && (schedule.end != null || schedule.note.isNotBlank() || !schedule.active || schedule.start > LocalDate.now().toEpochDay())) }
-    fun pickDate(value: Long, selected: (Long) -> Unit) {
+    // B5: edits apply from today (effectiveFrom = today), so dates before today would silently have no
+    // effect. The pickers therefore never offer past days; an existing past start stays as it is.
+    val today = LocalDate.now().toEpochDay()
+    fun pickDate(value: Long, earliest: Long, selected: (Long) -> Unit) {
         val date = LocalDate.ofEpochDay(value)
-        DatePickerDialog(context, { _, year, month, day -> selected(LocalDate.of(year, month + 1, day).toEpochDay()) }, date.year, date.monthValue - 1, date.dayOfMonth).show()
+        DatePickerDialog(context, { _, year, month, day -> selected(LocalDate.of(year, month + 1, day).toEpochDay()) }, date.year, date.monthValue - 1, date.dayOfMonth).apply {
+            datePicker.minDate = LocalDate.ofEpochDay(earliest).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        }.show()
     }
     fun pickTime(old: Int? = null) {
         TimePickerDialog(context, { _, hour, minute ->
@@ -109,8 +114,8 @@ import java.util.UUID
         }
         AnimatedVisibility(advanced) {
             Column(verticalArrangement = Arrangement.spacedBy(MediSpace.regular)) {
-                DateField(stringResource(R.string.start_date), TurkishFormat.date(LocalDate.ofEpochDay(start))) { pickDate(start) { start = it } }
-                DateField(stringResource(R.string.end_date), end?.let { TurkishFormat.date(LocalDate.ofEpochDay(it)) } ?: stringResource(R.string.no_end_date)) { pickDate(end ?: start) { end = it } }
+                DateField(stringResource(R.string.start_date), TurkishFormat.date(LocalDate.ofEpochDay(start))) { pickDate(maxOf(start, today), today) { start = it } }
+                DateField(stringResource(R.string.end_date), end?.let { TurkishFormat.date(LocalDate.ofEpochDay(it)) } ?: stringResource(R.string.no_end_date)) { pickDate(maxOf(end ?: start, start, today), maxOf(start, today)) { end = it } }
                 if (end != null) QuietAction(stringResource(R.string.clear_end)) { end = null }
                 OutlinedTextField(note, { note = it }, label = { Text(stringResource(R.string.notes_optional)) }, shape = MaterialTheme.shapes.medium, minLines = 2, modifier = Modifier.fillMaxWidth())
                 SettingToggle(stringResource(R.string.active_toggle), active) { active = it }

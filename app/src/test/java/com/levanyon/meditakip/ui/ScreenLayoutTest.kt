@@ -225,6 +225,20 @@ class ScreenLayoutTest {
         compose.onNodeWithText("Diğer seçenekler").performScrollTo().performClick()
         compose.onNodeWithText("Bitiş Tarihi").performScrollTo().assertIsDisplayed()
     }
+    @Test fun dateFieldsNeverOfferPastDays() {
+        // B5: an existing medication that started 10 days ago keeps showing that start, but the pickers begin today.
+        val started = date.minusDays(10)
+        content(fontScale = 1f) { MedicationEditor(person, schedule.copy(start = started.toEpochDay()), {}, {}) }
+        compose.onNodeWithText("Diğer seçenekler").performScrollTo().performClick()
+        compose.onNodeWithText(TurkishFormat.date(started)).performScrollTo().assertIsDisplayed().performClick()
+        val todayMillis = date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val start = org.robolectric.shadows.ShadowDialog.getLatestDialog() as android.app.DatePickerDialog
+        assertEquals(todayMillis, start.datePicker.minDate)
+        start.dismiss()
+        compose.onNodeWithText("Bitiş tarihi yok").performScrollTo().performClick()
+        val end = org.robolectric.shadows.ShadowDialog.getLatestDialog() as android.app.DatePickerDialog
+        assertEquals(todayMillis, end.datePicker.minDate)
+    }
     @Test fun doseActionsKeepTakenAndUndoCallbacks() {
         content {
             var item by remember { mutableStateOf(Schedule.day(fixture, date).first()) }
