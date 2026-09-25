@@ -19,7 +19,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
@@ -155,10 +158,16 @@ fun ScheduledDoseRow(item: Occurrence, editable: Boolean = false, busy: Boolean 
     val completed = item.takenAt != null
     val background by animateColorAsState(if (highlight && !completed) scheme.primaryContainer else scheme.surfaceContainerLow, animationSpec = tween(MediMotion.feedbackMillis), label = "doseStatus")
     val foreground = if (highlight && !completed) scheme.onPrimaryContainer else scheme.onSurface
-    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(MediSpace.medium)) {
-        // Rail: status marker plus a connector to the next entry; decorative, status is also written as text.
-        Column(Modifier.width(28.dp).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
-            Spacer(Modifier.height(MediSpace.page))
+    val lineColor = scheme.outlineVariant
+    // The connector to the next entry is drawn (not measured), so rows keep their natural height; it spans the
+    // list spacing below the row. Decorative only: the status is also written as text in the row.
+    Row(Modifier.fillMaxWidth().drawBehind {
+        if (!last) {
+            val x = 14.dp.toPx()
+            drawLine(lineColor, Offset(x, (MediSpace.page + 28.dp).toPx()), Offset(x, size.height + MediSpace.medium.toPx()), strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round)
+        }
+    }, horizontalArrangement = Arrangement.spacedBy(MediSpace.medium)) {
+        Box(Modifier.width(28.dp).padding(top = MediSpace.page), contentAlignment = Alignment.TopCenter) {
             val (icon, tint) = when (status) {
                 DoseStatus.TAKEN -> Icons.Default.CheckCircle to scheme.primary
                 DoseStatus.OVERDUE -> Icons.Default.Error to scheme.tertiary
@@ -166,9 +175,8 @@ fun ScheduledDoseRow(item: Occurrence, editable: Boolean = false, busy: Boolean 
                 else -> Icons.Outlined.Circle to scheme.outline
             }
             Icon(icon, null, tint = tint, modifier = Modifier.size(24.dp))
-            if (!last) Box(Modifier.padding(top = MediSpace.tiny).width(2.dp).weight(1f).background(scheme.outlineVariant, CircleShape))
         }
-        Box(Modifier.weight(1f).padding(bottom = if (last) 0.dp else MediSpace.medium)) {
+        Box(Modifier.weight(1f)) {
             Surface(shape = MaterialTheme.shapes.large, color = background, contentColor = foreground, modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(MediSpace.regular), verticalArrangement = Arrangement.spacedBy(MediSpace.tiny)) {
                     AdaptivePair(

@@ -8,7 +8,13 @@ data class AppSettings(val notifications: Boolean = true, val retry: Boolean = t
 class Preferences(context: Context) {
     private val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
     val onboardingCompleted = MutableStateFlow(prefs.getBoolean("onboardingCompleted", false))
-    fun completeOnboarding() { prefs.edit().putBoolean("onboardingCompleted", true).apply(); onboardingCompleted.value = true }
+    /** [startSetup]: the user chose "İlk kişiyi ekle"; Home then walks them through person → medication. */
+    fun completeOnboarding(startSetup: Boolean = false) {
+        prefs.edit().putBoolean("onboardingCompleted", true).putBoolean("setupPending", startSetup).apply()
+        setupPending.value = startSetup; onboardingCompleted.value = true
+    }
+    val setupPending = MutableStateFlow(prefs.getBoolean("setupPending", false))
+    fun finishSetup() { prefs.edit().putBoolean("setupPending", false).apply(); setupPending.value = false }
     var notificationAsked: Boolean
         get() = prefs.getBoolean("notificationAsked", false)
         set(value) { prefs.edit().putBoolean("notificationAsked", value).apply() }

@@ -289,7 +289,8 @@ class ScreenLayoutTest {
     @Test @Config(qualifiers = "w640dp-h320dp")
     fun onboardingActionRemainsReachableInLandscape() {
         content { Onboarding(viewModel()) }
-        compose.onNodeWithText("Başla").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("İlk kişiyi ekle").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Daha sonra").performScrollTo().assertIsDisplayed().assertHeightIsAtLeast(MediSize.touch)
     }
     @Test @Config(qualifiers = "w640dp-h320dp")
     fun personFormSaveIsInsideScrollableContentInLandscape() {

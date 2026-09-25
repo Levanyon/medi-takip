@@ -13,6 +13,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -35,17 +36,19 @@ private enum class OnboardingStep { WELCOME, NOTIFICATIONS, EXACT }
     val scroll = rememberScrollState()
     LaunchedEffect(index) { scroll.scrollTo(0) }
     BackHandler(index > 0) { index-- }
-    fun next() { if (last) vm.completeOnboarding() else index++ }
-    val nextLabel = stringResource(if (last) R.string.start_using else R.string.continue_label)
-    val nextIcon = if (last) Icons.Default.Check else Icons.AutoMirrored.Filled.ArrowForward
+    // The last step always offers the guided first setup (person -> medication); "Daha sonra" skips it.
+    fun next(setup: Boolean = true) { if (last) vm.completeOnboarding(startSetup = setup) else index++ }
     Column(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(scroll).padding(ScreenPadding), verticalArrangement = Arrangement.spacedBy(MediSpace.large)) {
         AdaptivePair(
             { Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary) },
             { if (steps.size > 1) Text(stringResource(R.string.step_count, index + 1, steps.size), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         )
         Column(Modifier.fillMaxWidth().padding(vertical = MediSpace.large), verticalArrangement = Arrangement.spacedBy(MediSpace.large)) {
-            val icon = when (step) { OnboardingStep.WELCOME -> Icons.Default.Spa; OnboardingStep.NOTIFICATIONS -> Icons.Default.NotificationsActive; OnboardingStep.EXACT -> Icons.Default.AlarmOn }
-            Surface(shape = MaterialTheme.shapes.extraLarge, color = MaterialTheme.colorScheme.primaryContainer) { Icon(icon, null, Modifier.padding(MediSpace.large).size(48.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer) }
+            val hero = when (step) { OnboardingStep.WELCOME -> null; OnboardingStep.NOTIFICATIONS -> Icons.Default.NotificationsActive; OnboardingStep.EXACT -> Icons.Default.AlarmOn }
+            Surface(shape = MaterialTheme.shapes.extraLarge, color = MaterialTheme.colorScheme.primaryContainer) {
+                if (hero != null) Icon(hero, null, Modifier.padding(MediSpace.large).size(48.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                else Icon(painterResource(R.drawable.ic_launcher_monochrome), null, Modifier.size(96.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
+            }
             when (step) {
                 OnboardingStep.WELCOME -> {
                     Text(stringResource(R.string.welcome_title), style = MaterialTheme.typography.headlineLarge)
@@ -73,10 +76,13 @@ private enum class OnboardingStep { WELCOME, NOTIFICATIONS, EXACT }
             when {
                 needsNotification -> PrimaryAction(stringResource(if (access.state.previouslyAsked) R.string.open_settings else R.string.grant_permission), Icons.Default.Notifications, !access.busy, access.notifications)
                 needsExact -> PrimaryAction(stringResource(R.string.open_settings), Icons.Default.Alarm, !access.busy, access.exact)
-                else -> PrimaryAction(if (step == OnboardingStep.WELCOME && !last) stringResource(R.string.get_started) else nextLabel, nextIcon) { next() }
+                last -> PrimaryAction(stringResource(R.string.setup_add_first_person), Icons.Default.PersonAdd) { next(setup = true) }
+                else -> PrimaryAction(stringResource(if (step == OnboardingStep.WELCOME) R.string.get_started else R.string.continue_label), Icons.AutoMirrored.Filled.ArrowForward) { next() }
             }
             if (needsNotification || needsExact) TextButton(onClick = { next() }, enabled = !access.busy, modifier = Modifier.fillMaxWidth().heightIn(min = MediSize.touch)) {
                 Text(stringResource(R.string.later), style = MaterialTheme.typography.labelLarge)
+            } else if (last) TextButton(onClick = { next(setup = false) }, modifier = Modifier.fillMaxWidth().heightIn(min = MediSize.touch)) {
+                Text(stringResource(R.string.setup_later), style = MaterialTheme.typography.labelLarge)
             }
         }
     }

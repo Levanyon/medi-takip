@@ -50,6 +50,7 @@ private const val SETTINGS = 3
     // Minute resolution: recomposes only when the clock minute (or date) changes.
     var now by remember { mutableStateOf(LocalDateTime.now().truncatedTo(ChronoUnit.MINUTES)) }
     val selectedPerson by vm.selectedPerson.collectAsStateWithLifecycle()
+    val setupPending by vm.setupPending.collectAsStateWithLifecycle()
     val access = rememberPermissionAccess(vm)
     val settings by vm.settings.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
@@ -75,6 +76,18 @@ private const val SETTINGS = 3
     fun openPerson(id: String) { section = PEOPLE; personId = id; medicationId = null }
     fun inform(message: String) {
         scope.launch { snackbar.currentSnackbarData?.dismiss(); snackbar.showSnackbar(message, withDismissAction = true, duration = SnackbarDuration.Long) }
+    }
+    // First-run setup (onboarding "İlk kişiyi ekle"): person form, then medication form, then a pointer to
+    // Hatırlatma Durumu. Closing either form ends the guided setup.
+    LaunchedEffect(setupPending) { if (setupPending && snapshot.people.none { !it.archived } && !personEditor) addPerson(true) }
+    fun finishFirstSetup() {
+        vm.finishSetup()
+        scope.launch {
+            snackbar.currentSnackbarData?.dismiss()
+            if (snackbar.showSnackbar(context.getString(R.string.setup_done), context.getString(R.string.setup_check), withDismissAction = true, duration = SnackbarDuration.Long) == SnackbarResult.ActionPerformed) {
+                section = SETTINGS; reminderStatus = true; personId = null; medicationId = null
+            }
+        }
     }
     // Restoring a person leaves their medications archived; say so, so they do not seem lost.
     fun restorePerson(person: PersonEntity) {
@@ -126,7 +139,7 @@ private const val SETTINGS = 3
     }
     if (personEditor) {
         val editing = snapshot.people.find { it.id == editPersonId }
-        PersonEditor(editing, { personEditor = false; continueToMedication = false }, archive = editing?.let { { archivePerson = true } }) { person ->
+        PersonEditor(editing, { personEditor = false; continueToMedication = false; if (setupPending) vm.finishSetup() }, archive = editing?.let { { archivePerson = true } }) { person ->
             vm.person(person) {
                 personEditor = false
                 if (editing == null) vm.selectPerson(person.id)
@@ -135,8 +148,8 @@ private const val SETTINGS = 3
         }
     }
     medicationPersonId?.let { id -> snapshot.people.find { it.id == id }?.let { person ->
-        key(id, editScheduleId) { MedicationEditor(person, snapshot.schedules.find { it.id == editScheduleId }, { medicationPersonId = null }) { schedule ->
-            vm.medication(person, snapshot.schedules.find { it.id == editScheduleId }?.medicationId, schedule) { medicationPersonId = null }
+        key(id, editScheduleId) { MedicationEditor(person, snapshot.schedules.find { it.id == editScheduleId }, { medicationPersonId = null; if (setupPending) vm.finishSetup() }) { schedule ->
+            vm.medication(person, snapshot.schedules.find { it.id == editScheduleId }?.medicationId, schedule) { medicationPersonId = null; if (setupPending) finishFirstSetup() }
         } }
     } }
     if (choosePerson) MediDialog(stringResource(R.string.choose_person), { choosePerson = false }) {

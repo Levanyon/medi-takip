@@ -102,7 +102,18 @@ class UiFlowTest {
         // Android 9 needs neither runtime notification nor exact-alarm access: one step only.
         compose.onNodeWithText("MediTakip'e Hoş Geldiniz").assertIsDisplayed()
         compose.onNodeWithText("Adım", substring = true).assertDoesNotExist()
-        compose.onNodeWithText("Başla").performScrollTo().performClick()
+        compose.onNodeWithText("İlk kişiyi ekle").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Daha sonra").performScrollTo().performClick()
+    }
+    @Test fun firstRunSetupOpensThePersonFormAndCanBeLeft() {
+        var model: AppViewModel? = null
+        compose.setContent { MediTheme("Light") { Home(Snapshot(), viewModel<AppViewModel>().also { model = it }) } }
+        compose.runOnIdle { model!!.completeOnboarding(startSetup = true) }
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Ad").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("Kişi Ekle").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Geri").performClick()
+        compose.waitUntil(5_000) { !model!!.setupPending.value }
+        compose.onNodeWithText("Henüz kişi eklenmemiş").assertIsDisplayed()
     }
     @Test fun medicationEditorSaveIsReachableAtLargeTextSize() {
         compose.setContent {

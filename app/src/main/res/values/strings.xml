@@ -263,4 +263,9 @@
     <string name="last_problem">Son kaydedilen sorun</string>
     <string name="clear_problems">Kaydı temizle</string>
     <string name="reminders_need_attention">Hatırlatmalar tam çalışmıyor. Düzeltmek için dokunun.</string>
+    <!-- Phase 5: first-run setup -->
+    <string name="setup_add_first_person">İlk kişiyi ekle</string>
+    <string name="setup_later">Daha sonra</string>
+    <string name="setup_done">İlk ilaç eklendi. Hatırlatmaların hazır olduğunu kontrol edin.</string>
+    <string name="setup_check">Kontrol et</string>
 </resources>

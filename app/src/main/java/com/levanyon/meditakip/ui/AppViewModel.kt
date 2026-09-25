@@ -15,7 +15,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = app.repository
     val settings = app.preferences.state
     val onboardingCompleted = app.preferences.onboardingCompleted
-    fun completeOnboarding() = app.preferences.completeOnboarding()
+    fun completeOnboarding(startSetup: Boolean = false) = app.preferences.completeOnboarding(startSetup)
+    val setupPending = app.preferences.setupPending
+    fun finishSetup() = app.preferences.finishSetup()
     val selectedPerson = app.preferences.lastPerson
     fun selectPerson(id: String?) = app.preferences.rememberPerson(id)
     fun settings(value: AppSettings) = perform { app.preferences.save(value) }

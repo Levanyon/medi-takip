@@ -68,3 +68,36 @@ Decisions the developer made in advance are marked **(developer)**.
 **D2.11 Ayarlar keeps only a summary row.**
 - The permission rows, battery, Samsung guidance and test buttons moved to the Hatırlatma Durumu screen. Ayarlar shows one row: "Hatırlatmalar hazır" or "Dikkat gerekiyor".
 - The Bugün banner appears only when reminders cannot work: reminders off, notifications blocked, or no exact alarms. Battery optimization alone does not trigger it, because it is on by default for every app and would make the banner permanent.
+
+---
+
+## Phase 5 — UX, accessibility and polish
+
+### Plan
+1. **Visual review with real renderings.** A development-only screenshot test (`ScreenshotTest`, runs only when `MEDITAKIP_SCREENSHOTS` is set) renders every main screen in light and dark to `app/build/screenshots/`. Findings drive the fixes below.
+2. **Fix the Bugün timeline spacing.** Large gaps appeared between dose cards.
+3. **Brand:** an adaptive launcher icon with a monochrome layer (Android 13 themed icons), the same mark in onboarding, an app window theme, and a splash screen through platform attributes (Android 12+). No new library.
+4. **First run:** onboarding ends with "İlk kişiyi ekleyin" → person form → medication form → a snackbar that leads to Hatırlatma Durumu. Skippable.
+5. **Accessibility checks as tests:**
+   - Every main screen at font scales 1.0, 1.3, 1.5 and 2.0 on a 320 dp phone: the primary action stays reachable and at least 48 dp tall.
+   - Every clickable element has a text or description.
+   - WCAG AA contrast for the text/background colour pairs of both themes.
+6. **Glossary** in `DESIGN.md`, applied to all strings.
+7. **Clean-up:** remove unused strings and code (lint `UnusedResources` once), plus prototype leftovers.
+
+### Decisions
+**D5.1 Review the UI through real renderings.**
+- `ScreenshotTest` draws each screen's view tree to a PNG with Robolectric's native graphics, in light and dark. `captureToImage` times out under Robolectric.
+- It is a development aid, skipped unless `MEDITAKIP_SCREENSHOTS` is set, so it never slows or flakes the normal suite.
+- It found the Bugün timeline gap: the status rail used `IntrinsicSize.Min`, which over-measured the text. The connector is now drawn with `drawBehind`, so rows keep their natural height.
+
+**D5.2 Brand: a two-tone capsule mark, used everywhere, with no library.**
+- It is an adaptive icon (background, foreground and a monochrome layer for Android 13 themed icons), drawn inside the 66 dp safe zone.
+- The same mark is the notification icon and the onboarding hero.
+- The window theme `Theme.MediTakip` sets a window background matching the Compose theme, so there is no white flash.
+- The Android 12+ splash screen uses the platform attributes `windowSplashScreenBackground` and `windowSplashScreenAnimatedIcon`: brand green with the mark. The `core-splashscreen` library would only add the same splash on Android 8–11, and that is not worth a dependency.
+
+**D5.3 First-run setup is offered, not forced.**
+- Onboarding's last step says "İlk kişiyi ekle" (primary) or "Daha sonra". Choosing it opens the person form, then the medication form. After the first medication, a snackbar offers "Kontrol et", which opens Hatırlatma Durumu.
+- The flag is stored in preferences, so the flow resumes if the app is closed midway. Closing either form ends the guided flow.
+- "Daha sonra" relies on the Bugün empty state, which already leads to Kişi Ekle.
