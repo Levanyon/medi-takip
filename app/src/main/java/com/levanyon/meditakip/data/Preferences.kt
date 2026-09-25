@@ -30,6 +30,10 @@ class Preferences(context: Context) {
     var nextAlarm: Long
         get() = prefs.getLong("nextAlarm", 0)
         set(value) { prefs.edit().putLong("nextAlarm", value).apply() }
+    /** Medications whose low-stock notification was shown and that are still low (DECISIONS D3.8). */
+    var lowStockNotified: Set<String>
+        get() = prefs.getStringSet("lowStockNotified", emptySet()).orEmpty()
+        set(value) { prefs.edit().putStringSet("lowStockNotified", value).apply() }
     /** "10 dk ertele": occurrence key -> epoch millis of the snoozed reminder (DECISIONS D2.5). */
     var snoozes: Map<String, Long>
         get() = prefs.getStringSet("snoozes", emptySet()).orEmpty().mapNotNull { entry ->

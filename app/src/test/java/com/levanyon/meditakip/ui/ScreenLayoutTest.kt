@@ -304,7 +304,7 @@ class ScreenLayoutTest {
     @Test @Config(qualifiers = "w640dp-h320dp")
     fun medicationFormKeepsExistingScheduleWhenSavedInLandscape() {
         var saved: MedicationScheduleEntity? = null
-        content(true) { MedicationEditor(person, schedule, {}, { saved = it }) }
+        content(true) { MedicationEditor(person, schedule, {}) { s, _ -> saved = s } }
         compose.onNodeWithText("Kaydet").performScrollTo().assertIsDisplayed().performClick()
         assertEquals(schedule.name, saved?.name)
         assertEquals(schedule.times, saved?.times)
@@ -313,8 +313,40 @@ class ScreenLayoutTest {
         assertEquals(schedule.dose, saved?.dose)
         assertEquals(schedule.active, saved?.active)
     }
+    @Test fun stockTrackingIsOptionalAndValidated() {
+        var saved: StockSettings? = null
+        content(fontScale = 1f) { MedicationEditor(person, null, {}) { _, stock -> saved = stock } }
+        compose.onNodeWithText("Diğer seçenekler").performScrollTo().performClick()
+        compose.onNodeWithText("Stok takibi").performScrollTo().performClick()
+        compose.onNodeWithText("Elde kalan miktar").performScrollTo().performTextInput("30")
+        compose.onNodeWithText("Her dozda kullanılan miktar").performScrollTo().performTextClearance()
+        compose.onNodeWithText("İlaç Adı").performScrollTo().performTextInput("Parol")
+        compose.onNodeWithText("Doz").performScrollTo().performTextInput("Yarım tablet")
+        compose.onNodeWithText("Kaydet").performScrollTo().performClick()
+        compose.onNodeWithText("Stok miktarlarını kontrol edin", substring = true).performScrollTo().assertIsDisplayed()
+        assertNull(saved)
+        compose.onNodeWithText("Her dozda kullanılan miktar").performScrollTo().performTextInput("0,5")
+        compose.onNodeWithText("Kaydet").performScrollTo().performClick()
+        assertEquals(StockSettings(true, 30.0, 0.5, 0.0), saved)
+    }
+    @Test fun medicationDetailShowsStockAndLowState() {
+        val stocked = fixture.copy(medications = listOf(MedicationEntity("m", "p", stockEnabled = true, stockQuantity = 3.0, stockPerDose = 1.0, stockThreshold = 4.0)))
+        content(fontScale = 1f) { MedicationDetail(stocked, "m", date, {}, { _, _ -> }, {}) }
+        lazyScroll("Kalan: 3")
+        compose.onNodeWithText("yaklaşık 1 gün").assertIsDisplayed()
+        compose.onNodeWithText("Azalıyor").assertIsDisplayed()
+        compose.onNodeWithText("Stok ekle").assertIsDisplayed().assertHeightIsAtLeast(MediSize.touch)
+    }
+    @Test fun todayShowsALowStockLineThatOpensTheMedication() {
+        var opened = ""
+        val stocked = fixture.copy(medications = listOf(MedicationEntity("m", "p", stockEnabled = true, stockQuantity = 3.0, stockPerDose = 1.0, stockThreshold = 4.0)))
+        content(fontScale = 1f) { TodayScreen(stocked, date.atTime(7, 0), "p", {}, viewModel(), {}, {}, {}, {}, openMedication = { opened = it }) }
+        lazyScroll("Uzun İlaç Adı azalıyor · ~1 gün")
+        compose.onNodeWithText("Uzun İlaç Adı azalıyor · ~1 gün").performClick()
+        assertEquals("m", opened)
+    }
     @Test fun medicationFormHidesAdvancedFieldsUntilRequested() {
-        content { MedicationEditor(person, null, {}, {}) }
+        content { MedicationEditor(person, null, {}) { _, _ -> } }
         compose.onNodeWithText("Bitiş Tarihi").assertDoesNotExist()
         compose.onNodeWithText("Diğer seçenekler").performScrollTo().performClick()
         compose.onNodeWithText("Bitiş Tarihi").performScrollTo().assertIsDisplayed()
@@ -322,7 +354,7 @@ class ScreenLayoutTest {
     @Test fun dateFieldsNeverOfferPastDays() {
         // B5: an existing medication that started 10 days ago keeps showing that start, but the pickers begin today.
         val started = date.minusDays(10)
-        content(fontScale = 1f) { MedicationEditor(person, schedule.copy(start = started.toEpochDay()), {}, {}) }
+        content(fontScale = 1f) { MedicationEditor(person, schedule.copy(start = started.toEpochDay()), {}) { _, _ -> } }
         compose.onNodeWithText("Diğer seçenekler").performScrollTo().performClick()
         compose.onNodeWithText(TurkishFormat.date(started)).performScrollTo().assertIsDisplayed().performClick()
         val todayMillis = date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()

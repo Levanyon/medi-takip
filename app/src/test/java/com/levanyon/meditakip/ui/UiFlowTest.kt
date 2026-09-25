@@ -118,7 +118,7 @@ class UiFlowTest {
     @Test fun medicationEditorSaveIsReachableAtLargeTextSize() {
         compose.setContent {
             CompositionLocalProvider(LocalDensity provides Density(1f, 1.5f)) {
-                MediTheme("Dark") { MedicationEditor(fixture.people.single(), schedule, {}, {}) }
+                MediTheme("Dark") { MedicationEditor(fixture.people.single(), schedule, {}) { _, _ -> } }
             }
         }
         compose.onNodeWithText("İlacı Düzenle").assertIsDisplayed()

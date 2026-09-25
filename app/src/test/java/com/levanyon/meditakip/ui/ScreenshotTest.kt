@@ -78,7 +78,7 @@ class ScreenshotTest(private val screen: String, private val dark: Boolean) {
                                 "status" -> ReminderStatusScreen(vm, access) {}
                                 "onboarding" -> Onboarding(vm)
                                 "personForm" -> PersonEditor(null, {}) {}
-                                "medicationForm" -> MedicationEditor(anne, null, {}) {}
+                                "medicationForm" -> MedicationEditor(anne, null, {}) { _, _ -> }
                                 "empty" -> TodayScreen(Snapshot(), date.atTime(9, 0), null, {}, vm, {}, {}, {}, {})
                                 "brand" -> BrandPreview()
                             }

@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.content.Intent
 import com.levanyon.meditakip.MediApp
 import com.levanyon.meditakip.domain.Schedule
+import com.levanyon.meditakip.domain.StockSettings
 import com.levanyon.meditakip.reminders.ReminderActionReceiver
 import com.levanyon.meditakip.reminders.ReminderLog
 import com.levanyon.meditakip.reminders.Reminders
@@ -127,6 +128,27 @@ class ReminderIntegrationTest {
         val summary = notifications.activeNotifications.single { it.id == Reminders.SUMMARY_ID }.notification
         assertTrue(summary.extras.getString(Notification.EXTRA_TITLE)!!.startsWith("2 ilaç zamanı"))
         assertEquals(1, doseNotifications().map { it.notification.group }.distinct().size)
+    }
+    @Test fun lowStockNotifiesOncePerCrossing() = runBlocking {
+        val person = PersonEntity("p", "Anne")
+        app.repository.savePerson(person)
+        app.repository.saveMedication(person, null, MedicationScheduleEntity("", "", "Anne", "Parol", "1 tablet", "", "08:00,20:00", 127, LocalDate.now().toEpochDay(), null, true, LocalDate.now().toEpochDay()),
+            StockSettings(true, 4.0, 1.0, 3.0))
+        val lowNotifications = { notifications.activeNotifications.filter { it.id == Reminders.LOW_STOCK_ID } }
+        app.reminders.rebuild(false)
+        assertTrue("4 > threshold 3: not low yet", lowNotifications().isEmpty())
+        app.repository.completions.taken(Schedule.day(app.repository.snapshot(), LocalDate.now()).first())
+        app.reminders.rebuild(false)
+        val shown = lowNotifications().single().notification
+        assertEquals("Parol azalıyor", shown.extras.getString(Notification.EXTRA_TITLE))
+        assertEquals("Anne · yaklaşık 1 günlük ilaç kaldı", shown.extras.getCharSequence(Notification.EXTRA_TEXT).toString())
+        notifications.cancelAll()
+        app.reminders.rebuild(false)
+        assertTrue("Not repeated while still low", lowNotifications().isEmpty())
+        val id = app.repository.snapshot().medications.single().id
+        app.repository.addStock(id, 20.0)
+        app.reminders.rebuild(false)
+        assertTrue(app.preferences.lowStockNotified.isEmpty())
     }
     @Test fun oldDispatchRecordsArePruned() = runBlocking {
         val dao = app.database.dao()

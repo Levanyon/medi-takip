@@ -8,6 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -23,12 +24,13 @@ import java.time.LocalDate
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun MedicationDetail(snapshot: Snapshot, medicationId: String, today: LocalDate, back: () -> Unit, edit: (PersonEntity, MedicationScheduleEntity) -> Unit, archive: () -> Unit, corrections: DoseCorrections? = null, restore: () -> Unit = {}) {
+fun MedicationDetail(snapshot: Snapshot, medicationId: String, today: LocalDate, back: () -> Unit, edit: (PersonEntity, MedicationScheduleEntity) -> Unit, archive: () -> Unit, corrections: DoseCorrections? = null, addStock: (Double) -> Unit = {}, restore: () -> Unit = {}) {
     val medication = snapshot.medications.find { it.id == medicationId } ?: return
     val person = snapshot.people.find { it.id == medication.personId } ?: return
     val schedule = MedicationViews.latestRevision(snapshot, medicationId) ?: return
     val matrix = remember(snapshot, medicationId, today) { HistoryMatrices.build(snapshot, person.id, today.minusDays(6), today, medicationId) }
     var opened by remember { mutableStateOf<Occurrence?>(null) }
+    var addingStock by remember { mutableStateOf(false) }
     val editable = !medication.archived && !person.archived
     val scroll = rememberScrollState()
     BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -71,6 +73,7 @@ fun MedicationDetail(snapshot: Snapshot, medicationId: String, today: LocalDate,
                     }
                 }
             }
+            if (medication.stockEnabled) item { StockLine(medication, schedule, editable) { addingStock = true } }
             if (editable) item { PrimaryAction(stringResource(R.string.edit_medication), Icons.Default.Edit) { edit(person, schedule) } }
             // Archived: restore is the only action, and only once the person is active again.
             if (medication.archived) item {
@@ -92,4 +95,38 @@ fun MedicationDetail(snapshot: Snapshot, medicationId: String, today: LocalDate,
         }
     }
     opened?.let { HistoryCellDetail(it, { opened = null }, today, corrections) }
+    if (addingStock) AddStockDialog({ addingStock = false }) { amount -> addingStock = false; addStock(amount) }
+}
+
+/** Stock at a glance: remaining amount, days it lasts, a text+icon "Azalıyor" when low, and Stok ekle. */
+@Composable private fun StockLine(medication: MedicationEntity, schedule: MedicationScheduleEntity, editable: Boolean, add: () -> Unit) {
+    val low = StockPlan.isLow(medication)
+    val days = StockPlan.daysLeft(medication, schedule)
+    Surface(shape = MaterialTheme.shapes.large, color = if (low) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.surfaceContainerLow,
+        contentColor = if (low) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onSurface) {
+        Column(Modifier.fillMaxWidth().padding(MediSpace.page), verticalArrangement = Arrangement.spacedBy(MediSpace.small)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MediSpace.medium)) {
+                Icon(if (low) Icons.Default.Warning else Icons.Default.Inventory2, null)
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.stock_remaining, StockPlan.format(medication.stockQuantity)), style = MaterialTheme.typography.titleMedium)
+                    days?.let { Text(stringResource(R.string.stock_days, it), style = MaterialTheme.typography.bodyMedium) }
+                }
+                if (low) Text(stringResource(R.string.stock_low), style = MaterialTheme.typography.labelLarge)
+            }
+            if (editable) FilledTonalButton(onClick = add, shape = MaterialTheme.shapes.large, modifier = Modifier.fillMaxWidth().heightIn(min = MediSize.touch)) {
+                Icon(Icons.Default.Add, null); Spacer(Modifier.width(MediSpace.small)); Text(stringResource(R.string.stock_add), style = MaterialTheme.typography.labelLarge)
+            }
+        }
+    }
+}
+
+@Composable fun AddStockDialog(dismiss: () -> Unit, add: (Double) -> Unit) {
+    var amount by rememberSaveable { mutableStateOf("") }
+    val parsed = StockPlan.parse(amount)?.takeIf { it > 0 }
+    val focus = androidx.compose.ui.platform.LocalFocusManager.current
+    MediDialog(stringResource(R.string.stock_add), dismiss) {
+        NumberField(amount, { amount = it }, stringResource(R.string.stock_add_amount))
+        PrimaryAction(stringResource(R.string.stock_add), Icons.Default.Add, enabled = parsed != null) { focus.clearFocus(); parsed?.let(add) }
+        CancelAction(dismiss)
+    }
 }

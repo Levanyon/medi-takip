@@ -19,6 +19,7 @@ import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import com.levanyon.meditakip.R
 import com.levanyon.meditakip.data.*
 import com.levanyon.meditakip.domain.*
@@ -46,7 +47,7 @@ import java.util.UUID
 }
 
 @OptIn(ExperimentalLayoutApi::class)
-@Composable fun MedicationEditor(person: PersonEntity, schedule: MedicationScheduleEntity?, dismiss: () -> Unit, save: (MedicationScheduleEntity) -> Unit) {
+@Composable fun MedicationEditor(person: PersonEntity, schedule: MedicationScheduleEntity?, dismiss: () -> Unit, initialStock: StockSettings? = null, save: (MedicationScheduleEntity, StockSettings) -> Unit) {
     val context = rememberPickerContext()
     var name by rememberSaveable { mutableStateOf(schedule?.name ?: "") }
     var dose by rememberSaveable { mutableStateOf(schedule?.dose ?: "") }
@@ -56,9 +57,14 @@ import java.util.UUID
     var start by rememberSaveable { mutableLongStateOf(schedule?.start ?: LocalDate.now().toEpochDay()) }
     var end by rememberSaveable { mutableStateOf(schedule?.end) }
     var active by rememberSaveable { mutableStateOf(schedule?.active ?: true) }
+    val stockStart = initialStock ?: StockSettings(false, 0.0, 1.0, 0.0)
+    var stockEnabled by rememberSaveable { mutableStateOf(stockStart.enabled) }
+    var stockQuantity by rememberSaveable { mutableStateOf(if (stockStart.enabled) StockPlan.format(stockStart.quantity) else "") }
+    var stockPerDose by rememberSaveable { mutableStateOf(StockPlan.format(stockStart.perDose)) }
+    var stockThreshold by rememberSaveable { mutableStateOf(if (stockStart.threshold > 0) StockPlan.format(stockStart.threshold) else "") }
     var error by rememberSaveable { mutableStateOf<Int?>(null) }
     // Advanced fields start open only when they already hold non-default values.
-    var advanced by rememberSaveable { mutableStateOf(schedule != null && (schedule.end != null || schedule.note.isNotBlank() || !schedule.active || schedule.start > LocalDate.now().toEpochDay())) }
+    var advanced by rememberSaveable { mutableStateOf(schedule != null && (schedule.end != null || schedule.note.isNotBlank() || !schedule.active || schedule.start > LocalDate.now().toEpochDay() || stockStart.enabled)) }
     // B5: edits apply from today (effectiveFrom = today), so dates before today would silently have no
     // effect. The pickers therefore never offer past days; an existing past start stays as it is.
     val today = LocalDate.now().toEpochDay()
@@ -120,6 +126,14 @@ import java.util.UUID
                 OutlinedTextField(note, { note = it }, label = { Text(stringResource(R.string.notes_optional)) }, shape = MaterialTheme.shapes.medium, minLines = 2, modifier = Modifier.fillMaxWidth())
                 SettingToggle(stringResource(R.string.active_toggle), active) { active = it }
                 Text(stringResource(R.string.active_toggle_help), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                // Optional stock tracking (D3.7): decimals allowed ("0,5"); an empty threshold means no warning.
+                SettingToggle(stringResource(R.string.stock_tracking), stockEnabled) { stockEnabled = it }
+                Text(stringResource(R.string.stock_tracking_help), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (stockEnabled) {
+                    NumberField(stockQuantity, { stockQuantity = it }, stringResource(R.string.stock_quantity))
+                    NumberField(stockPerDose, { stockPerDose = it }, stringResource(R.string.stock_per_dose))
+                    NumberField(stockThreshold, { stockThreshold = it }, stringResource(R.string.stock_threshold))
+                }
             }
         }
         if (schedule != null) Text(stringResource(R.string.schedule_edit_note), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -130,14 +144,31 @@ import java.util.UUID
             error = when {
                 name.isBlank() -> R.string.error_medication_name
                 dose.isBlank() -> R.string.error_dose
+                stockEnabled && stockSettings(stockQuantity, stockPerDose, stockThreshold)?.valid != true -> R.string.error_stock
                 days == 0 -> R.string.error_days
                 end != null && end!! < start -> R.string.error_dates
                 times.isBlank() -> R.string.error_times
                 else -> null
             }
-            if (error == null) save(MedicationScheduleEntity("", "", person.name, name.trim(), dose.trim(), note, times, days, start, end, active, LocalDate.now().toEpochDay()))
+            if (error == null) save(MedicationScheduleEntity("", "", person.name, name.trim(), dose.trim(), note, times, days, start, end, active, LocalDate.now().toEpochDay()), if (stockEnabled) stockSettings(stockQuantity, stockPerDose, stockThreshold)!! else stockStart.copy(enabled = false))
         }
     }
+}
+
+/**
+ * Reads the stock fields of the form (tracking on). Null when a number is missing or not a number; an empty
+ * threshold means "no warning" (0). When tracking is off the stored numbers are kept, not reset.
+ */
+private fun stockSettings(quantity: String, perDose: String, threshold: String): StockSettings? {
+    val q = StockPlan.parse(quantity) ?: return null
+    val p = StockPlan.parse(perDose) ?: return null
+    val t = if (threshold.isBlank()) 0.0 else StockPlan.parse(threshold) ?: return null
+    return StockSettings(true, q, p, t)
+}
+
+@Composable fun NumberField(value: String, change: (String) -> Unit, label: String) {
+    OutlinedTextField(value, { text -> if (text.length <= 8 && text.all { it.isDigit() || it == ',' || it == '.' }) change(text) }, label = { Text(label) }, singleLine = true,
+        shape = MaterialTheme.shapes.medium, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next), modifier = Modifier.fillMaxWidth())
 }
 
 @Composable private fun FieldLabel(title: String, help: String? = null) {

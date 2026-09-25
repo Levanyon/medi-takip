@@ -64,6 +64,16 @@ class SkipDialogFlowTest {
         compose.onAllNodesWithText("Atla").filterToOne(hasClickAction()).performScrollTo().performClick()
         assertEquals(listOf("skip $yesterday Hastanedeydik"), calls)
     }
+    @Test fun addingStockAcceptsTurkishDecimalsOnly() {
+        var added: Double? = null
+        compose.setContent { MediTheme("Light") { AddStockDialog({}) { added = it } } }
+        compose.onAllNodesWithText("Stok ekle").filterToOne(hasClickAction()).assertIsNotEnabled()
+        compose.onNodeWithText("Eklenecek miktar").performTextInput("abc")
+        compose.onAllNodesWithText("Stok ekle").filterToOne(hasClickAction()).assertIsNotEnabled()
+        compose.onNodeWithText("Eklenecek miktar").performTextInput("20,5")
+        compose.onAllNodesWithText("Stok ekle").filterToOne(hasClickAction()).performClick()
+        assertEquals(20.5, added!!, 1e-9)
+    }
     @Test fun skippingOnBugunShowsAnUndoSnackbar() {
         compose.setContent { MediTheme("Light") { Home(snapshot, viewModel()) } }
         compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Atla"))

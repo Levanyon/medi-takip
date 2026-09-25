@@ -72,6 +72,7 @@ class Reminders(private val app: MediApp) {
         // A dose that was marked, skipped, edited or archived loses its visible notification.
         notifications.activeNotifications.filter { it.id == DOSE_ID && it.tag != null && it.tag !in outstanding }.forEach { notifications.cancel(it.tag, DOSE_ID) }
         updateSummaries()
+        notifyLowStock(snapshot)
         alarms.cancel(alarmIntent(1)); alarms.cancel(alarmIntent(2))
         val next = ReminderPlan.next(events, dispatched, now)
         if (!settings.notifications || !notificationAllowed() || next == null) { app.preferences.nextAlarm = 0; return@withLock }
@@ -109,6 +110,29 @@ class Reminders(private val app: MediApp) {
             .addAction(Notification.Action.Builder(Icon.createWithResource(app, R.drawable.ic_medication), app.getString(R.string.action_snooze), action(ACTION_SNOOZE, o.key)).build())
         if (event.kind == ReminderKind.SNOOZE) builder.setSubText(app.getString(R.string.notification_snoozed))
         notifications.notify(o.key, DOSE_ID, builder.build())
+    }
+
+    /**
+     * One notification when a medication becomes low; not repeated until it has recovered (e.g. Stok ekle).
+     * A medication only counts as notified once the notification was actually shown.
+     */
+    private fun notifyLowStock(snapshot: Snapshot) {
+        val low = StockPlan.low(snapshot)
+        val lowIds = low.map { it.medicationId }.toSet()
+        val already = app.preferences.lowStockNotified intersect lowIds
+        val canShow = app.preferences.state.value.notifications && notificationAllowed()
+        val shown = if (!canShow) emptySet() else low.filter { it.medicationId !in already }.onEach { item ->
+            val text = item.daysLeft?.let { app.getString(R.string.stock_low_notification_text, item.personName, it) }
+                ?: app.getString(R.string.stock_low_notification_text_no_days, item.personName, StockPlan.format(item.quantity))
+            val notification = Notification.Builder(app, CHANNEL).setSmallIcon(R.drawable.ic_medication)
+                .setContentTitle(app.getString(R.string.stock_low_notification_title, item.name)).setContentText(text)
+                .setContentIntent(openApp()).setAutoCancel(true).setVisibility(Notification.VISIBILITY_PRIVATE)
+                .setPublicVersion(Notification.Builder(app, CHANNEL).setSmallIcon(R.drawable.ic_medication).setContentTitle(app.getString(R.string.app_name)).build())
+                .setCategory(Notification.CATEGORY_REMINDER).build()
+            notifications.notify(item.medicationId, LOW_STOCK_ID, notification)
+        }.map { it.medicationId }.toSet()
+        app.preferences.lowStockNotified = already + shown
+        notifications.activeNotifications.filter { it.id == LOW_STOCK_ID && it.tag !in lowIds }.forEach { notifications.cancel(it.tag, LOW_STOCK_ID) }
     }
 
     /** One summary per group of two or more visible doses (DECISIONS D2.3); removed when the group shrinks. */
@@ -180,6 +204,7 @@ class Reminders(private val app: MediApp) {
         const val DOSE_ID = 1
         const val SUMMARY_ID = 2
         const val TEST_ID = 3
+        const val LOW_STOCK_ID = 4
         const val TEST_TAG = "test"
         const val DISPATCH_RETENTION_DAYS = 7L
         const val SAFETY_DELAY_MILLIS = 15 * 60_000L

@@ -58,16 +58,21 @@ class Repository(private val db: MediDatabase, private val clock: Clock = Clock.
      * Editing on the day a revision was created therefore leaves a "never-effective" revision
      * (`effectiveTo = effectiveFrom - 1`, see [isNeverEffective]); its recorded doses stay visible.
      */
-    suspend fun saveMedication(person: PersonEntity, medicationId: String?, schedule: MedicationScheduleEntity) = db.withTransaction {
+    suspend fun saveMedication(person: PersonEntity, medicationId: String?, schedule: MedicationScheduleEntity, stock: StockSettings? = null) = db.withTransaction {
+        require(stock?.valid != false) { "Invalid stock settings" }
         Schedule.validate(schedule)
         val id = medicationId ?: UUID.randomUUID().toString()
         val today = LocalDate.now(clock).toEpochDay()
         dao.schedules().filter { it.medicationId == id && it.effectiveTo == null }.forEach { dao.saveSchedule(it.copy(effectiveTo = today - 1)) }
         // Keep the existing medication row (stock, archive state): an edit only adds a schedule revision (D3.7).
         val existing = dao.medications().find { it.id == id }
-        dao.saveMedication(existing?.copy(personId = person.id) ?: MedicationEntity(id, person.id))
+        val row = existing?.copy(personId = person.id) ?: MedicationEntity(id, person.id)
+        // Stock settings change only when the form sent them (the quantity is then what the user typed).
+        dao.saveMedication(if (stock == null) row else row.copy(stockEnabled = stock.enabled, stockQuantity = stock.quantity, stockPerDose = stock.perDose, stockThreshold = stock.threshold))
         dao.saveSchedule(schedule.copy(id = UUID.randomUUID().toString(), medicationId = id, personName = person.name, effectiveFrom = today, effectiveTo = null, sequence = dao.maxSequence() + 1))
     }
+    /** Stok ekle: adds [amount] to a tracked medication (no effect when tracking is off). */
+    suspend fun addStock(medicationId: String, amount: Double) { require(amount > 0) { "Amount must be positive" }; dao.adjustStock(medicationId, amount) }
     suspend fun archiveMedication(id: String) = db.withTransaction {
         val today = LocalDate.now(clock).toEpochDay()
         dao.medications().find { it.id == id }?.let { dao.saveMedication(it.copy(archived = true)) }

@@ -54,7 +54,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application), Do
     }
     fun person(person: PersonEntity, onSuccess: () -> Unit = {}) = perform(onSuccess) { repository.savePerson(person) }
     fun archivePerson(person: PersonEntity, onSuccess: () -> Unit = {}) = perform(onSuccess) { repository.archivePerson(person) }
-    fun medication(person: PersonEntity, id: String?, schedule: MedicationScheduleEntity, onSuccess: () -> Unit = {}) = perform(onSuccess) { repository.saveMedication(person, id, schedule) }
+    fun medication(person: PersonEntity, id: String?, schedule: MedicationScheduleEntity, stock: StockSettings? = null, onSuccess: () -> Unit = {}) = perform(onSuccess) { repository.saveMedication(person, id, schedule, stock) }
+    fun addStock(medicationId: String, amount: Double, onSuccess: () -> Unit = {}) = perform(onSuccess) { repository.addStock(medicationId, amount) }
     fun archiveMedication(id: String, onSuccess: () -> Unit = {}) = perform(onSuccess) { repository.archiveMedication(id) }
     fun restorePerson(id: String, onSuccess: () -> Unit = {}) = perform(onSuccess) { repository.restorePerson(id) }
     fun restoreMedication(id: String, onSuccess: () -> Unit = {}) = perform(onSuccess) { repository.restoreMedication(id) }

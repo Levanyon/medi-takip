@@ -229,4 +229,22 @@
     <string name="history_confirm_skip">%1$s, %2$s: Atlandı olarak işaretlenecek.</string>
     <string name="history_confirm_time">%1$s, %2$s: İçildiği saat %3$s olarak değiştirilecek.</string>
     <string name="history_confirm_remove">%1$s, %2$s: Kayıt kaldırılacak; doz işaretlenmemiş görünecek.</string>
+    <!-- Phase 3: stock -->
+    <string name="stock_section">Stok</string>
+    <string name="stock_tracking">Stok takibi</string>
+    <string name="stock_tracking_help">Her İçildi işaretinde stoktan düşer, Geri Al geri ekler. Azaldığında haber verilir.</string>
+    <string name="stock_quantity">Elde kalan miktar</string>
+    <string name="stock_per_dose">Her dozda kullanılan miktar</string>
+    <string name="stock_threshold">Bu miktara inince haber ver</string>
+    <string name="stock_remaining">Kalan: %1$s</string>
+    <string name="stock_days">yaklaşık %1$d gün</string>
+    <string name="stock_low">Azalıyor</string>
+    <string name="stock_add">Stok ekle</string>
+    <string name="stock_add_amount">Eklenecek miktar</string>
+    <string name="stock_low_banner">%1$s azalıyor · ~%2$d gün</string>
+    <string name="stock_low_banner_no_days">%1$s azalıyor · kalan %2$s</string>
+    <string name="stock_low_notification_title">%1$s azalıyor</string>
+    <string name="stock_low_notification_text">%1$s · yaklaşık %2$d günlük ilaç kaldı</string>
+    <string name="stock_low_notification_text_no_days">%1$s · kalan miktar: %2$s</string>
+    <string name="error_stock">Stok miktarlarını kontrol edin. Her dozda kullanılan miktar 0\'dan büyük olmalı.</string>
 </resources>

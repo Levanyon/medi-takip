@@ -3,6 +3,7 @@ package com.levanyon.meditakip.ui
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -142,7 +143,7 @@ private const val SETTINGS = 3
         }) { padding ->
         MediContent(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
             when {
-                medicationId != null -> MedicationDetail(snapshot, medicationId!!, today, ::back, { p, s -> medicationPersonId = p.id; editScheduleId = s.id }, { archiveMedication = true }, vm, { restoreMedication(medicationId!!) })
+                medicationId != null -> MedicationDetail(snapshot, medicationId!!, today, ::back, { p, s -> medicationPersonId = p.id; editScheduleId = s.id }, { archiveMedication = true }, vm, addStock = { amount -> vm.addStock(medicationId!!, amount) }, restore = { restoreMedication(medicationId!!) })
                 section == PEOPLE && personId != null -> snapshot.people.find { it.id == personId }?.let { person ->
                     PersonDetail(snapshot, person, ::back, { editPersonId = person.id; personEditor = true }, { addMedication(person.id) }, { medicationId = it }) { restorePerson(person) }
                 } ?: LaunchedEffect(personId) { personId = null }
@@ -153,7 +154,8 @@ private const val SETTINGS = 3
                 else -> TodayScreen(snapshot, now, selectedPerson, vm::selectPerson, vm, ::markTaken,
                     addPerson = { addPerson(true) }, addMedication = { addMedication(it) }, manage = ::openPerson, skip = { skipping = it }, changeTime = ::pickTakenTime,
                     warning = if (health.working) null else R.string.reminders_need_attention,
-                    openSettings = { section = SETTINGS; reminderStatus = true })
+                    openSettings = { section = SETTINGS; reminderStatus = true },
+                    openMedication = { id -> section = PEOPLE; personId = snapshot.medications.find { it.id == id }?.personId; medicationId = id })
             }
         }
     }
@@ -168,8 +170,11 @@ private const val SETTINGS = 3
         }
     }
     medicationPersonId?.let { id -> snapshot.people.find { it.id == id }?.let { person ->
-        key(id, editScheduleId) { MedicationEditor(person, snapshot.schedules.find { it.id == editScheduleId }, { medicationPersonId = null; if (setupPending) vm.finishSetup() }) { schedule ->
-            vm.medication(person, snapshot.schedules.find { it.id == editScheduleId }?.medicationId, schedule) { medicationPersonId = null; if (setupPending) finishFirstSetup() }
+        val editing = snapshot.schedules.find { it.id == editScheduleId }
+        val medication = editing?.let { e -> snapshot.medications.find { it.id == e.medicationId } }
+        val stock = medication?.let { StockSettings(it.stockEnabled, it.stockQuantity, it.stockPerDose, it.stockThreshold) }
+        key(id, editScheduleId) { MedicationEditor(person, editing, { medicationPersonId = null; if (setupPending) vm.finishSetup() }, initialStock = stock) { schedule, stockSettings ->
+            vm.medication(person, editing?.medicationId, schedule, stockSettings) { medicationPersonId = null; if (setupPending) finishFirstSetup() }
         } }
     } }
     skipping?.let { item -> SkipDialog(item, { skipping = null }) { note -> skipping = null; skipDose(item, note) } }
@@ -192,7 +197,7 @@ private const val SETTINGS = 3
 @Composable fun TodayScreen(
     snapshot: Snapshot, now: LocalDateTime, selectedPersonId: String?, selectPerson: (String) -> Unit, vm: AppViewModel,
     markTaken: (Occurrence) -> Unit, addPerson: () -> Unit, addMedication: (String?) -> Unit, manage: (String) -> Unit,
-    warning: Int? = null, openSettings: () -> Unit = {}, skip: (Occurrence) -> Unit = {}, changeTime: (Occurrence) -> Unit = {}
+    warning: Int? = null, openSettings: () -> Unit = {}, skip: (Occurrence) -> Unit = {}, changeTime: (Occurrence) -> Unit = {}, openMedication: (String) -> Unit = {}
 ) {
     val today = now.toLocalDate()
     val people = snapshot.people.filter { !it.archived }
@@ -221,6 +226,8 @@ private const val SETTINGS = 3
             val tabs = people.map { p -> PersonTab(p.id, p.name, entries.count { it.personId == p.id && !it.handled }) }
             PersonSelector(tabs, person.id, selectPerson)
         }
+        // Low stock for this person (Phase 3): one calm line per medication, opens its detail (Stok ekle).
+        items(StockPlan.low(snapshot, person.id), key = { "low:${it.medicationId}" }) { low -> LowStockBanner(low) { openMedication(low.medicationId) } }
         if (doses.isEmpty()) {
             item { EmptyState(stringResource(R.string.empty_today_person_title), stringResource(R.string.empty_today_person_body, person.name), Icons.Default.EventAvailable,
                 stringResource(R.string.add_medication_for, person.name)) { addMedication(person.id) } }
@@ -239,5 +246,17 @@ private const val SETTINGS = 3
             }
         }
         item { Box(Modifier.padding(top = MediSpace.small)) { QuietAction(stringResource(R.string.edit_medications, person.name), Icons.Default.Edit) { manage(person.id) } } }
+    }
+}
+
+@Composable private fun LowStockBanner(low: LowStock, open: () -> Unit) {
+    val text = low.daysLeft?.let { stringResource(R.string.stock_low_banner, low.name, it) } ?: stringResource(R.string.stock_low_banner_no_days, low.name, StockPlan.format(low.quantity))
+    Surface(onClick = open, shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.tertiaryContainer, contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+        modifier = Modifier.fillMaxWidth().heightIn(min = MediSize.touch)) {
+        Row(Modifier.padding(horizontal = MediSpace.regular, vertical = MediSpace.medium), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MediSpace.medium)) {
+            Icon(Icons.Default.Inventory2, null)
+            Text(text, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+            Icon(Icons.Default.ChevronRight, null)
+        }
     }
 }

@@ -186,3 +186,10 @@ Decisions the developer made in advance are marked **(developer)**.
 - Closing a Compose dialog that contains a text field froze tests whose config set a screen-size qualifier. This is a known Robolectric issue (robolectric/robolectric#8460).
 - Removing the text field made the freeze disappear. The same flows pass in a test class without the qualifier (`SkipDialogFlowTest`).
 - Layout at small sizes is still covered by the qualifier-based layout and accessibility tests.
+
+**D3.11 Stock in the form, detail, Bugün and notifications.**
+- Medication form → "Diğer seçenekler" → **Stok takibi**, with three fields: current amount, amount per dose (default 1) and "Bu miktara inince haber ver" (empty = no warning). Decimals accept a comma.
+- Invalid values (amount per dose 0, text instead of a number) show an error and save nothing. The repository validates the same rule again.
+- İlaç Detayı: "Kalan: 12 · yaklaşık 6 gün", an "Azalıyor" text and icon when low (never colour alone), and `Stok ekle`.
+- Bugün: one line per low medication of the selected person, "Parol azalıyor · ~5 gün". It opens the medication.
+- Known limitation: the form saves the amount it was opened with. If a dose is marked from a notification *while the form is open*, saving afterwards overwrites that one decrement. This is rare, and visible in the detail screen, where it can be corrected with Stok ekle.

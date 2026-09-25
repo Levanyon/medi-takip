@@ -84,6 +84,6 @@ class AccessibilityTest(private val scale: Float) {
     @Test fun settings() { show { SettingsScreen(viewModel()) }; reachable("Hatırlatma Durumu"); reachable("Koyu") }
     @Test fun reminderStatus() { show { ReminderStatusScreen(viewModel(), access) {} }; reachable("Pil kısıtlaması"); reachable("Test bildirimi gönder") }
     @Test fun personForm() { show { PersonEditor(anne, {}, {}) {} }; reachable("Kaydet"); reachable("Kişiyi Arşivle") }
-    @Test fun medicationForm() { show { MedicationEditor(anne, schedule, {}) {} }; reachable("Saat Ekle"); reachable("Kaydet") }
+    @Test fun medicationForm() { show { MedicationEditor(anne, schedule, {}) { _, _ -> } }; reachable("Saat Ekle"); reachable("Kaydet") }
     @Test fun onboarding() { show { Onboarding(viewModel()) }; reachable("İlk kişiyi ekle"); reachable("Daha sonra") }
 }
