@@ -140,11 +140,6 @@
     <string name="offline_badge">Aileniz için. Yalnızca cihazınızda.</string>
     <string name="channel_name">İlaç hatırlatmaları</string>
     <string name="channel_description">Girdiğiniz ilaç programına ait hatırlatmalar</string>
-    <string name="notification_title">İlaç zamanı 💊</string>
-    <string name="notification_retry_title">İlaç hatırlatması</string>
-    <string name="notification_person_medication">%1$s • %2$s</string>
-    <string name="notification_time">Saat %1$s</string>
-    <string name="notification_retry_body">%1$s henüz İçildi olarak işaretlenmedi.</string>
     <string name="dose_action_description">%1$s, %2$s, %3$s: İçildi olarak işaretle</string>
     <string name="undo_action_description">%1$s, %2$s, %3$s: İçildi kaydını geri al</string>
     <string name="application_section">Uygulama</string>
@@ -220,4 +215,18 @@
     <string name="person_restored_with_medications">%1$s arşivden çıkarıldı. Arşivde %2$d ilacı var, aşağıdaki \"Arşivlenen ilaçlar\" bölümünden geri alabilirsiniz.</string>
     <string name="medication_restored">%1$s arşivden çıkarıldı. Hatırlatmaları bugünden itibaren yeniden başlar.</string>
     <string name="person_archived_description">%1$s, arşivde</string>
+    <!-- Phase 2: notifications (glossary: button "İçildi", status "alındı") -->
+    <string name="notification_dose_title">%1$s · %2$s</string>
+    <string name="notification_dose_text">%1$s · %2$s</string>
+    <string name="notification_followup_title">Hatırlatma · %1$s · %2$s</string>
+    <string name="notification_followup_text">%1$s · %2$s · henüz alındı olarak işaretlenmedi</string>
+    <string name="notification_snoozed">Ertelendi</string>
+    <string name="notification_public_text">İlaç zamanı</string>
+    <string name="notification_group_title">%1$d ilaç zamanı · %2$s</string>
+    <string name="action_taken">İçildi</string>
+    <string name="action_snooze">10 dk ertele</string>
+    <string name="test_notification_title">MediTakip test bildirimi</string>
+    <string name="test_notification_text">Bildirimler çalışıyor. Bu yalnızca bir denemedir.</string>
+    <string name="test_scheduled_title">MediTakip test hatırlatması</string>
+    <string name="test_scheduled_text">Alarmla zamanlanan hatırlatmalar çalışıyor. Bu yalnızca bir denemedir.</string>
 </resources>

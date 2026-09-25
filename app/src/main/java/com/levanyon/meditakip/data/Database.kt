@@ -42,6 +42,8 @@ interface AppDao {
     @Query("DELETE FROM logs WHERE `key` = :key") suspend fun undo(key: String)
     @Query("SELECT * FROM dispatches") suspend fun dispatches(): List<DispatchEntity>
     @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun dispatched(value: DispatchEntity)
+    // AUDIT R10: dispatch records only prevent duplicate delivery within 24 h; older ones are pruned.
+    @Query("DELETE FROM dispatches WHERE sentAt < :cutoff") suspend fun pruneDispatches(cutoff: Long)
 }
 
 @Database(entities = [PersonEntity::class, MedicationEntity::class, MedicationScheduleEntity::class, MedicationLogEntity::class, DispatchEntity::class], version = 1, exportSchema = true)

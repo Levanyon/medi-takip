@@ -24,4 +24,11 @@ class Preferences(context: Context) {
     var nextAlarm: Long
         get() = prefs.getLong("nextAlarm", 0)
         set(value) { prefs.edit().putLong("nextAlarm", value).apply() }
+    /** "10 dk ertele": occurrence key -> epoch millis of the snoozed reminder (DECISIONS D2.5). */
+    var snoozes: Map<String, Long>
+        get() = prefs.getStringSet("snoozes", emptySet()).orEmpty().mapNotNull { entry ->
+            val split = entry.lastIndexOf('=')
+            if (split <= 0) null else entry.substring(split + 1).toLongOrNull()?.let { entry.substring(0, split) to it }
+        }.toMap()
+        set(value) { prefs.edit().putStringSet("snoozes", value.map { (key, at) -> "$key=$at" }.toSet()).apply() }
 }

@@ -8,6 +8,7 @@ class MediApp : Application() {
     val database by lazy { Room.databaseBuilder(this, MediDatabase::class.java, "meditakip.db").build() }
     val repository by lazy { Repository(database) }
     val preferences by lazy { Preferences(this) }
+    val reminderLog by lazy { com.levanyon.meditakip.reminders.ReminderLog(java.io.File(filesDir, "reminder-log.txt")) }
     val reminders by lazy { com.levanyon.meditakip.reminders.Reminders(this) }
     override fun onCreate() { super.onCreate(); reminders.channel() }
 }
