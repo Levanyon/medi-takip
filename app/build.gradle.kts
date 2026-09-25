@@ -6,27 +6,56 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.devtools.ksp")
 }
-val localSigning = Properties().apply {
-    val file = rootProject.file("keystore.properties")
-    if (file.exists()) file.inputStream().use { load(it) }
-}
+/*
+ * Release signing (see docs/RELEASE.md). No key or password ever lives in this repository.
+ * The signing properties file is looked up in this order:
+ *   1. the path in the MEDITAKIP_SIGNING environment variable
+ *   2. %USERPROFILE%\AndroidKeys\meditakip\keystore.properties   (created by tools\new-release-key.ps1)
+ *   3. keystore.properties in the repository root (git-ignored; legacy)
+ * `storeFile` may be absolute or relative to the properties file.
+ */
+val signingFile: File? = listOfNotNull(
+    System.getenv("MEDITAKIP_SIGNING")?.let(::File),
+    File(System.getProperty("user.home"), "AndroidKeys/meditakip/keystore.properties"),
+    rootProject.file("keystore.properties"),
+).firstOrNull { it.isFile }
+val releaseSigning = Properties().apply { signingFile?.inputStream()?.use { load(it) } }
+fun signingValue(key: String): String = releaseSigning.getProperty(key)?.takeIf { it.isNotBlank() }
+    ?: throw GradleException("Signing setting missing: '$key' is not set in $signingFile. See docs/RELEASE.md.")
+
 android {
     namespace = "com.levanyon.meditakip"
     compileSdk = 35
-    defaultConfig { applicationId = "com.levanyon.meditakip"; minSdk = 26; targetSdk = 35; versionCode = 2; versionName = "1.1" }
+    defaultConfig {
+        applicationId = "com.levanyon.meditakip"; minSdk = 26; targetSdk = 35; versionCode = 2; versionName = "1.1"
+        manifestPlaceholders["appLabel"] = "MediTakip"
+    }
     buildFeatures { compose = true }
     bundle { language { enableSplit = false } }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }
     signingConfigs {
-        if (localSigning.isNotEmpty()) create("localRelease") {
-            storeFile = rootProject.file(requireNotNull(localSigning.getProperty("storeFile")))
-            storePassword = requireNotNull(localSigning.getProperty("storePassword"))
-            keyAlias = requireNotNull(localSigning.getProperty("keyAlias"))
-            keyPassword = requireNotNull(localSigning.getProperty("keyPassword"))
+        if (signingFile != null) create("release") {
+            val path = File(signingValue("storeFile"))
+            storeFile = if (path.isAbsolute) path else signingFile.parentFile.resolve(path)
+            storePassword = signingValue("storePassword")
+            keyAlias = signingValue("keyAlias")
+            keyPassword = signingValue("keyPassword")
         }
     }
-    buildTypes { release { isMinifyEnabled = false; if (localSigning.isNotEmpty()) signingConfig = signingConfigs.getByName("localRelease") } }
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            if (signingFile != null) signingConfig = signingConfigs.getByName("release")
+        }
+        // Debug installs as a separate app, so a test build can never replace (or touch the data of)
+        // the real MediTakip on the phone.
+        debug {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+            manifestPlaceholders["appLabel"] = "MediTakip (debug)"
+        }
+    }
     testOptions {
         unitTests.isReturnDefaultValues = true
         unitTests.isIncludeAndroidResources = true
@@ -35,6 +64,17 @@ android {
     }
 }
 ksp { arg("room.schemaLocation", "$projectDir/schemas") }
+
+// Never produce an unsigned (uninstallable) or accidentally debug-signed release APK: stop early instead.
+val verifyReleaseSigning by tasks.registering {
+    doLast {
+        if (signingFile == null) throw GradleException(
+            "No release signing key found. Run tools\\new-release-key.ps1 first " +
+            "(or set the MEDITAKIP_SIGNING environment variable). See docs/RELEASE.md."
+        )
+    }
+}
+tasks.matching { it.name == "preReleaseBuild" }.configureEach { dependsOn(verifyReleaseSigning) }
 dependencies {
     implementation(platform("androidx.compose:compose-bom:2024.12.01"))
     implementation("androidx.activity:activity-compose:1.10.1")

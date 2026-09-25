@@ -12,3 +12,6 @@ signing.properties
 captures/
 dist/
 .kotlin/
+
+# Release signing material must never enter the repository (see docs/RELEASE.md).
+AndroidKeys/
