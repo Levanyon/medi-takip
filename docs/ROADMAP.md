@@ -131,7 +131,8 @@ Goal: handle what really happens in daily life.
 
 - [ ] Log status as an enum-like field: `TAKEN`, `SKIPPED`.
 - [ ] Store `takenAt` (actual time) separately from the scheduled time, plus `recordedAt` (when the entry was made), so late marking can be told apart.
-- [ ] An explicit `Migration(1, 2)` that converts existing data without loss (existing logs become `TAKEN` with `recordedAt = takenAt`).
+- [ ] Revision order as data: add a persistent ordering column to `schedules` (for example `sequence: Long`, increasing per insert, or `createdAt` epoch millis). Decide which one in the Phase 3 plan. The migration fills existing rows in current `rowid` order. `MedicationViews.latestRevision` then uses this column instead of relying on `ORDER BY rowid`. (AUDIT R12)
+- [ ] An explicit `Migration(1, 2)` that converts existing data without loss (existing logs become `TAKEN` with `recordedAt = takenAt`; the revision-order column is filled from `rowid` order).
 - [ ] A migration test: insert realistic v1 data, migrate, and assert that every person, medication, schedule and log survived with correct values. (Needs a test dependency such as `androidx.room:room-testing`; ask before adding it.)
 - [ ] Verify on a real device that already contains v1 data before merging.
 
@@ -151,6 +152,7 @@ Goal: losing or resetting the phone must not mean losing the history.
 
 - [ ] Export backup: full data as versioned JSON (`formatVersion` field) via Storage Access Framework (`CreateDocument`, no storage permission).
 - [ ] Import backup: validate, show a preview (people, medications, log count, date range), then replace all data in a single transaction after explicit confirmation. Never partial writes.
+- [ ] The backup exports and restores the schedules' revision-order column (added in Phase 3.0), and import validates it (present, unique per medication). The newest revision must be the same before and after a round trip. Never rely on insertion order or `rowid` after import. (AUDIT R12)
 - [ ] Round-trip test: export → wipe test DB → import → identical data.
 - [ ] Ayarlar shows "Son yedek: …". Gentle reminder if older than 30 days.
 - [ ] Evaluate Android Auto Backup (`dataExtractionRules`) as an extra layer; explain what it does and does not guarantee.

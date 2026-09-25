@@ -29,7 +29,7 @@ Packages: `data` (Room, repository, preferences) · `domain` (pure Kotlin, no An
 - Never hard-delete anything that has history. Removing a person or medication means archiving it ("Arşivle"). Restoring it ("Arşivden Çıkar") adds a new revision effective from today and never reopens or edits a past revision. Restoring a person does not restore their medications.
 - Schedules are versioned. An edit closes the current revision (`effectiveTo`) and inserts a new one. Never update a past revision in place.
 - A revision with `effectiveTo = effectiveFrom − 1` is "never effective" (it was edited or archived on the day it was created). It is valid data: never "repair" or delete it. See `isNeverEffective`.
-- Pick the newest revision only with `MedicationViews.latestRevision`. It relies on schedules being read `ORDER BY rowid`.
+- Pick the newest revision only with `MedicationViews.latestRevision`. It relies on schedules being read `ORDER BY rowid`. This is temporary: Phase 3.0 replaces it with a persistent revision-order column (AUDIT R12). Until then, never run `VACUUM` or re-insert schedule rows.
 - Person names are always read from `people` (use `Occurrence.personName`). The column `schedules.personName` is still written but never read.
 - Logs (dose records) are keyed by revision, scheduled date and scheduled minute. `takenAt` is the actual instant in epoch millis. Dates are epoch-day, times are minutes-of-day. Use `java.time` and never hardcode a timezone.
 - Past history must never change because of a later edit, rename, deactivation or archive. This includes what screens display for past dates.
