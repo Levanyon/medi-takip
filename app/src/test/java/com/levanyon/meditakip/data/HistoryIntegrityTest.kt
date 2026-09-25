@@ -47,6 +47,10 @@ class HistoryIntegrityTest {
         assertEquals(unchangedPast, rows(s, d))
         assertEquals(listOf("09:00 Parol 2 tablet ○"), rows(s, d.plusDays(1)))
         assertEquals(1, s.logs.size)
+        // B1: the history matrix cell for the past day carries that day's revision (1 tablet), not the latest.
+        val matrix = HistoryMatrices.build(s, "p", d, d.plusDays(1))
+        val past = matrix.rows.single { it.date == d }.cells.values.single { it.minute == 480 }
+        assertEquals("1 tablet", past.schedule.dose)
     }
     @Test fun removingAWeekdayKeepsPastRows() = runBlocking {
         val id = seed()

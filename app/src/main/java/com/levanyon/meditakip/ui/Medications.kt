@@ -28,7 +28,7 @@ fun MedicationDetail(snapshot: Snapshot, medicationId: String, today: LocalDate,
     val person = snapshot.people.find { it.id == medication.personId } ?: return
     val schedule = snapshot.schedules.filter { it.medicationId == medicationId }.let { list -> list.find { it.effectiveTo == null } ?: list.maxByOrNull { it.effectiveFrom } } ?: return
     val matrix = remember(snapshot, medicationId, today) { HistoryMatrices.build(snapshot, person.id, today.minusDays(6), today, medicationId) }
-    var opened by remember { mutableStateOf<Pair<HistoryColumn, Occurrence>?>(null) }
+    var opened by remember { mutableStateOf<Occurrence?>(null) }
     val editable = !medication.archived && !person.archived
     val scroll = rememberScrollState()
     BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -82,9 +82,9 @@ fun MedicationDetail(snapshot: Snapshot, medicationId: String, today: LocalDate,
             }
             item { SectionHeader(stringResource(R.string.last_seven_days)) }
             if (matrix.rows.isEmpty()) item { Text(stringResource(R.string.empty_history_body), color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            else historyTable(matrix, today, scroll, available, sticky = false) { column, occurrence -> opened = column to occurrence }
+            else historyTable(matrix, today, scroll, available, sticky = false) { opened = it }
             if (editable) item { Box(Modifier.padding(top = MediSpace.large)) { QuietAction(stringResource(R.string.delete_medication), Icons.Default.Delete, MaterialTheme.colorScheme.error, delete) } }
         }
     }
-    opened?.let { (column, occurrence) -> HistoryCellDetail(column, occurrence) { opened = null } }
+    opened?.let { HistoryCellDetail(it) { opened = null } }
 }

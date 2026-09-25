@@ -41,7 +41,7 @@ private const val DAYS_PER_PAGE = 14
     val people = snapshot.people.filter { !it.archived }
     val person = people.find { it.id == selectedPersonId } ?: people.firstOrNull()
     var daysShown by rememberSaveable(person?.id) { mutableIntStateOf(DAYS_PER_PAGE) }
-    var opened by remember { mutableStateOf<Pair<HistoryColumn, Occurrence>?>(null) }
+    var opened by remember { mutableStateOf<Occurrence?>(null) }
     val from = today.minusDays(daysShown.toLong() - 1)
     val matrix = remember(snapshot, person?.id, from, today) { person?.let { HistoryMatrices.build(snapshot, it.id, from, today) } }
     val earliest = remember(snapshot, person?.id) { person?.let { HistoryMatrices.earliest(snapshot, it.id) } }
@@ -59,11 +59,11 @@ private const val DAYS_PER_PAGE = 14
                 item { EmptyState(stringResource(R.string.empty_history_title), stringResource(R.string.empty_history_body), Icons.Default.History) }
                 return@LazyColumn
             }
-            historyTable(matrix, today, scroll, available, sticky = true) { column, occurrence -> opened = column to occurrence }
+            historyTable(matrix, today, scroll, available, sticky = true) { opened = it }
             if (earliest != null && from > earliest) item { Box(Modifier.padding(top = MediSpace.medium)) { SecondaryAction(stringResource(R.string.older_records)) { daysShown += DAYS_PER_PAGE } } }
         }
     }
-    opened?.let { (column, occurrence) -> HistoryCellDetail(column, occurrence) { opened = null } }
+    opened?.let { HistoryCellDetail(it) { opened = null } }
 }
 
 /** Column sizes grow with the user's font scale (capped) so cells never become unreadably narrow. */
@@ -79,7 +79,7 @@ private data class TableMetrics(val date: Dp, val cell: Dp)
  * When the table is narrower than the screen it keeps its natural width and is centered.
  */
 @OptIn(ExperimentalFoundationApi::class)
-fun LazyListScope.historyTable(matrix: HistoryMatrix, today: LocalDate, scroll: ScrollState, available: Dp, sticky: Boolean, open: (HistoryColumn, Occurrence) -> Unit) {
+fun LazyListScope.historyTable(matrix: HistoryMatrix, today: LocalDate, scroll: ScrollState, available: Dp, sticky: Boolean, open: (Occurrence) -> Unit) {
     item(key = "legend") { HistoryLegend(matrix, available) }
     if (sticky) stickyHeader(key = "header") { HistoryHeader(matrix, scroll) } else item(key = "header") { HistoryHeader(matrix, scroll) }
     itemsIndexed(matrix.rows, key = { _, row -> "row:${row.date}" }) { index, row ->
@@ -127,7 +127,7 @@ fun LazyListScope.historyTable(matrix: HistoryMatrix, today: LocalDate, scroll: 
     }
 }
 
-@Composable private fun HistoryTableRow(matrix: HistoryMatrix, row: HistoryRow, today: LocalDate, scroll: ScrollState, shaded: Boolean, open: (HistoryColumn, Occurrence) -> Unit) {
+@Composable private fun HistoryTableRow(matrix: HistoryMatrix, row: HistoryRow, today: LocalDate, scroll: ScrollState, shaded: Boolean, open: (Occurrence) -> Unit) {
     val metrics = tableMetrics()
     val scheme = MaterialTheme.colorScheme
     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
@@ -144,17 +144,17 @@ fun LazyListScope.historyTable(matrix: HistoryMatrix, today: LocalDate, scroll: 
     }
 }
 
-@Composable private fun HistoryCell(column: HistoryColumn, row: HistoryRow, width: Dp, open: (HistoryColumn, Occurrence) -> Unit) {
+@Composable private fun HistoryCell(column: HistoryColumn, row: HistoryRow, width: Dp, open: (Occurrence) -> Unit) {
     val occurrence = row.cells[column.key]
     val scheme = MaterialTheme.colorScheme
     val date = TurkishFormat.date(row.date)
     val description = when {
         occurrence == null -> stringResource(R.string.history_cell_none, column.name, column.time.toString(), date)
-        occurrence.takenAt != null -> stringResource(R.string.history_cell_taken, column.name, column.time.toString(), date, TurkishFormat.completed(occurrence.takenAt, occurrence.date))
-        else -> stringResource(R.string.history_cell_open, column.name, column.time.toString(), date)
+        occurrence.takenAt != null -> stringResource(R.string.history_cell_taken, occurrence.schedule.name, column.time.toString(), date, TurkishFormat.completed(occurrence.takenAt, occurrence.date))
+        else -> stringResource(R.string.history_cell_open, occurrence.schedule.name, column.time.toString(), date)
     }
     val base = Modifier.width(width).heightIn(min = MediSize.primaryAction).fillMaxHeight()
-    val modifier = if (occurrence != null) base.clip(MaterialTheme.shapes.small).clickable(role = Role.Button) { open(column, occurrence) } else base
+    val modifier = if (occurrence != null) base.clip(MaterialTheme.shapes.small).clickable(role = Role.Button) { open(occurrence) } else base
     Column(modifier.semantics(mergeDescendants = true) { contentDescription = description }.padding(vertical = MediSpace.small),
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         when {
@@ -168,9 +168,13 @@ fun LazyListScope.historyTable(matrix: HistoryMatrix, today: LocalDate, scroll: 
     }
 }
 
-@Composable fun HistoryCellDetail(column: HistoryColumn, occurrence: Occurrence, dismiss: () -> Unit) {
-    MediDialog(column.name, dismiss) {
-        Text(column.dose, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+/**
+ * Details of one dose. Name and dose come from the occurrence's own schedule revision — the one
+ * valid on that date — never from the column label (which shows the latest revision).
+ */
+@Composable fun HistoryCellDetail(occurrence: Occurrence, dismiss: () -> Unit) {
+    MediDialog(occurrence.schedule.name, dismiss) {
+        Text(occurrence.schedule.dose, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         LabelValue(stringResource(R.string.detail_date), TurkishFormat.longWeekdayDate(occurrence.date))
         LabelValue(stringResource(R.string.detail_planned), occurrence.time.toString())
         LabelValue(stringResource(R.string.detail_taken), occurrence.takenAt?.let { TurkishFormat.completed(it, occurrence.date) } ?: stringResource(R.string.not_marked))

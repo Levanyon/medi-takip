@@ -171,6 +171,20 @@ class ScreenLayoutTest {
         compose.onAllNodes(hasContentDescription("İçildi olarak işaretlenmedi", substring = true)).onFirst().performScrollTo().performClick()
         compose.onNodeWithText("İçildi olarak işaretlenmedi").assertIsDisplayed()
     }
+    @Test fun historyCellDetailShowsTheRevisionValidOnThatDate() {
+        // B1: Parol 1 tablet until yesterday, renamed "Parol 500" / 2 tablet from today.
+        val from = date.minusDays(2).toEpochDay()
+        val old = schedule.copy(id = "r1", name = "Parol", dose = "1 tablet", times = "08:00", start = from, effectiveFrom = from, effectiveTo = date.minusDays(1).toEpochDay())
+        val new = old.copy(id = "r2", name = "Parol 500", dose = "2 tablet", effectiveFrom = date.toEpochDay(), effectiveTo = null)
+        val taken = LocalDate.ofEpochDay(from).atTime(8, 5).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val revised = fixture.copy(schedules = listOf(old, new), logs = listOf(MedicationLogEntity("r1:$from:480", "r1", from, 480, taken)))
+        content(fontScale = 1f) { HistoryScreen(revised, date, "p", {}, {}) }
+        lazyScroll("08:05")
+        compose.onNodeWithText("08:05").performClick()
+        compose.onNodeWithText("1 tablet").assertIsDisplayed()
+        compose.onNodeWithText("Parol").assertIsDisplayed()
+        compose.onNodeWithText("2 tablet").assertDoesNotExist()
+    }
     @Test fun historyWithoutPeopleOrRecordsShowsPolishedEmptyStates() {
         var people = false
         content { HistoryScreen(Snapshot(), date, null, {}) { people = true } }
