@@ -64,24 +64,29 @@ Choose, justify and implement the simplest design that guarantees correctness (p
 - [ ] Schedule versioning: schedules have `validFrom` / `validTo`. Editing a schedule closes the current version (`validTo = yesterday` or today, decide and document) and creates a new one. History for a past date uses the version valid on that date.
 - [ ] Dose logs store the scheduled date and scheduled time they belong to, not only a medication id and a timestamp.
 
-### 1.3 Log model ready for the future
+### 1.3 Log model — moved to Phase 3 (decision 2026-09-25)
 
-- [ ] Log status as an enum-like field: `TAKEN`, `SKIPPED` (SKIPPED UI comes in Phase 3, but the column is added now to avoid a second migration).
-- [ ] Store `takenAt` (actual time) separately from the scheduled time, plus `recordedAt` (when the entry was made) so late marking is distinguishable.
-- [ ] Use `java.time`. Store dates as epoch-day or ISO string, times as minutes-of-day, instants as epoch millis. Do not hardcode a timezone.
+The `status` and `recordedAt` columns and their migration are added together in Phase 3 (section 3.0), in a single `Migration(1, 2)`. Phase 1 makes **no schema change**; the database stays at version 1.
+
+- [ ] Use `java.time`. Store dates as epoch-day or ISO string, times as minutes-of-day, instants as epoch millis. Do not hardcode a timezone. (The v1 schema already follows this; keep it that way.)
 
 ### 1.4 Deletion policy
 
-- [ ] A medication or person that has any history is never hard-deleted. The action is Arşivle (hidden from Bugün and lists, still visible in History). Hard delete only when there is no history, with confirmation.
-- [ ] Archived items can be restored.
+- [ ] A medication or person that has any history is never hard-deleted. The action is **Arşivle**: the item is hidden from Bugün and the lists, but stays visible in History. ("Hard delete only when there is no history" is **deferred**; for now archiving is the only removal.)
+- [ ] Archived items can be restored. Restoring a person restores only the person; medications are restored one by one from Kişi Detay → "Arşivlenen ilaçlar".
 
-### 1.5 Migration
+### 1.5 Phase 1 scope: fixes from `docs/AUDIT.md` (decision 2026-09-25)
 
-- [ ] Explicit `Migration(1, 2)` that converts existing data without loss.
-- [ ] `MigrationTestHelper` test: insert realistic v1 data, migrate, assert every person, medication, schedule and log survived with correct values.
-- [ ] Verify on a real device that already contains v1 data before merging.
+- [ ] B1: a History cell's detail shows the name and dose of the revision that was valid on that date.
+- [ ] B2: a person's name is always read from `people` (notifications, TalkBack, sorting). `schedules.personName` is still written but never read.
+- [ ] B3 + R7: archived people appear in the History selector labeled "Arşivde"; archived medications get their own section in Kişi Detay; restoring from the archive works; "Sil" becomes "Arşivle".
+- [ ] B4: the rule stays "an edit applies from today". A revision with `effectiveTo = effectiveFrom − 1` is a documented, tested "never-effective revision".
+- [ ] B5: the start-date picker does not allow past dates.
+- [ ] R8: History shows "Alındı olarak işaretlenmedi".
+- [ ] R11: README and docs no longer describe the old five-tab layout.
+- [ ] The Phase 0 scenario probe becomes a permanent regression test (`HistoryIntegrityTest`).
 
-Done when: all tests pass, editing a schedule on a test device leaves old History rows unchanged, migration test is green.
+Done when: all tests pass, and editing, archiving or restoring on a test device leaves old History rows unchanged.
 
 ## Phase 2 — Reliable reminders
 
@@ -119,6 +124,16 @@ Done when: all checklist items pass on the real phone.
 ## Phase 3 — Daily-use features
 
 Goal: handle what really happens in daily life.
+
+### 3.0 Log model and schema v2 (moved from Phase 1)
+
+- [ ] Log status as an enum-like field: `TAKEN`, `SKIPPED`.
+- [ ] Store `takenAt` (actual time) separately from the scheduled time, plus `recordedAt` (when the entry was made), so late marking can be told apart.
+- [ ] An explicit `Migration(1, 2)` that converts existing data without loss (existing logs become `TAKEN` with `recordedAt = takenAt`).
+- [ ] A migration test: insert realistic v1 data, migrate, and assert that every person, medication, schedule and log survived with correct values. (Needs a test dependency such as `androidx.room:room-testing`; ask before adding it.)
+- [ ] Verify on a real device that already contains v1 data before merging.
+
+### 3.1 Features
 
 - [ ] Late marking: when marking a dose, actual time defaults to now but can be changed (she often marks later). Stored in `takenAt`.
 - [ ] Atla (skip) with optional short reason. History shows it distinctly from "not marked". Update the History legend.
