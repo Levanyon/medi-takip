@@ -101,3 +101,7 @@ Decisions the developer made in advance are marked **(developer)**.
 - Onboarding's last step says "İlk kişiyi ekle" (primary) or "Daha sonra". Choosing it opens the person form, then the medication form. After the first medication, a snackbar offers "Kontrol et", which opens Hatırlatma Durumu.
 - The flag is stored in preferences, so the flow resumes if the app is closed midway. Closing either form ends the guided flow.
 - "Daha sonra" relies on the Bugün empty state, which already leads to Kişi Ekle.
+**D5.4 Accessibility is checked by tests, not by eye.**
+- `ContrastTest` computes the WCAG 2.1 ratio of every text/background pair the app uses, in both themes: 4.5:1 for text, 3:1 for status markers. The existing palette already passes; no colours changed.
+- `AccessibilityTest` renders 10 main screens at font scales 1.0, 1.3, 1.5 and 2.0 on a 320 dp phone (40 cases). The primary action must be reachable. Every tappable element must have a text or TalkBack label and a layout size of at least 48 × 48 dp.
+- The size check uses the element's layout size, not its visible part, because an element half scrolled out of a list is full size once the user reaches it.

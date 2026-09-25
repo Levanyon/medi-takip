@@ -23,7 +23,7 @@ fun rememberPickerContext(): Context {
     return remember(context, dark) { ContextThemeWrapper(context, if (dark) android.R.style.Theme_Material_Dialog_Alert else android.R.style.Theme_Material_Light_Dialog_Alert) }
 }
 
-private val Light = lightColorScheme(
+internal val LightColors = lightColorScheme(
     primary = Color(0xFF20695D), onPrimary = Color.White,
     primaryContainer = Color(0xFFD9EEE6), onPrimaryContainer = Color(0xFF154B40),
     secondary = Color(0xFF536B61), secondaryContainer = Color(0xFFE4EEE5), onSecondaryContainer = Color(0xFF2C473A),
@@ -34,7 +34,7 @@ private val Light = lightColorScheme(
     surfaceContainerLowest = Color(0xFFFFFFFF), surfaceContainerHigh = Color(0xFFE6ECE4), surfaceContainerHighest = Color(0xFFDFE6DC),
     surfaceVariant = Color(0xFFE4EAE2), onSurfaceVariant = Color(0xFF4D5D54), outlineVariant = Color(0xFFCDD8CE)
 )
-private val Dark = darkColorScheme(
+internal val DarkColors = darkColorScheme(
     primary = Color(0xFF9DD6C2), onPrimary = Color(0xFF063B2D),
     primaryContainer = Color(0xFF234E40), onPrimaryContainer = Color(0xFFD6F2E4),
     secondary = Color(0xFFB5CCBE), secondaryContainer = Color(0xFF30483B), onSecondaryContainer = Color(0xFFD7ECDD),
@@ -50,7 +50,7 @@ private val Dark = darkColorScheme(
 fun MediTheme(theme: String, content: @Composable () -> Unit) {
     val dark = theme == "Dark" || (theme == "System" && isSystemInDarkTheme())
     MaterialTheme(
-        colorScheme = if (dark) Dark else Light,
+        colorScheme = if (dark) DarkColors else LightColors,
         shapes = Shapes(extraSmall = RoundedCornerShape(8.dp), small = RoundedCornerShape(12.dp), medium = RoundedCornerShape(20.dp), large = RoundedCornerShape(28.dp), extraLarge = RoundedCornerShape(36.dp)),
         typography = Typography(
             headlineLarge = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Bold, fontSize = 32.sp, lineHeight = 40.sp),
