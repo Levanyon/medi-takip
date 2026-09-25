@@ -34,6 +34,10 @@ class Preferences(context: Context) {
     var lastBackupAt: Long
         get() = prefs.getLong("lastBackupAt", 0)
         set(value) { prefs.edit().putLong("lastBackupAt", value).apply(); lastBackup.value = value }
+    // Start the grace period on first use of this version, never on every recomposition.
+    val backupStartedAt = prefs.getLong("backupStartedAt", 0).takeIf { it > 0 } ?: System.currentTimeMillis().also {
+        prefs.edit().putLong("backupStartedAt", it).apply()
+    }
     val lastBackup = MutableStateFlow(prefs.getLong("lastBackupAt", 0))
     /** Medications whose low-stock notification was shown and that are still low (DECISIONS D3.8). */
     var lowStockNotified: Set<String>

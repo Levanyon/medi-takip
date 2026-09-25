@@ -86,7 +86,8 @@ class Repository(private val db: MediDatabase, private val clock: Clock = Clock.
      * Replaces all data with a validated backup in one transaction: either everything is replaced or
      * nothing changes (DECISIONS D4.3). Insert order follows the foreign keys.
      */
-    suspend fun replaceAll(content: Snapshot) = db.withTransaction {
+    suspend fun replaceAll(content: Snapshot, beforeReplace: suspend (Snapshot) -> Unit = {}) = db.withTransaction {
+        beforeReplace(Snapshot(dao.people(), dao.medications(), dao.schedules(), dao.logs()))
         dao.clearLogs(); dao.clearSchedules(); dao.clearMedications(); dao.clearPeople(); dao.clearDispatches()
         dao.insertPeople(content.people); dao.insertMedications(content.medications); dao.insertSchedules(content.schedules); dao.insertLogs(content.logs)
     }

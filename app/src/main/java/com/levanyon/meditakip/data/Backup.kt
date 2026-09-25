@@ -2,8 +2,13 @@ package com.levanyon.meditakip.data
 
 import com.levanyon.meditakip.domain.Schedule
 import com.levanyon.meditakip.domain.Snapshot
+import android.util.AtomicFile
+import android.util.JsonReader
+import android.util.JsonToken
+import java.io.StringReader
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
-import org.json.JSONException
 import org.json.JSONObject
 import java.io.File
 import java.io.InputStream
@@ -56,13 +61,65 @@ object BackupCodec {
 
     /** Parses and validates; throws [BackupException] without side effects on any problem. */
     fun decode(text: String): BackupContent {
-        if (text.length > MAX_BYTES) throw BackupException(BackupProblem.TOO_LARGE, "${text.length} characters")
-        val root = try { JSONObject(text) } catch (e: JSONException) { throw BackupException(BackupProblem.NOT_A_BACKUP, "not JSON") }
+        if (text.toByteArray(Charsets.UTF_8).size > MAX_BYTES) throw BackupException(BackupProblem.TOO_LARGE, "${text.length} characters")
+        val root = try { validateJson(text); JSONObject(text) } catch (e: Exception) { throw BackupException(BackupProblem.NOT_A_BACKUP, "not JSON") }
         if (root.optString("format") != FORMAT) throw BackupException(BackupProblem.NOT_A_BACKUP, "format=${root.optString("format")}")
         val version = root.optInt("formatVersion", -1)
         if (version > FORMAT_VERSION) throw BackupException(BackupProblem.TOO_NEW, "formatVersion=$version")
         if (version < 1) throw BackupException(BackupProblem.DAMAGED, "formatVersion missing")
-        return try { read(root) } catch (e: BackupException) { throw e } catch (e: Exception) { throw BackupException(BackupProblem.DAMAGED, e.message ?: e::class.java.simpleName) }
+        return try { validateTypes(root); read(root) } catch (e: BackupException) { throw e } catch (e: Exception) { throw BackupException(BackupProblem.DAMAGED, e.message ?: e::class.java.simpleName) }
+    }
+
+    // org.json accepts malformed JSON (comments, trailing data and coercions). Reject these first.
+    private fun validateJson(text: String) {
+        JsonReader(StringReader(text)).use { reader ->
+            reader.isLenient = false
+            fun value(depth: Int) {
+                require(depth < 32)
+                when (reader.peek()) {
+                    JsonToken.BEGIN_OBJECT -> {
+                        reader.beginObject(); val keys = mutableSetOf<String>()
+                        while (reader.hasNext()) { require(keys.add(reader.nextName())); value(depth + 1) }
+                        reader.endObject()
+                    }
+                    JsonToken.BEGIN_ARRAY -> { reader.beginArray(); while (reader.hasNext()) value(depth + 1); reader.endArray() }
+                    JsonToken.STRING, JsonToken.NUMBER -> reader.nextString()
+                    JsonToken.BOOLEAN -> reader.nextBoolean()
+                    JsonToken.NULL -> reader.nextNull()
+                    else -> error("Invalid JSON token")
+                }
+            }
+            value(0); require(reader.peek() == JsonToken.END_DOCUMENT)
+        }
+    }
+
+    private fun validateTypes(root: JSONObject) {
+        fun check(o: JSONObject, strings: String = "", integers: String = "", booleans: String = "", numbers: String = "", nullableIntegers: String = "", nullableStrings: String = "") {
+            fun fields(names: String) = names.split(' ').filter { it.isNotEmpty() }
+            fields(strings).forEach { require(o.get(it) is String) }
+            fields(integers).forEach { require(o.get(it) is Number && o.get(it).toString().toLongOrNull() != null) }
+            fields(booleans).forEach { require(o.get(it) is Boolean) }
+            fields(numbers).forEach { require(o.get(it) is Number && o.getDouble(it).isFinite()) }
+            fields(nullableIntegers).forEach { require(o.has(it)); if (!o.isNull(it)) check(o, integers = it) }
+            fields(nullableStrings).forEach { require(o.has(it)); if (!o.isNull(it)) check(o, strings = it) }
+        }
+        check(root, strings = "format appVersion", integers = "formatVersion schemaVersion exportedAt")
+        require(root.getLong("formatVersion") == FORMAT_VERSION.toLong())
+        if (root.getLong("schemaVersion") > SCHEMA_VERSION) throw BackupException(BackupProblem.TOO_NEW, "schemaVersion")
+        require(root.getLong("schemaVersion") == SCHEMA_VERSION.toLong())
+        require(root.getLong("exportedAt") in 1..7_258_118_400_000L)
+        fun each(key: String, block: (JSONObject) -> Unit) { val a = root.getJSONArray(key); for (i in 0 until a.length()) block(a.getJSONObject(i)) }
+        each("people") { check(it, "id name note", "color", "archived"); require(it.getLong("color") in Int.MIN_VALUE..Int.MAX_VALUE) }
+        each("medications") { check(it, "id personId", booleans = "archived stockEnabled", numbers = "stockQuantity stockPerDose stockThreshold") }
+        each("schedules") { check(it, "id medicationId personName name dose note times", "days start effectiveFrom sequence", "active", nullableIntegers = "end effectiveTo"); require(it.getLong("days") in 1..127); require(it.getLong("sequence") in 0 until Long.MAX_VALUE) }
+        each("logs") {
+            check(it, "key scheduleId status", "date minute takenAt recordedAt", nullableStrings = "note")
+            require(it.getLong("minute") in 0..1439)
+            require(it.getLong("takenAt") in 1..7_258_118_400_000L && it.getLong("recordedAt") in 1..7_258_118_400_000L)
+        }
+        val settings = root.getJSONObject("settings")
+        check(settings, "theme", "delayMinutes", "notifications retry")
+        require(settings.getLong("delayMinutes") in 5..180 && settings.getString("theme") in setOf("System", "Light", "Dark"))
     }
 
     private fun read(root: JSONObject): BackupContent {
@@ -111,7 +168,7 @@ object BackupCodec {
             if (r.effectiveTo != null && r.effectiveTo < r.effectiveFrom - 1) damaged("schedule ${r.id}: invalid validity interval")
             if (runCatching { Schedule.minutes(r.times) }.getOrNull().isNullOrEmpty()) damaged("schedule ${r.id}: times")
         }
-        schedules.groupBy { it.medicationId }.forEach { (id, list) -> if (list.map { it.sequence }.toSet().size != list.size) damaged("medication $id: revision order is not unique") }
+        schedules.groupBy { it.medicationId }.forEach { (id, list) -> if (list.count { it.effectiveTo == null } > 1) damaged("multiple open revisions"); if (list.map { it.sequence }.toSet().size != list.size) damaged("medication $id: revision order is not unique") }
         logs.forEach { l -> if (l.date !in validDays || l.minute !in 0..1439) damaged("record ${l.key}: date or minute") }
         medications.forEach { m ->
             if (!m.stockQuantity.isFinite() || !m.stockPerDose.isFinite() || !m.stockThreshold.isFinite()) damaged("medication ${m.id}: stock is not a number")
@@ -130,6 +187,7 @@ class Backups(private val repository: Repository, private val preferences: Prefe
 
     suspend fun export(output: OutputStream) {
         val text = BackupCodec.encode(repository.snapshot(), preferences.state.value, clock.millis(), appVersion)
+        require(text.toByteArray(Charsets.UTF_8).size <= BackupCodec.MAX_BYTES) { "Backup exceeds import limit" }
         output.bufferedWriter(Charsets.UTF_8).use { it.write(text) }
         preferences.lastBackupAt = clock.millis()
     }
@@ -140,9 +198,18 @@ class Backups(private val repository: Repository, private val preferences: Prefe
         return BackupCodec.decode(bytes.toString(Charsets.UTF_8))
     }
 
-    suspend fun restore(content: BackupContent) {
-        safetyCopy.writeText(BackupCodec.encode(repository.snapshot(), preferences.state.value, clock.millis(), appVersion), Charsets.UTF_8)
-        repository.replaceAll(content.snapshot)
+    suspend fun restore(content: BackupContent) = withContext(NonCancellable) {
+        // Validate again at the write boundary, including callers other than the document picker.
+        BackupCodec.decode(BackupCodec.encode(content.snapshot, content.settings, content.exportedAt, appVersion))
+        repository.replaceAll(content.snapshot) { current ->
+            val text = BackupCodec.encode(current, preferences.state.value, clock.millis(), appVersion)
+            require(text.toByteArray(Charsets.UTF_8).size <= BackupCodec.MAX_BYTES) { "Safety copy exceeds import limit" }
+            val file = AtomicFile(safetyCopy)
+            val stream = file.startWrite()
+            try { stream.write(text.toByteArray(Charsets.UTF_8)); file.finishWrite(stream) }
+            catch (e: Exception) { file.failWrite(stream); throw e }
+            check(file.openRead().use { it.readBytes() }.contentEquals(text.toByteArray(Charsets.UTF_8))) { "Safety copy could not be verified" }
+        }
         preferences.save(content.settings)
         preferences.snoozes = emptyMap()
         preferences.lowStockNotified = emptySet()

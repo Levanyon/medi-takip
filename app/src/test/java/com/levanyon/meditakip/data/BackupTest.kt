@@ -125,4 +125,55 @@ class BackupTest {
         assertThrows(Exception::class.java) { runBlocking { repo.replaceAll(invalid) } }
         assertEquals(before, repo.snapshot())
     }
+
+    @Test fun rejectsMissingPhaseThreeFieldsAndCoercions() {
+        val cases = listOf(
+            corrupt { it.put("schemaVersion", 99) },
+            corrupt { it.getJSONArray("logs").getJSONObject(0).remove("status") },
+            corrupt { it.getJSONArray("logs").getJSONObject(0).put("takenAt", Long.MAX_VALUE) },
+            corrupt { it.getJSONArray("medications").getJSONObject(0).remove("stockQuantity") },
+            corrupt { it.getJSONArray("medications").getJSONObject(0).put("stockEnabled", "false") },
+            corrupt { it.getJSONArray("schedules").getJSONObject(0).put("days", 4294967297L) },
+            corrupt { it.getJSONArray("schedules").getJSONObject(0).put("sequence", 1.5) },
+            corrupt { it.getJSONObject("settings").put("delayMinutes", -5) },
+            corrupt { it.remove("exportedAt") },
+        )
+        cases.forEach { assertThrows(BackupException::class.java) { BackupCodec.decode(it) } }
+        assertThrows(BackupException::class.java) { BackupCodec.decode(exportText() + " trailing") }
+        assertThrows(BackupException::class.java) { BackupCodec.decode(exportText().replace("\"format\":", "format:")) }
+    }
+
+    @Test fun failedSafetyCopyLeavesDatabaseAndPreferencesUntouched() = runBlocking {
+        val blocked = File(context.filesDir, "not-a-directory").apply { writeText("block") }
+        val unsafe = Backups(repo, preferences, blocked, "test", clock)
+        val replacement = BackupContent(clock.millis(), Snapshot(), AppSettings())
+        assertThrows(Exception::class.java) { runBlocking { unsafe.restore(replacement) } }
+        assertEquals(realistic, repo.snapshot())
+        assertEquals(settings, preferences.state.value)
+    }
+
+    @Test fun restoreRevalidatesBeforeWritingEvenWithoutInspect() = runBlocking {
+        val invalid = realistic.copy(people = listOf(PersonEntity("p", "")))
+        assertThrows(BackupException::class.java) { runBlocking { backups.restore(BackupContent(clock.millis(), invalid, settings)) } }
+        assertEquals(realistic, repo.snapshot())
+    }
+
+    @Test fun failedExportDoesNotAdvanceLastBackup() {
+        preferences.lastBackupAt = 123L
+        val output = object : java.io.OutputStream() { override fun write(b: Int) { throw java.io.IOException("full") } }
+        assertThrows(java.io.IOException::class.java) { runBlocking { backups.export(output) } }
+        assertEquals(123L, preferences.lastBackupAt)
+    }
+
+    @Test fun replacementRollsBackAfterInsertsHaveStarted() = runBlocking {
+        val duplicate = realistic.copy(logs = realistic.logs + realistic.logs.first())
+        assertThrows(Exception::class.java) { runBlocking { repo.replaceAll(duplicate) } }
+        assertEquals(realistic, repo.snapshot())
+    }
+
+    @Test fun gracePeriodSurvivesPreferencesRecreation() {
+        val started = preferences.backupStartedAt
+        assertEquals(started, Preferences(context).backupStartedAt)
+        assertFalse(BackupReminder.due(true, 0, started, started))
+    }
 }
