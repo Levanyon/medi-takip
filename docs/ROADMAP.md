@@ -108,32 +108,34 @@ Goal: a reminder fires at the right time, shows whose medication it is, and surv
 
 ### 2.1 Scheduling
 
-- [ ] `NotificationChannel` "İlaç hatırlatmaları", high importance.
-- [ ] Use `AlarmManager` exact alarms (`setExactAndAllowWhileIdle`, or `setAlarmClock` if justified — explain the trade-off: status-bar icon vs reliability). Schedule the next occurrence(s) computed from the Phase 1 domain function.
-- [ ] Explain and decide the permission strategy: `POST_NOTIFICATIONS` (Android 13+), `SCHEDULE_EXACT_ALARM` (denied by default for new installs on Android 14+) vs `USE_EXACT_ALARM`. The app is sideloaded, not on Play Store — state how that affects the choice.
-- [ ] Reschedule all alarms on: `BOOT_COMPLETED`, `TIME_SET`, `TIMEZONE_CHANGED`, `MY_PACKAGE_REPLACED`, exact-alarm permission granted, and every medication/schedule/person change.
-- [ ] Receivers doing database work use `goAsync()` (or WorkManager) correctly.
+- [x] `NotificationChannel` "İlaç hatırlatmaları", high importance.
+- [x] Use `AlarmManager` exact alarms (`setExactAndAllowWhileIdle`, or `setAlarmClock` if justified — explain the trade-off: status-bar icon vs reliability). Schedule the next occurrence(s) computed from the Phase 1 domain function.
+- [x] Explain and decide the permission strategy: `POST_NOTIFICATIONS` (Android 13+), `SCHEDULE_EXACT_ALARM` (denied by default for new installs on Android 14+) vs `USE_EXACT_ALARM`. The app is sideloaded, not on Play Store — state how that affects the choice.
+- [x] Reschedule all alarms on: `BOOT_COMPLETED`, `TIME_SET`, `TIMEZONE_CHANGED`, `MY_PACKAGE_REPLACED`, exact-alarm permission granted, and every medication/schedule/person change.
+- [x] Receivers doing database work use `goAsync()` (or WorkManager) correctly.
 
 ### 2.2 Notification content and actions
 
-- [ ] Title shows the person first: e.g. `Kardeş · Parol` / `1 tablet · 08:00`.
-- [ ] Doses due at the same time are grouped sensibly.
-- [ ] Actions: İçildi (writes the log without opening the app) and 10 dk ertele. Immutable `PendingIntent`s.
-- [ ] Optional follow-up reminder if not marked after N minutes (setting, default one follow-up after 30 minutes; can be turned off).
-- [ ] Marking a dose in the app cancels its pending notification/follow-up.
+- [x] Title shows the person first: e.g. `Kardeş · Parol` / `1 tablet · 08:00`.
+- [x] Doses due at the same time are grouped sensibly.
+- [x] Actions: İçildi (writes the log without opening the app) and 10 dk ertele. Immutable `PendingIntent`s.
+- [x] Optional follow-up reminder if not marked after N minutes (setting, default one follow-up after 30 minutes; can be turned off).
+- [x] Marking a dose in the app cancels its pending notification/follow-up.
 
 ### 2.3 Reminder health screen
 
-- [ ] Ayarlar → Hatırlatma Durumu: shows each requirement with clear status and a "Düzelt" button that opens the right system screen: notification permission, exact alarm permission, battery optimization, Samsung "sleeping apps" guidance (plain Turkish instructions).
-- [ ] "Test bildirimi gönder" button.
-- [ ] If reminders are not fully working, Bugün shows a clear, non-alarming banner linking to this screen.
+- [x] Ayarlar → Hatırlatma Durumu: shows each requirement with clear status and a "Düzelt" button that opens the right system screen: notification permission, exact alarm permission, battery optimization, Samsung "sleeping apps" guidance (plain Turkish instructions).
+- [x] "Test bildirimi gönder" button.
+- [x] If reminders are not fully working, Bugün shows a clear, non-alarming banner linking to this screen.
 
 ### 2.4 Verification
 
-- [ ] Unit tests for next-trigger computation.
-- [ ] Manual test checklist (real Samsung): app swiped away, phone rebooted, Doze forced (`adb shell dumpsys deviceidle force-idle`), time changed, three-button and gesture navigation, notification action while locked.
+- [x] Unit tests for next-trigger computation.
+- [ ] Manual test checklist (real Samsung): app swiped away, phone rebooted, Doze forced (`adb shell dumpsys deviceidle force-idle`), time changed, three-button and gesture navigation, notification action while locked. *(Pending: combined device checklist at the end of all phases.)*
 
 Done when: all checklist items pass on the real phone.
+
+Status (2026-09-25): implemented and unit/Robolectric-tested (102 tests). Decisions in `docs/DECISIONS.md` (D2.1–D2.11). Device checklist pending.
 
 ## Phase 3 — Daily-use features
 
