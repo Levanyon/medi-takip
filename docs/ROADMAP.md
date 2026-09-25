@@ -8,7 +8,7 @@ Primary real user: one mother managing medications for herself and her child, on
 
 ## 0. Working rules for Claude Code (apply to every phase)
 
-1. One phase per session. Never start the next phase without explicit approval.
+1. One phase per session. Never start the next phase without explicit approval. Follow the "Order of work" section below, not the phase numbers.
 2. Plan first. At the start of a phase, read the relevant code, then present a short plan: files to change, schema impact, risks, test plan. Wait for approval.
 3. Explain decisions. The developer is learning. For each important change, explain what was done and why, in plain language. Do not hide complexity, but do not add unnecessary complexity either.
 4. Small steps. Work in small, buildable increments. After each increment: build, run tests, commit with a clear message.
@@ -27,6 +27,18 @@ Useful commands:
 .\gradlew.bat connectedDebugAndroidTest
 .\gradlew.bat lint
 ```
+
+## Order of work (decision 2026-09-25)
+
+Phase numbers stay the same (other documents refer to them, e.g. "Phase 3.0"); only the **order** changed:
+
+**Phase 0 ✓ → Phase 1 ✓ → release signing key (pulled forward from Phase 6) → Phase 2 → Phase 5 → Phase 3 → Phase 4 → Phase 6**
+
+Consequences of the new order:
+- Phase 5 comes before Phase 3. Its accessibility and font-scale pass does not cover the screens that Phase 3 adds (late marking, Atla, history correction, stock). Phase 3 therefore repeats that check for its new screens.
+- Phase 5's glossary may already define "Atlandı". The skip feature itself arrives in Phase 3.
+- Phase 3.0 (schema v2 including the revision-order column, AUDIT R12) still comes before Phase 4's backup, so the backup can export that column from the start.
+- The signing keystore item of Phase 6 is done early, before Phase 2, so that every phone installation from then on uses the release key. The app was not in real use yet, so reinstalling (and losing the test data) was acceptable.
 
 ## Phase 0 — Audit and safety net (no feature code)
 
@@ -143,6 +155,7 @@ Goal: handle what really happens in daily life.
 - [ ] Correcting history: tapping a History cell allows marking taken / skipped / clearing, with confirmation for past days. Keep existing Taken/Undo on Bugün.
 - [ ] Stock tracking (optional per medication): current quantity, amount per dose, low-stock threshold. Taking a dose decrements stock; undo restores it. Bugün shows "Parol azalıyor · ~5 gün" and a notification when threshold is reached. "Stok ekle" action.
 - [ ] Snackbar undo for reversible actions; confirmation dialogs for irreversible ones.
+- [ ] Because Phase 5 ran before this phase, repeat the Phase 5 accessibility checks for every new screen and dialog: font scales 1.0–2.0, 48 dp touch targets, TalkBack, contrast, and never color alone.
 
 Done when: features tested with unit tests (stock math, status transitions) and on device.
 
@@ -183,7 +196,7 @@ Goal: safe installation and safe future updates on the real phone.
 - [ ] Test coverage for: domain schedule logic, migrations, reminder trigger computation, stock math, backup round-trip. Key UI flows with Compose tests.
 - [ ] `lint` clean or documented exceptions.
 - [ ] Release build with R8; verify Room/serialization still work after minification.
-- [ ] Signing keystore: create once, store it and its passwords in two safe places outside the repo. An update signed with a different key cannot be installed over the old app; uninstalling deletes all data.
+- [ ] Signing keystore: create once, store it and its passwords in two safe places outside the repo. An update signed with a different key cannot be installed over the old app; uninstalling deletes all data. *(Pulled forward to before Phase 2; see `docs/RELEASE.md`.)*
 - [ ] `versionCode` / `versionName` policy and `CHANGELOG.md`.
 - [ ] Update procedure documented in `docs/RELEASE.md`: export backup → install update over existing app → verify data.
 - [ ] Parallel run: 1–2 weeks of real use alongside the family's current method before relying on the app alone.
