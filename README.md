@@ -1,0 +1,93 @@
+# MediTakip
+
+Current update: **V1.1**. The existing app now uses a Turkish interface with five sections, dedicated medication/person details, medication usage history and first-launch permission onboarding. See [V1.1 changes and verification](docs/V1.1.md). Existing Room data is retained; upgrade with the same signing key without uninstalling.
+
+Offline native Android medication schedule tracker for families. Package: `com.levanyon.meditakip`. Android 8.0+ (API 26). Kotlin, Compose Material 3, MVVM, Room. No Firebase, network permission, cloud services, ads or analytics. It displays only user-entered schedules and provides no medical advice.
+
+## Features
+
+- Multiple people with notes and initial avatars; add/edit/delete.
+- Medications with plain-text dose, notes, multiple 24-hour times, weekdays, inclusive start/end dates, and active status.
+- Today grouped by person, completion counts, remaining count, percentage, Taken and Undo.
+- History with day details, last 30 days and a date picker for earlier days.
+- Local notifications, optional second reminder (15/30/60/120 minutes), Android notification/exact-alarm settings, system/light/dark theme.
+- Versioned schedules and UTC completion timestamps persisted by Room.
+
+Schedule changes take effect today. Previous days are preserved; today's completed entries are retained. Deleting a person or medication archives it, stops future schedules and retains history. Dates before a medication was first entered are not fabricated as historical schedules. Times follow the phone's current time zone. DST gaps shift forward; repeated local times occur once at the earlier offset.
+
+Local backup export/import is deferred to V2. `data/LocalBackup.kt` defines the boundary and validation requirements. Android cloud backup and automatic device transfer are disabled. Uninstalling or clearing app storage removes records.
+
+## Open and build on Windows
+
+1. Install Android Studio for Windows. Do not use WSL. Open this folder with **File > Open**.
+2. In **Tools > SDK Manager**, install Android SDK Platform 35, Android SDK Build-Tools 35.0.0, and Platform-Tools.
+3. In **File > Settings > Build, Execution, Deployment > Build Tools > Gradle**, select JDK 17 (or a compatible embedded JDK). The project pins Gradle 8.11.1, AGP 8.9.1 and Kotlin 2.0.21.
+4. Let Gradle sync finish. Initial builds require Internet to download development dependencies; the installed app operates fully offline.
+5. `local.properties` must point to your SDK, for example `sdk.dir=C:/Users/YOUR_NAME/AppData/Local/Android/Sdk`. Android Studio normally creates this file. It is ignored by Git.
+6. Select **Build > Build Bundle(s) / APK(s) > Build APK(s)** (some Studio versions label this **Generate App Bundles or APKs > Generate APKs**), with the **debug** build variant selected.
+7. The manually installable file is `app/build/outputs/apk/debug/app-debug.apk`. Use this build command/menu, rather than a Run-only test APK.
+
+From Android Studio's PowerShell terminal:
+
+```powershell
+.\gradlew.bat testDebugUnitTest lintDebug assembleDebug
+```
+
+This workspace also has an ignored, project-local Windows toolchain in `.tools`. To use it from PowerShell on this machine:
+
+```powershell
+$env:JAVA_HOME = "$PWD\.tools\jdk\jdk-17.0.18+8"
+$env:GRADLE_USER_HOME = "$PWD\.tools\gradle-home"
+.\gradlew.bat testDebugUnitTest lintDebug assembleDebug assembleRelease
+```
+
+`assembleRelease` produces an **unsigned** release APK unless you supply your own signing configuration. An unsigned APK cannot be installed. No release key or password is provided in this project.
+
+## Create your release key and signed APK in Android Studio
+
+1. Choose **Build > Generate Signed Bundle / APK**.
+2. Choose **APK**, then **Next**; select the `app` module.
+3. Under **Key store path**, click **Create new**.
+4. Choose a location outside this repository, for example `C:\Users\YOUR_NAME\AndroidKeys\MediTakip-release.jks`. Create that folder first if necessary.
+5. Set a strong keystore password and key password. Use alias `meditakip`. Choose validity of at least 25 years and complete the certificate identity fields. Store the passwords securely.
+6. Finish key creation, select the key, and click **Next**. Choose **release** and a destination folder you can find. Enable V1/V2 signing if your Studio version shows signature-version checkboxes.
+7. Click **Create/Finish**. Open the output using the build notification's **Locate** link. It is normally `app/release/app-release.apk`, or the destination you selected.
+8. Rename the **signed** APK to `MediTakip-release.apk`. Renaming does not affect its signature. Never rename `app-release-unsigned.apk` and mistake it for a signed build.
+9. Keep an offline copy of the keystore and its passwords. All updates to an installed release must use that same key and package name. Increment `versionCode` for later releases.
+
+Optional command-line signing configuration: create an ignored `keystore.properties` locally with `storeFile` (use forward slashes in the Windows path), `storePassword`, `keyAlias`, and `keyPassword`. Then `gradlew.bat assembleRelease` signs the release. Never commit that file, credentials, `.jks`, `.keystore`, `.p12`, or `.pfx` files; `.gitignore` excludes them.
+
+No Google Play Console or paid account is needed. Android's official [signing guide](https://developer.android.com/studio/publish/app-signing) and [APK build guide](https://developer.android.com/build/build-for-release) describe these workflows.
+
+## Install on a physical Android phone
+
+1. Build `app-debug.apk` for testing, or create `MediTakip-release.apk` as above for ongoing use.
+2. Connect the unlocked phone to Windows by USB and choose **File transfer** on the phone.
+3. Copy the APK to the phone's **Download** folder using Windows File Explorer.
+4. Open the phone's Files app, open Downloads, and tap the APK.
+5. If prompted, allow **Install unknown apps / Allow from this source** for that Files app, return to the installer, and tap **Install**. You can turn that permission off afterward.
+6. Open MediTakip and complete the Turkish welcome screens. Use **Kişiler** to add a person and **İlaçlar** to add medication. In **Ayarlar > Bildirim ve Hatırlatmalar**, allow notifications on Android 13+ and optionally allow **Alarm ve Hatırlatıcılar** on Android 12+. Without exact access, Android may delay reminders.
+7. Enter a test schedule a few minutes ahead, close the app normally, lock the phone, and verify delivery. Check a reboot and optional retry using `docs/DEVICE-TESTS.md` before relying on your phone's reminder configuration.
+
+Alternative USB debugging installation: enable Developer options and USB debugging, authorize the Windows computer on the phone, then run:
+
+```powershell
+& "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe" devices
+& "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe" install -r .\app\build\outputs\apk\debug\app-debug.apk
+```
+
+Updates signed with the same key retain app data. A debug build cannot be replaced by a release signed with a different key. Uninstalling the debug build first removes its data; use a signed release before entering records you intend to keep.
+
+## Reminder behavior and limitations
+
+One next-event alarm is rebuilt after delivery, schedule/settings changes, app resume, boot, app update, clock changes, time-zone changes and exact-permission grant. Exact access is checked each time; SecurityException falls back to an inexact alarm. A separate inexact safety alarm accompanies exact scheduling. Dispatch records prevent repeat delivery. Completing a dose suppresses retry and cancels its visible notification. Recovery deliberately skips elapsed reminders after reboot/time changes and schedules future events; it does not issue a backlog of historical reminders.
+
+Android can delay alarms while idle, especially multiple alarms close together. Force-stop prevents reminders until the app is reopened. A powered-off phone cannot notify. Manufacturer battery restrictions and blocked notification channels can also interfere. No app can bypass these controls. V1 does not promise medical-grade timing.
+
+## Verification
+
+JVM tests cover weekday/time generation, date boundaries, DST, inactive schedules, future starts, retry across midnight and completion suppression. Robolectric tests exercise the real Room database, repository transactions, duplicate Taken, Undo, history-preserving edits, archive behavior and rollback on invalid edits.
+
+Reports: `app/build/reports/tests/testDebugUnitTest/index.html` and `app/build/reports/lint-results-debug.html`. Room's version-1 schema is checked in under `app/schemas`; future schema changes must supply migrations rather than destructive fallback. See `docs/ARCHITECTURE.md` and `docs/DEVICE-TESTS.md`.
+
+Physical-device delivery and reboot tests require a connected device; passing unit tests and a build alone does not verify those behaviors.
