@@ -60,6 +60,7 @@ private const val SETTINGS = 3
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     LaunchedEffect(Unit) { while (true) { now = LocalDateTime.now().truncatedTo(ChronoUnit.MINUTES); delay(1000) } }
+    val lastBackup by vm.lastBackup.collectAsStateWithLifecycle()
     val today = now.toLocalDate()
     val formOpen = personEditor || medicationPersonId != null
     fun back() { when { medicationId != null -> medicationId = null; personId != null -> personId = null; reminderStatus -> reminderStatus = false; else -> section = TODAY } }
@@ -145,20 +146,22 @@ private const val SETTINGS = 3
             when {
                 medicationId != null -> MedicationDetail(snapshot, medicationId!!, today, ::back, { p, s -> medicationPersonId = p.id; editScheduleId = s.id }, { archiveMedication = true }, vm, addStock = { amount -> vm.addStock(medicationId!!, amount) }, restore = { restoreMedication(medicationId!!) })
                 section == PEOPLE && personId != null -> snapshot.people.find { it.id == personId }?.let { person ->
-                    PersonDetail(snapshot, person, ::back, { editPersonId = person.id; personEditor = true }, { addMedication(person.id) }, { medicationId = it }) { restorePerson(person) }
+                    PersonDetail(snapshot, person, ::back, { editPersonId = person.id; personEditor = true }, { addMedication(person.id) }, { medicationId = it }, restore = { restorePerson(person) }, report = { vm.createReport(person.id) })
                 } ?: LaunchedEffect(personId) { personId = null }
                 section == PEOPLE -> PeopleScreen(snapshot, { personId = it }) { addPerson(false) }
                 section == HISTORY -> HistoryScreen(snapshot, today, selectedPerson, vm::selectPerson, goToPeople = { section = PEOPLE }, corrections = vm)
                 section == SETTINGS && reminderStatus -> ReminderStatusScreen(vm, access, ::back)
-                section == SETTINGS -> SettingsScreen(vm) { reminderStatus = true }
+                section == SETTINGS -> SettingsScreen(vm, hasPeople = snapshot.people.isNotEmpty()) { reminderStatus = true }
                 else -> TodayScreen(snapshot, now, selectedPerson, vm::selectPerson, vm, ::markTaken,
                     addPerson = { addPerson(true) }, addMedication = { addMedication(it) }, manage = ::openPerson, skip = { skipping = it }, changeTime = ::pickTakenTime,
                     warning = if (health.working) null else R.string.reminders_need_attention,
                     openSettings = { section = SETTINGS; reminderStatus = true },
+                    openBackup = { section = SETTINGS; reminderStatus = false },
                     openMedication = { id -> section = PEOPLE; personId = snapshot.medications.find { it.id == id }?.personId; medicationId = id })
             }
         }
     }
+    BackupFileDialogs(vm)
     if (personEditor) {
         val editing = snapshot.people.find { it.id == editPersonId }
         PersonEditor(editing, { personEditor = false; continueToMedication = false; if (setupPending) vm.finishSetup() }, archive = editing?.let { { archivePerson = true } }) { person ->
@@ -197,8 +200,9 @@ private const val SETTINGS = 3
 @Composable fun TodayScreen(
     snapshot: Snapshot, now: LocalDateTime, selectedPersonId: String?, selectPerson: (String) -> Unit, vm: AppViewModel,
     markTaken: (Occurrence) -> Unit, addPerson: () -> Unit, addMedication: (String?) -> Unit, manage: (String) -> Unit,
-    warning: Int? = null, openSettings: () -> Unit = {}, skip: (Occurrence) -> Unit = {}, changeTime: (Occurrence) -> Unit = {}, openMedication: (String) -> Unit = {}
+    warning: Int? = null, openSettings: () -> Unit = {}, skip: (Occurrence) -> Unit = {}, changeTime: (Occurrence) -> Unit = {}, openMedication: (String) -> Unit = {}, openBackup: () -> Unit = {}
 ) {
+    val lastBackup by vm.lastBackup.collectAsStateWithLifecycle()
     val today = now.toLocalDate()
     val people = snapshot.people.filter { !it.archived }
     val entries = remember(snapshot, today) { Schedule.day(snapshot, today) }
@@ -246,6 +250,9 @@ private const val SETTINGS = 3
             }
         }
         item { Box(Modifier.padding(top = MediSpace.small)) { QuietAction(stringResource(R.string.edit_medications, person.name), Icons.Default.Edit) { manage(person.id) } } }
+        if (BackupReminder.due(snapshot.people.isNotEmpty(), lastBackup, vm.backupStartedAt, now.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli())) item {
+            QuietAction(stringResource(if (lastBackup == 0L) R.string.backup_first_due else R.string.backup_due), Icons.Default.Save, action = openBackup)
+        }
     }
 }
 

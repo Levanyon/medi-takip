@@ -161,18 +161,28 @@ class Reminders(private val app: MediApp) {
 
     /** "İçildi" from the notification: records the dose exactly like the button in the app. */
     suspend fun markTakenFromNotification(key: String) {
-        val date = occurrenceDate(key) ?: return
-        val item = Schedule.day(app.repository.snapshot(), date).find { it.key == key }
-        if (item != null && !item.handled) app.repository.completions.taken(item)
-        notifications.cancel(key, DOSE_ID)
+        lock.withLock {
+            val date = occurrenceDate(key) ?: return@withLock
+            val item = Schedule.day(app.repository.snapshot(), date).find { it.key == key }
+            if (item != null && !item.handled) app.repository.completions.taken(item)
+            notifications.cancel(key, DOSE_ID)
+        }
         rebuild(false)
     }
 
     /** "10 dk ertele": hides the notification and shows it again after [ReminderPlan.SNOOZE_MINUTES]. */
     suspend fun snooze(key: String, now: Instant = Instant.now()) {
-        app.preferences.snoozes = app.preferences.snoozes + (key to now.plus(Duration.ofMinutes(ReminderPlan.SNOOZE_MINUTES)).toEpochMilli())
-        notifications.cancel(key, DOSE_ID)
+        lock.withLock {
+            app.preferences.snoozes = app.preferences.snoozes + (key to now.plus(Duration.ofMinutes(ReminderPlan.SNOOZE_MINUTES)).toEpochMilli())
+            notifications.cancel(key, DOSE_ID)
+        }
         rebuild(false)
+    }
+
+    /** Serialize restore with alarm delivery/actions; never issue a historical reminder backlog. */
+    suspend fun restoreData(replace: suspend () -> Unit) {
+        lock.withLock { replace(); notifications.cancelAll() }
+        try { rebuild(false) } catch (e: Exception) { app.reminderLog.record("restore-reschedule", e) }
     }
 
     /** Immediate test notification on the real channel. Returns false when notifications are blocked. */

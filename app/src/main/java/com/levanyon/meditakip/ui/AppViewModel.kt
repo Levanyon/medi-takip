@@ -9,6 +9,9 @@ import com.levanyon.meditakip.data.*
 import com.levanyon.meditakip.domain.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import android.net.Uri
 
 /** The dose-record operations screens may call; implemented by [AppViewModel], faked in tests. */
 interface DoseCorrections {
@@ -34,8 +37,70 @@ class AppViewModel(application: Application) : AndroidViewModel(application), Do
     val snapshot = combine(stored, pending) { state, changes -> state.copy(logs = state.logs.filter { it.key !in changes } + changes.values.filterNotNull()) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), Snapshot())
     val error = MutableStateFlow<String?>(null)
     val saving = MutableStateFlow(false)
+    val lastBackup = app.preferences.lastBackup
+    val backupStartedAt = app.preferences.backupStartedAt
+    val backupPreview = MutableStateFlow<BackupContent?>(null)
+    val fileBusy = MutableStateFlow(false)
+    val fileMessage = MutableStateFlow<String?>(null)
+    val reportToShare = MutableStateFlow<Uri?>(null)
+    val safetyCopyAvailable = MutableStateFlow(app.backups.safetyCopy.exists())
+
+    private fun fileOperation(failure: Int, operation: suspend () -> Unit) {
+        if (fileBusy.value || saving.value || pending.value.isNotEmpty()) {
+            fileMessage.value = app.getString(R.string.backup_busy); return
+        }
+        fileBusy.value = true
+        viewModelScope.launch {
+            try { operation() }
+            catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                val message = if (e is BackupException) when (e.problem) {
+                    BackupProblem.NOT_A_BACKUP -> R.string.backup_not_a_backup
+                    BackupProblem.TOO_NEW -> R.string.backup_too_new
+                    BackupProblem.TOO_LARGE -> R.string.backup_too_large
+                    BackupProblem.DAMAGED -> R.string.backup_damaged
+                } else failure
+                fileMessage.value = app.getString(message)
+            } finally { fileBusy.value = false; safetyCopyAvailable.value = app.backups.safetyCopy.exists() }
+        }
+    }
+    fun exportBackup(uri: Uri) = fileOperation(R.string.backup_save_failed) {
+        withContext(Dispatchers.IO) { requireNotNull(app.contentResolver.openOutputStream(uri, "wt")).use { app.backups.export(it) } }
+        fileMessage.value = app.getString(R.string.backup_saved)
+    }
+    fun inspectBackup(uri: Uri) {
+        backupPreview.value = null
+        fileOperation(R.string.backup_damaged) {
+            backupPreview.value = withContext(Dispatchers.IO) { app.backups.inspect(requireNotNull(app.contentResolver.openInputStream(uri))) }
+        }
+    }
+    fun inspectSafetyCopy() = fileOperation(R.string.backup_damaged) {
+        backupPreview.value = withContext(Dispatchers.IO) { app.backups.inspect(android.util.AtomicFile(app.backups.safetyCopy).openRead()) }
+    }
+    fun confirmRestore() {
+        val content = backupPreview.value ?: return
+        fileOperation(R.string.backup_restore_failed) {
+            withContext(Dispatchers.IO + kotlinx.coroutines.NonCancellable) {
+                app.reminders.restoreData { app.backups.restore(content) }
+            }
+            backupPreview.value = null
+            fileMessage.value = app.getString(R.string.backup_restored)
+        }
+    }
+    fun createReport(personId: String) = fileOperation(R.string.report_failed) {
+        reportToShare.value = withContext(Dispatchers.IO) {
+            val report = DoctorReports.build(repository.snapshot(), personId, java.time.LocalDate.now())
+            val directory = java.io.File(app.cacheDir, "reports").apply { check(exists() || mkdirs()) }
+            // Only generated cache files older than a day; never user documents or backups.
+            directory.listFiles()?.filter { it.isFile && it.lastModified() < System.currentTimeMillis() - 86_400_000L }?.forEach { it.delete() }
+            val file = java.io.File(directory, "MediTakip-${java.util.UUID.randomUUID()}.pdf")
+            try { file.outputStream().use { ReportPdf.write(report, it) } }
+            catch (e: Exception) { file.delete(); throw e }
+            androidx.core.content.FileProvider.getUriForFile(app, "${app.packageName}.reports", file)
+        }
+    }
     fun perform(onSuccess: () -> Unit = {}, block: suspend () -> Unit) {
-        if (saving.value) return
+        if (saving.value || fileBusy.value) return
         saving.value = true
         viewModelScope.launch {
             try { block(); onSuccess(); app.reminders.refresh() }
@@ -82,7 +147,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application), Do
      * database reports the same state for this dose before dropping the optimistic value.
      */
     private fun completion(item: Occurrence, expected: MedicationLogEntity?, matchTime: Boolean = false, write: suspend () -> Unit) {
-        if (item.key in pending.value) return
+        if (fileBusy.value || item.key in pending.value) return
         pending.update { it + (item.key to expected) }
         viewModelScope.launch {
             try {

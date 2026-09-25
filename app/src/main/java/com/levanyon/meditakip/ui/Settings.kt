@@ -18,7 +18,7 @@ import com.levanyon.meditakip.R
 import com.levanyon.meditakip.domain.*
 
 /** Ayarlar holds only application settings: reminders, appearance and a short about section. */
-@Composable fun SettingsScreen(vm: AppViewModel, openReminderStatus: () -> Unit = {}) {
+@Composable fun SettingsScreen(vm: AppViewModel, hasPeople: Boolean = false, openReminderStatus: () -> Unit = {}) {
     val value by vm.settings.collectAsStateWithLifecycle()
     val health = rememberReminderHealth(value.notifications)
     LazyColumn(contentPadding = ScreenPadding, verticalArrangement = Arrangement.spacedBy(MediSpace.medium)) {
@@ -49,6 +49,7 @@ import com.levanyon.meditakip.domain.*
                 Column(Modifier.selectableGroup()) { listOf(15, 30, 60, 120).forEach { delay -> RadioSetting(stringResource(R.string.minutes, delay), value.delayMinutes == delay) { vm.settings(value.copy(delayMinutes = delay)) } } }
             }
         } }
+        item { BackupSettings(vm, hasPeople) }
         item { SectionHeader(stringResource(R.string.appearance)) }
         item { SettingsSurface {
             Column(Modifier.selectableGroup()) {
@@ -58,7 +59,7 @@ import com.levanyon.meditakip.domain.*
         // Plain reading text, not a box: each paragraph is its own item so long text scrolls naturally.
         item { SectionHeader(stringResource(R.string.about_section)) }
         item { Text(stringResource(R.string.privacy_body), style = MaterialTheme.typography.bodyMedium) }
-        listOf(R.string.backup_body, R.string.background_info, R.string.no_advice).forEach { text ->
+        listOf(R.string.background_info, R.string.no_advice).forEach { text ->
             item { Text(stringResource(text), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
         item { Text(stringResource(R.string.version_label), style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = MediSpace.small)) }

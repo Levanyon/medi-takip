@@ -202,7 +202,7 @@ Decisions the developer made in advance are marked **(developer)**.
 1. **Backup format and codec:** versioned JSON built with the platform's `org.json` (no library). Covers people, medications (incl. stock), every schedule revision (incl. `sequence`), every dose record and the reminder/appearance settings.
 2. **Restore:** read, validate everything, show a preview, and only after explicit confirmation replace all data in **one** transaction. Tests: a round trip and every validation rule.
 3. **Ayarlar → Yedekleme:** `Yedek al` (Storage Access Framework save dialog, no storage permission), `Yedekten geri yükle`, "Son yedek: …", and a gentle reminder after 30 days (also one calm line at the end of Bugün).
-4. **Android backup:** evaluate Auto Backup; allow only device-to-device transfer, never cloud.
+4. **Android backup:** evaluate Auto Backup and device transfer; final decision D4.5 below keeps both disabled.
 5. **Doktor raporu:** a PDF per person with the medications in use and the last 30 days, drawn with `PdfDocument`, shared through the share sheet (`FileProvider` from `androidx.core`, already a dependency). Neutral wording, fixed footer.
 
 ### Decisions
@@ -233,3 +233,32 @@ Decisions the developer made in advance are marked **(developer)**.
 **D4.4 "Son yedek" and a gentle reminder.**
 - The time of the last successful backup is stored locally.
 - After 30 days, as long as there is at least one person, Ayarlar shows the reminder, and so does one calm line at the **end** of Bugün (never at the top, never a notification).
+
+
+**D4.5 Auto Backup evaluation — keep it disabled (2026-09-25).**
+- `allowBackup=false` remains. Both legacy backup rules and Android 12+ extraction rules exclude databases, preferences and files from cloud backup and device transfer.
+- Android Auto Backup could protect app data during reinstall/phone replacement when enabled, but involves an OS-controlled transport, account/device settings, quotas and timing. It cannot guarantee a recent backup, a successful transfer, reminder permissions or OEM behavior. Some Android 12+ manufacturers handle device transfer separately from allowBackup, hence explicit transfer exclusions remain.
+- We do not enable cloud or automatic transfer merely to satisfy a checklist. Manual JSON is inspectable, versioned and restored only after validation and explicit confirmation. It is unencrypted: the picker requests local-only providers and the UI explains to select a trusted local location. The user may copy it to a computer/USB device. No app network permission or service was added.
+- References: https://developer.android.com/identity/data/autobackup and https://developer.android.com/training/data-storage/shared/documents-files . This supersedes the earlier provisional "device transfer only" plan.
+
+**D4.6 Restore boundary and safety copy.**
+- Format 1 requires all schema-v2 fields (including stock, status, recordedAt and sequence), correct JSON types and a supported schema version. No silent coercion/defaults for missing data. Strict JSON syntax, complete input, unique keys and bounded nesting are checked before org.json decoding. Maximum UTF-8 file size: 10 MiB.
+- The restore boundary validates again. Inside the same Room transaction, it reads the old snapshot, atomically writes the private safety copy, then replaces rows. A failed safety write or insert rolls back all Room changes. No actual user database was used for development tests.
+- Settings are SharedPreferences, outside Room's transaction. After Room succeeds, settings/runtime cleanup completes in a non-cancellable coroutine. A process/power loss between Room commit and preferences persistence can retain older appearance/reminder preferences; Room data remains wholly old or wholly restored. A startup/resume rebuild re-establishes alarms. There is no claim of a cross-store atomic transaction.
+- Alarm delivery and notification action execution share the reminder mutex with restore. Existing notifications are cleared after replacement, then future alarms rebuilt without a historical backlog. UI writes are blocked while file work is active.
+- The latest private safety copy can be inspected from Ayarlar and restored through the same preview/confirmation flow. It is local recovery only: uninstall or phone loss also removes it. Each restore replaces the prior safety copy.
+
+**D4.7 Calm reminder and background file work.**
+- A persisted first-use timestamp gives new/upgrading users a 30-day grace period. The last successful export restarts that period; cancelled/failed exports do not. No people means no reminder. A backwards clock does not trigger one.
+- The reminder is persistent inline text, never a dialog/notification or recomposition event. Ayarlar shows Son yedek, Yedek Oluştur and Yedekten Geri Yükle. Bugün has a quiet link at the bottom.
+- SAF CreateDocument/OpenDocument operations, parsing, database replacement and PDF generation run off the main thread. Cancelling the picker changes nothing; rotating retains a ViewModel preview; process death discards an unconfirmed preview.
+
+**D4.8 Neutral doctor report.**
+- Kişi Detay provides Doktor raporu oluştur / paylaş for the selected person (including archived history). Current active medications are selected with existing MedicationViews rules; recorded history includes today and the preceding 29 days, including TAKEN and SKIPPED. No synthetic unmarked history or adherence scoring is added.
+- Android PdfDocument draws Turkish text onto A4 pages, wrapping and paginating at text-line boundaries. Every page has the exact footer: "Bu rapor kullanıcının girdiği kayıtlardan oluşturulmuştur."
+- Reports are private cache files with random names, shared only on user action via a non-exported FileProvider limited to cache/reports and a temporary read grant. No database/private backup paths are exposed. Cached reports older than 24 hours are removed on the next generation; cache may otherwise be cleared by Android. Actual share-sheet/viewer/printing and layout checks remain in the Samsung checklist.
+
+
+**D4.9 PDF verification belongs on Android.**
+- The installed Robolectric 4.14.1 has no PdfDocument shadow/native bridge (checked in the existing shadows-framework JAR). Its nativeCreateDocument returns 0, so starting the very first page reports "document is closed" even with native graphics enabled. This is not evidence of a device PDF failure.
+- The two attempted JVM PDF integration checks were moved, not faked: `src/androidTest/.../ReportPdfDeviceTest.kt` is a minimal built-in Instrumentation runner with no new test dependency. It generates an empty and a multi-page Turkish report and opens them with Android PdfRenderer. Run only on a safe debug test installation. These are not counted as passed JVM tests; physical visual/sharing checks remain pending.

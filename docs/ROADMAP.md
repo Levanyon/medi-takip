@@ -167,15 +167,15 @@ Status (2026-09-25): implemented; schema v2 via one migration (MigrationTest on 
 
 Goal: losing or resetting the phone must not mean losing the history.
 
-- [ ] Export backup: full data as versioned JSON (`formatVersion` field) via Storage Access Framework (`CreateDocument`, no storage permission).
-- [ ] Import backup: validate, show a preview (people, medications, log count, date range), then replace all data in a single transaction after explicit confirmation. Never partial writes.
-- [ ] The backup exports and restores the schedules' revision-order column (added in Phase 3.0), and import validates it (present, unique per medication). The newest revision must be the same before and after a round trip. Never rely on insertion order or `rowid` after import. (AUDIT R12)
-- [ ] Round-trip test: export → wipe test DB → import → identical data.
-- [ ] Ayarlar shows "Son yedek: …". Gentle reminder if older than 30 days.
-- [ ] Evaluate Android Auto Backup (`dataExtractionRules`) as an extra layer; explain what it does and does not guarantee.
-- [ ] Doktor raporu: per person, PDF with active medication list and the last 30 days of history, generated with `android.graphics.pdf.PdfDocument` (no library), shared via share sheet. Neutral wording, no interpretation, footer: "Bu rapor kullanıcının girdiği kayıtlardan oluşturulmuştur."
+- [x] Export backup: full data as versioned JSON (`formatVersion` field) via Storage Access Framework (`CreateDocument`, no storage permission).
+- [x] Import backup: validate, show a preview (people, medications, log count, date range), then replace all data in a single transaction after explicit confirmation. Never partial writes.
+- [x] The backup exports and restores the schedules' revision-order column (added in Phase 3.0), and import validates it (present, unique per medication). The newest revision must be the same before and after a round trip. Never rely on insertion order or `rowid` after import. (AUDIT R12)
+- [x] Round-trip test: export → wipe test DB → import → identical data.
+- [x] Ayarlar shows "Son yedek: …". Gentle reminder if older than 30 days.
+- [x] Evaluate Android Auto Backup (`dataExtractionRules`) as an extra layer; explain what it does and does not guarantee.
+- [x] Doktor raporu: per person, PDF with active medication list and the last 30 days of history, generated with `android.graphics.pdf.PdfDocument` (no library), shared via share sheet. Neutral wording, no interpretation, footer: "Bu rapor kullanıcının girdiği kayıtlardan oluşturulmuştur."
 
-Done when: backup restored successfully on a second device or emulator.
+Automated gate passed (2026-09-25): 251 tests discovered, 227 passed, 24 opt-in screenshot cases skipped; zero failures/errors. assembleDebug and assembleDebugAndroidTest succeeded. JSON format 1 / Room schema 2. No dependency or permission added. Real PDF generation/sharing and restore on a second physical test device remain pending; no emulator/VM is used. See docs/DEVICE-TESTS.md and decisions D4.5–D4.9.
 
 ## Phase 5 — UX, accessibility and polish
 

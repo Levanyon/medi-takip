@@ -45,7 +45,7 @@ fun PeopleScreen(snapshot: Snapshot, open: (String) -> Unit, add: () -> Unit) {
  * medications. No daily timeline. An archived person shows only "Arşivden Çıkar" as the action.
  */
 @Composable
-fun PersonDetail(snapshot: Snapshot, person: PersonEntity, back: () -> Unit, edit: () -> Unit, addMedication: () -> Unit, openMedication: (String) -> Unit, restore: () -> Unit = {}) {
+fun PersonDetail(snapshot: Snapshot, person: PersonEntity, back: () -> Unit, edit: () -> Unit, addMedication: () -> Unit, openMedication: (String) -> Unit, report: (() -> Unit)? = null, restore: () -> Unit = {}) {
     val owned = snapshot.medications.filter { it.personId == person.id }
     val activeIds = owned.filter { !it.archived }.map { it.id }.toSet()
     val medications = MedicationViews.current(snapshot).filter { it.medicationId in activeIds }
@@ -85,6 +85,11 @@ fun PersonDetail(snapshot: Snapshot, person: PersonEntity, back: () -> Unit, edi
                 item { PrimaryAction(stringResource(R.string.add_medication), action = addMedication) }
                 items(medications, key = { it.id }) { schedule -> MedicationRow(schedule) { openMedication(schedule.medicationId) } }
             }
+        }
+        if (report != null) item {
+            SectionHeader(stringResource(R.string.report_title))
+            Text(stringResource(R.string.report_help), style = MaterialTheme.typography.bodyMedium)
+            SecondaryAction(stringResource(R.string.report_create), action = report)
         }
         if (archivedMedications.isNotEmpty()) {
             item { SectionHeader(stringResource(R.string.archived_medications)) }
