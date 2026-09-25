@@ -23,7 +23,7 @@ import java.time.LocalDate
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun MedicationDetail(snapshot: Snapshot, medicationId: String, today: LocalDate, back: () -> Unit, edit: (PersonEntity, MedicationScheduleEntity) -> Unit, archive: () -> Unit) {
+fun MedicationDetail(snapshot: Snapshot, medicationId: String, today: LocalDate, back: () -> Unit, edit: (PersonEntity, MedicationScheduleEntity) -> Unit, archive: () -> Unit, restore: () -> Unit = {}) {
     val medication = snapshot.medications.find { it.id == medicationId } ?: return
     val person = snapshot.people.find { it.id == medication.personId } ?: return
     val schedule = MedicationViews.latestRevision(snapshot, medicationId) ?: return
@@ -48,7 +48,7 @@ fun MedicationDetail(snapshot: Snapshot, medicationId: String, today: LocalDate,
             }
             item {
                 when {
-                    medication.archived -> StatusChip(stringResource(R.string.archived), icon = Icons.Default.Inventory2)
+                    medication.archived -> StatusChip(stringResource(R.string.archived), icon = Icons.Default.Archive)
                     schedule.active -> StatusChip(stringResource(R.string.in_use), completed = true, icon = Icons.Default.CheckCircle)
                     else -> StatusChip(stringResource(R.string.inactive), icon = Icons.Default.PauseCircle)
                 }
@@ -72,6 +72,11 @@ fun MedicationDetail(snapshot: Snapshot, medicationId: String, today: LocalDate,
                 }
             }
             if (editable) item { PrimaryAction(stringResource(R.string.edit_medication), Icons.Default.Edit) { edit(person, schedule) } }
+            // Archived: restore is the only action, and only once the person is active again.
+            if (medication.archived) item {
+                if (person.archived) Text(stringResource(R.string.restore_person_first), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                else PrimaryAction(stringResource(R.string.restore), Icons.Default.Unarchive, action = restore)
+            }
             item { SectionHeader(stringResource(R.string.other_info)) }
             item {
                 Column(Modifier.padding(horizontal = MediSpace.tiny), verticalArrangement = Arrangement.spacedBy(MediSpace.medium)) {

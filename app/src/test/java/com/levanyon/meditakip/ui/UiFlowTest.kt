@@ -70,6 +70,20 @@ class UiFlowTest {
         compose.onNodeWithText("08:04").assertIsDisplayed().performClick()
         compose.onNodeWithText("Planlanan").assertIsDisplayed()
     }
+    @Test fun restoringPersonTellsThatMedicationsStayArchived() {
+        val archived = Snapshot(
+            listOf(PersonEntity("p", "Anne", archived = true)),
+            listOf(MedicationEntity("m", "p", archived = true), MedicationEntity("m2", "p", archived = true)),
+            listOf(schedule.copy(effectiveTo = date.minusDays(1).toEpochDay()), schedule.copy(id = "s2", medicationId = "m2", name = "Vitamin", effectiveTo = date.minusDays(1).toEpochDay())))
+        compose.setContent { MediTheme("Light") { Home(archived, viewModel()) } }
+        compose.onNode(hasText("Kişiler") and isSelectable()).performClick()
+        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Arşivdekiler"))
+        compose.onNodeWithText("Anne").performClick()
+        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Arşivden Çıkar"))
+        compose.onNodeWithText("Arşivden Çıkar").performClick()
+        val message = "Anne arşivden çıkarıldı. Arşivde 2 ilacı var, aşağıdaki \"Arşivlenen ilaçlar\" bölümünden geri alabilirsiniz."
+        compose.waitUntil(5_000) { compose.onAllNodesWithText(message).fetchSemanticsNodes().isNotEmpty() }
+    }
     @Test fun grantedPermissionRowsHideUnnecessaryActions() {
         compose.setContent { MediTheme("Light") { PermissionStatusRow("Bildirimler", true, false, false, {}) } }
         compose.onNodeWithText("İzin verildi").assertExists()

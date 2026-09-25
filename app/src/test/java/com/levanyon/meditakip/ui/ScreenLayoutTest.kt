@@ -185,6 +185,69 @@ class ScreenLayoutTest {
         compose.onNodeWithText("Parol").assertIsDisplayed()
         compose.onNodeWithText("2 tablet").assertDoesNotExist()
     }
+    /** Anne active; Dede archived 10 days ago, with one dose taken 12 days ago. */
+    private val withArchive: Snapshot = run {
+        val from = date.minusDays(20).toEpochDay()
+        val dede = PersonEntity("d", "Dede", archived = true)
+        val old = schedule.copy(id = "sd", medicationId = "md", personName = "Dede", name = "Tansiyon", times = "08:00", start = from, effectiveFrom = from, effectiveTo = date.minusDays(11).toEpochDay())
+        val day = date.minusDays(12)
+        val log = MedicationLogEntity("sd:${day.toEpochDay()}:480", "sd", day.toEpochDay(), 480, day.atTime(8, 5).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli())
+        Snapshot(listOf(person, dede), listOf(MedicationEntity("m", "p"), MedicationEntity("md", "d", archived = true)), listOf(schedule, old), listOf(log))
+    }
+    @Test fun historyKeepsArchivedPeopleSelectableAndOpensAtTheirLastRecords() {
+        content(fontScale = 1f) { HistoryScreen(withArchive, date, "d", {}, {}) }
+        compose.onNode(hasContentDescription("Dede, arşivde")).performScrollTo().assertIsDisplayed().assertIsSelected()
+        lazyScroll("08:05")
+        lazyScroll("Tansiyon")
+    }
+    @Test fun peopleListsArchivedPeopleSeparately() {
+        var opened = ""
+        content { PeopleScreen(withArchive, { opened = it }) {} }
+        lazyScroll("Arşivdekiler")
+        lazyScroll("Dede")
+        compose.onNodeWithText("Dede").performClick()
+        assertEquals("d", opened)
+        compose.onNodeWithText("Arşivde").assertIsDisplayed()
+    }
+    @Test fun archivedPersonDetailOffersOnlyRestoreAndShowsArchivedMedications() {
+        var restored = false
+        var opened = ""
+        content(true) { PersonDetail(withArchive, withArchive.people.last(), {}, {}, {}, { opened = it }) { restored = true } }
+        compose.onNodeWithText("Düzenle").assertDoesNotExist()
+        compose.onNodeWithText("İlaç Ekle").assertDoesNotExist()
+        lazyScroll("Arşivlenen ilaçlar")
+        lazyScroll("Tansiyon")
+        compose.onNodeWithText("Tansiyon").performClick()
+        assertEquals("md", opened)
+        lazyScroll("Arşivden Çıkar")
+        compose.onNodeWithText("Arşivden Çıkar").performClick()
+        assertTrue(restored)
+    }
+    @Test fun activePersonDetailListsArchivedMedicationsInTheirOwnSection() {
+        val anneArchivedMed = withArchive.copy(
+            people = listOf(person),
+            medications = listOf(MedicationEntity("m", "p"), MedicationEntity("md", "p", archived = true)))
+        content { PersonDetail(anneArchivedMed, person, {}, {}, {}, {}) }
+        lazyScroll("Uzun İlaç Adı")
+        lazyScroll("Arşivlenen ilaçlar")
+        lazyScroll("Tansiyon")
+        compose.onAllNodesWithText("Arşivde").assertCountEquals(1)
+    }
+    @Test fun archivedMedicationDetailRestoresOnlyWhenPersonIsActive() {
+        var restored = false
+        val anneArchivedMed = withArchive.copy(people = listOf(person), medications = listOf(MedicationEntity("m", "p"), MedicationEntity("md", "p", archived = true)))
+        content { MedicationDetail(anneArchivedMed, "md", date, {}, { _, _ -> }, {}) { restored = true } }
+        compose.onNodeWithText("İlacı Düzenle").assertDoesNotExist()
+        compose.onNodeWithText("İlacı Arşivle").assertDoesNotExist()
+        lazyScroll("Arşivden Çıkar")
+        compose.onNodeWithText("Arşivden Çıkar").performClick()
+        assertTrue(restored)
+    }
+    @Test fun archivedMedicationOfArchivedPersonExplainsToRestorePersonFirst() {
+        content { MedicationDetail(withArchive, "md", date, {}, { _, _ -> }, {}) {} }
+        lazyScroll("Bu ilacı geri almak için önce kişiyi arşivden çıkarın.")
+        compose.onNodeWithText("Arşivden Çıkar").assertDoesNotExist()
+    }
     @Test fun historyWithoutPeopleOrRecordsShowsPolishedEmptyStates() {
         var people = false
         content { HistoryScreen(Snapshot(), date, null, {}) { people = true } }

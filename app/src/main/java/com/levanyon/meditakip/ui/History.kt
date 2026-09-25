@@ -38,12 +38,15 @@ private const val DAYS_PER_PAGE = 14
 
 /** Geçmiş: pick a person, then read many days at a glance in one date × medication matrix. */
 @Composable fun HistoryScreen(snapshot: Snapshot, today: LocalDate, selectedPersonId: String?, selectPerson: (String) -> Unit, goToPeople: () -> Unit) {
-    val people = snapshot.people.filter { !it.archived }
+    // Archived people stay selectable (after the active ones) so their history is never hidden.
+    val people = snapshot.people.filter { !it.archived } + snapshot.people.filter { it.archived }
     val person = people.find { it.id == selectedPersonId } ?: people.firstOrNull()
     var daysShown by rememberSaveable(person?.id) { mutableIntStateOf(DAYS_PER_PAGE) }
     var opened by remember { mutableStateOf<Occurrence?>(null) }
-    val from = today.minusDays(daysShown.toLong() - 1)
-    val matrix = remember(snapshot, person?.id, from, today) { person?.let { HistoryMatrices.build(snapshot, it.id, from, today) } }
+    // A person whose medications have all ended/been archived opens at their last records, not at today.
+    val through = remember(snapshot, person?.id, today) { person?.let { HistoryMatrices.lastDay(snapshot, it.id) }?.let { minOf(it, today) } ?: today }
+    val from = through.minusDays(daysShown.toLong() - 1)
+    val matrix = remember(snapshot, person?.id, from, through) { person?.let { HistoryMatrices.build(snapshot, it.id, from, through) } }
     val earliest = remember(snapshot, person?.id) { person?.let { HistoryMatrices.earliest(snapshot, it.id) } }
     val scroll = rememberScrollState()
     BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -54,7 +57,7 @@ private const val DAYS_PER_PAGE = 14
                 item { EmptyState(stringResource(R.string.empty_people_title), stringResource(R.string.history_no_person_body), Icons.Default.People, stringResource(R.string.go_to_people), goToPeople) }
                 return@LazyColumn
             }
-            item { Box(Modifier.padding(bottom = MediSpace.small)) { PersonSelector(people.map { PersonTab(it.id, it.name) }, person.id, selectPerson, showCounts = false) } }
+            item { Box(Modifier.padding(bottom = MediSpace.small)) { PersonSelector(people.map { PersonTab(it.id, it.name, archived = it.archived) }, person.id, selectPerson, showCounts = false) } }
             if (matrix == null || matrix.rows.isEmpty()) {
                 item { EmptyState(stringResource(R.string.empty_history_title), stringResource(R.string.empty_history_body), Icons.Default.History) }
                 return@LazyColumn

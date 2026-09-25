@@ -96,7 +96,7 @@ val ScreenPadding = PaddingValues(start = MediSpace.page, end = MediSpace.page, 
  * Segmented person switcher shared by Bugün and Geçmiş. One tonal track holds pill segments;
  * with many people the track scrolls horizontally so nobody becomes unreachable.
  */
-data class PersonTab(val id: String, val name: String, val remaining: Int = 0)
+data class PersonTab(val id: String, val name: String, val remaining: Int = 0, val archived: Boolean = false)
 @Composable fun PersonSelector(people: List<PersonTab>, selected: String?, onSelect: (String) -> Unit, showCounts: Boolean = true) {
     Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
         Row(Modifier.horizontalScroll(rememberScrollState()).selectableGroup().padding(MediSpace.tiny), horizontalArrangement = Arrangement.spacedBy(MediSpace.tiny)) {
@@ -105,6 +105,7 @@ data class PersonTab(val id: String, val name: String, val remaining: Int = 0)
                 val container by animateColorAsState(if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent, tween(MediMotion.feedbackMillis), label = "personTab")
                 val content = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
                 val description = when {
+                    person.archived -> stringResource(R.string.person_archived_description, person.name)
                     !showCounts -> person.name
                     person.remaining > 0 -> stringResource(R.string.person_pending_description, person.name, person.remaining)
                     else -> stringResource(R.string.person_done_description, person.name)
@@ -113,6 +114,7 @@ data class PersonTab(val id: String, val name: String, val remaining: Int = 0)
                     modifier = Modifier.heightIn(min = MediSize.touch).selectable(isSelected, role = Role.Tab) { onSelect(person.id) }.semantics(mergeDescendants = true) { contentDescription = description }) {
                     Row(Modifier.padding(horizontal = MediSpace.page, vertical = MediSpace.medium), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MediSpace.small)) {
                         if (isSelected) Icon(Icons.Default.Check, null, Modifier.size(20.dp))
+                        else if (person.archived) Icon(Icons.Default.Archive, null, Modifier.size(20.dp))
                         Text(person.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 220.dp))
                         if (showCounts && person.remaining > 0) Surface(shape = CircleShape, color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary,
                             contentColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onPrimary) {
@@ -217,14 +219,16 @@ fun defaultStatus(item: Occurrence, editable: Boolean) = when {
 
 /** Kişiler row: avatar, name, active medication count; the whole row opens the person. */
 @Composable fun PersonRow(person: PersonEntity, activeCount: Int, open: () -> Unit) {
-    val description = stringResource(R.string.open_person_description, person.name, activeCount)
+    val description = if (person.archived) stringResource(R.string.person_archived_description, person.name)
+        else stringResource(R.string.open_person_description, person.name, activeCount)
     Surface(onClick = open, shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainerLow,
         modifier = Modifier.fillMaxWidth().heightIn(min = MediSize.primaryAction).semantics { contentDescription = description }) {
         Row(Modifier.padding(MediSpace.regular), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MediSpace.regular)) {
             Avatar(person.name)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(person.name, style = MaterialTheme.typography.titleLarge)
-                Text(stringResource(R.string.active_count, activeCount), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (person.archived) StatusChip(stringResource(R.string.archived), icon = Icons.Default.Archive)
+                else Text(stringResource(R.string.active_count, activeCount), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
@@ -232,17 +236,19 @@ fun defaultStatus(item: Occurrence, editable: Boolean) = when {
 }
 
 /** Medication row inside a person: identity first, schedule summary second, the whole row opens the detail. */
-@Composable fun MedicationRow(schedule: MedicationScheduleEntity, open: () -> Unit) {
+@Composable fun MedicationRow(schedule: MedicationScheduleEntity, archived: Boolean = false, open: () -> Unit) {
+    val inUse = schedule.active && !archived
     Surface(onClick = open, shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainerLow, modifier = Modifier.fillMaxWidth().heightIn(min = MediSize.primaryAction)) {
         Row(Modifier.padding(MediSpace.regular), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MediSpace.regular)) {
-            Surface(shape = MaterialTheme.shapes.medium, color = if (schedule.active) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh) {
-                Icon(Icons.Default.Medication, null, tint = if (schedule.active) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(MediSpace.medium).size(24.dp))
+            Surface(shape = MaterialTheme.shapes.medium, color = if (inUse) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh) {
+                Icon(Icons.Default.Medication, null, tint = if (inUse) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(MediSpace.medium).size(24.dp))
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(schedule.name, style = MaterialTheme.typography.titleLarge)
                 Text(schedule.dose, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(timesText(schedule.times) + if (schedule.days != 127) " • " + daysText(schedule.days, short = true) else "", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (!schedule.active) Box(Modifier.padding(top = MediSpace.tiny)) { StatusChip(stringResource(R.string.inactive), icon = Icons.Default.PauseCircle) }
+                if (archived) Box(Modifier.padding(top = MediSpace.tiny)) { StatusChip(stringResource(R.string.archived), icon = Icons.Default.Archive) }
+                else if (!schedule.active) Box(Modifier.padding(top = MediSpace.tiny)) { StatusChip(stringResource(R.string.inactive), icon = Icons.Default.PauseCircle) }
             }
             Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }

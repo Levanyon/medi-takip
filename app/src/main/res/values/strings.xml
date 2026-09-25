@@ -32,7 +32,7 @@
     <string name="no_end_date">Bitiş tarihi yok</string>
     <string name="active">Aktif</string>
     <string name="inactive">Durduruldu</string>
-    <string name="archived">Arşivlendi</string>
+    <string name="archived">Arşivde</string>
     <string name="all">Tümü</string>
     <string name="schedule_label">Program</string>
     <string name="status">Durum</string>
@@ -209,4 +209,15 @@
     <string name="history_no_person_body">Geçmişi görmek için önce Kişiler bölümünden bir kişi ekleyin.</string>
     <string name="go_to_people">Kişilere Git</string>
     <string name="today_summary_next">Sıradaki: %1$s • %2$s</string>
+    <!-- Archive and restore (Phase 1, B3) -->
+    <string name="restore">Arşivden Çıkar</string>
+    <string name="archived_people">Arşivdekiler</string>
+    <string name="archived_people_body">Arşivdeki kişilerin geçmiş kayıtları Geçmiş ekranında görünür.</string>
+    <string name="archived_medications">Arşivlenen ilaçlar</string>
+    <string name="archived_person_body">Bu kişi arşivde. Hatırlatma gönderilmez; geçmiş kayıtları Geçmiş ekranında görünür.</string>
+    <string name="restore_person_first">Bu ilacı geri almak için önce kişiyi arşivden çıkarın.</string>
+    <string name="person_restored">%1$s arşivden çıkarıldı.</string>
+    <string name="person_restored_with_medications">%1$s arşivden çıkarıldı. Arşivde %2$d ilacı var, aşağıdaki \"Arşivlenen ilaçlar\" bölümünden geri alabilirsiniz.</string>
+    <string name="medication_restored">%1$s arşivden çıkarıldı. Hatırlatmaları bugünden itibaren yeniden başlar.</string>
+    <string name="person_archived_description">%1$s, arşivde</string>
 </resources>

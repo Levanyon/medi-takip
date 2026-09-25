@@ -17,6 +17,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.levanyon.meditakip.R
+import com.levanyon.meditakip.data.PersonEntity
 import com.levanyon.meditakip.domain.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -70,6 +71,20 @@ private const val SETTINGS = 3
         }
     }
     fun openPerson(id: String) { section = PEOPLE; personId = id; medicationId = null }
+    fun inform(message: String) {
+        scope.launch { snackbar.currentSnackbarData?.dismiss(); snackbar.showSnackbar(message, withDismissAction = true, duration = SnackbarDuration.Long) }
+    }
+    // Restoring a person leaves their medications archived; say so, so they do not seem lost.
+    fun restorePerson(person: PersonEntity) {
+        val archivedMedications = snapshot.medications.count { it.personId == person.id && it.archived }
+        vm.restorePerson(person.id) {
+            inform(if (archivedMedications > 0) context.getString(R.string.person_restored_with_medications, person.name, archivedMedications) else context.getString(R.string.person_restored, person.name))
+        }
+    }
+    fun restoreMedication(id: String) {
+        val name = MedicationViews.latestRevision(snapshot, id)?.name.orEmpty()
+        vm.restoreMedication(id) { inform(context.getString(R.string.medication_restored, name)) }
+    }
     fun markTaken(item: Occurrence) {
         vm.taken(item)
         scope.launch {
@@ -92,9 +107,9 @@ private const val SETTINGS = 3
         }) { padding ->
         MediContent(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
             when {
-                medicationId != null -> MedicationDetail(snapshot, medicationId!!, today, ::back, { p, s -> medicationPersonId = p.id; editScheduleId = s.id }, { archiveMedication = true })
-                section == PEOPLE && personId != null -> snapshot.people.find { it.id == personId && !it.archived }?.let { person ->
-                    PersonDetail(snapshot, person, ::back, { editPersonId = person.id; personEditor = true }, { addMedication(person.id) }, { medicationId = it })
+                medicationId != null -> MedicationDetail(snapshot, medicationId!!, today, ::back, { p, s -> medicationPersonId = p.id; editScheduleId = s.id }, { archiveMedication = true }, { restoreMedication(medicationId!!) })
+                section == PEOPLE && personId != null -> snapshot.people.find { it.id == personId }?.let { person ->
+                    PersonDetail(snapshot, person, ::back, { editPersonId = person.id; personEditor = true }, { addMedication(person.id) }, { medicationId = it }) { restorePerson(person) }
                 } ?: LaunchedEffect(personId) { personId = null }
                 section == PEOPLE -> PeopleScreen(snapshot, { personId = it }) { addPerson(false) }
                 section == HISTORY -> HistoryScreen(snapshot, today, selectedPerson, vm::selectPerson) { section = PEOPLE }
