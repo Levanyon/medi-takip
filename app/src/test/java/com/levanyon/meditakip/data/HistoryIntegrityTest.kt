@@ -68,7 +68,7 @@ class HistoryIntegrityTest {
     }
     @Test fun archivingMedicationKeepsPastRowsAndLogs() = runBlocking {
         val id = seed()
-        repo(d.plusDays(1)).deleteMedication(id)
+        repo(d.plusDays(1)).archiveMedication(id)
         val s = snapshot()
         assertTrue(s.medications.single().archived)
         assertEquals(unchangedPast, rows(s, d))
@@ -77,7 +77,7 @@ class HistoryIntegrityTest {
     }
     @Test fun archivingPersonKeepsPastRowsAndLogs() = runBlocking {
         seed()
-        repo(d.plusDays(1)).deletePerson(person)
+        repo(d.plusDays(1)).archivePerson(person)
         val s = snapshot()
         assertTrue(s.people.single().archived)
         assertTrue(s.medications.single().archived)
@@ -114,7 +114,7 @@ class HistoryIntegrityTest {
     @Test fun editAndArchiveOnTheSameDayStillFindsTheNewestRevision() = runBlocking {
         val id = seed()
         repo(d).saveMedication(person, id, base.copy(name = "Parol Forte"))
-        repo(d).deleteMedication(id)
+        repo(d).archiveMedication(id)
         val s = snapshot()
         // Both revisions now share effectiveFrom and are closed; insertion order decides which is newest.
         assertTrue(s.schedules.all { it.isNeverEffective })

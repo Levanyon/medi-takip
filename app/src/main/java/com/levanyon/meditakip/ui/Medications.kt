@@ -23,7 +23,7 @@ import java.time.LocalDate
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun MedicationDetail(snapshot: Snapshot, medicationId: String, today: LocalDate, back: () -> Unit, edit: (PersonEntity, MedicationScheduleEntity) -> Unit, delete: () -> Unit) {
+fun MedicationDetail(snapshot: Snapshot, medicationId: String, today: LocalDate, back: () -> Unit, edit: (PersonEntity, MedicationScheduleEntity) -> Unit, archive: () -> Unit) {
     val medication = snapshot.medications.find { it.id == medicationId } ?: return
     val person = snapshot.people.find { it.id == medication.personId } ?: return
     val schedule = MedicationViews.latestRevision(snapshot, medicationId) ?: return
@@ -83,7 +83,7 @@ fun MedicationDetail(snapshot: Snapshot, medicationId: String, today: LocalDate,
             item { SectionHeader(stringResource(R.string.last_seven_days)) }
             if (matrix.rows.isEmpty()) item { Text(stringResource(R.string.empty_history_body), color = MaterialTheme.colorScheme.onSurfaceVariant) }
             else historyTable(matrix, today, scroll, available, sticky = false) { opened = it }
-            if (editable) item { Box(Modifier.padding(top = MediSpace.large)) { QuietAction(stringResource(R.string.delete_medication), Icons.Default.Delete, MaterialTheme.colorScheme.error, delete) } }
+            if (editable) item { Box(Modifier.padding(top = MediSpace.large)) { QuietAction(stringResource(R.string.archive_medication), Icons.Default.Archive, action = archive) } }
         }
     }
     opened?.let { HistoryCellDetail(it) { opened = null } }

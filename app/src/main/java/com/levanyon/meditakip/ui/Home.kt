@@ -43,8 +43,8 @@ private const val SETTINGS = 3
     var continueToMedication by rememberSaveable { mutableStateOf(false) }
     var medicationPersonId by rememberSaveable { mutableStateOf<String?>(null) }
     var editScheduleId by rememberSaveable { mutableStateOf<String?>(null) }
-    var deletePerson by rememberSaveable { mutableStateOf(false) }
-    var deleteMedication by rememberSaveable { mutableStateOf(false) }
+    var archivePerson by rememberSaveable { mutableStateOf(false) }
+    var archiveMedication by rememberSaveable { mutableStateOf(false) }
     // Minute resolution: recomposes only when the clock minute (or date) changes.
     var now by remember { mutableStateOf(LocalDateTime.now().truncatedTo(ChronoUnit.MINUTES)) }
     val selectedPerson by vm.selectedPerson.collectAsStateWithLifecycle()
@@ -92,7 +92,7 @@ private const val SETTINGS = 3
         }) { padding ->
         MediContent(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
             when {
-                medicationId != null -> MedicationDetail(snapshot, medicationId!!, today, ::back, { p, s -> medicationPersonId = p.id; editScheduleId = s.id }, { deleteMedication = true })
+                medicationId != null -> MedicationDetail(snapshot, medicationId!!, today, ::back, { p, s -> medicationPersonId = p.id; editScheduleId = s.id }, { archiveMedication = true })
                 section == PEOPLE && personId != null -> snapshot.people.find { it.id == personId && !it.archived }?.let { person ->
                     PersonDetail(snapshot, person, ::back, { editPersonId = person.id; personEditor = true }, { addMedication(person.id) }, { medicationId = it })
                 } ?: LaunchedEffect(personId) { personId = null }
@@ -108,7 +108,7 @@ private const val SETTINGS = 3
     }
     if (personEditor) {
         val editing = snapshot.people.find { it.id == editPersonId }
-        PersonEditor(editing, { personEditor = false; continueToMedication = false }, delete = editing?.let { { deletePerson = true } }) { person ->
+        PersonEditor(editing, { personEditor = false; continueToMedication = false }, archive = editing?.let { { archivePerson = true } }) { person ->
             vm.person(person) {
                 personEditor = false
                 if (editing == null) vm.selectPerson(person.id)
@@ -127,10 +127,10 @@ private const val SETTINGS = 3
         }
         CancelAction { choosePerson = false }
     }
-    if (deletePerson) snapshot.people.find { it.id == editPersonId }?.let { person -> DeleteConfirmation(stringResource(R.string.delete_person_message, person.name), { deletePerson = false }) {
-        vm.removePerson(person) { deletePerson = false; personEditor = false; personId = null; if (selectedPerson == person.id) vm.selectPerson(null) }
+    if (archivePerson) snapshot.people.find { it.id == editPersonId }?.let { person -> ArchiveConfirmation(stringResource(R.string.archive_person_message, person.name), { archivePerson = false }) {
+        vm.archivePerson(person) { archivePerson = false; personEditor = false; personId = null; if (selectedPerson == person.id) vm.selectPerson(null) }
     } }
-    if (deleteMedication) snapshot.schedules.lastOrNull { it.medicationId == medicationId }?.let { schedule -> DeleteConfirmation(stringResource(R.string.delete_medication_message, schedule.name), { deleteMedication = false }) { vm.removeMedication(schedule.medicationId) { deleteMedication = false; medicationId = null } } }
+    if (archiveMedication) snapshot.schedules.lastOrNull { it.medicationId == medicationId }?.let { schedule -> ArchiveConfirmation(stringResource(R.string.archive_medication_message, schedule.name), { archiveMedication = false }) { vm.archiveMedication(schedule.medicationId) { archiveMedication = false; medicationId = null } } }
 }
 
 /**

@@ -42,7 +42,7 @@ class RepositoryTest {
     }
     @Test fun archivePersonStopsFutureButPreservesHistory() = runBlocking {
         repo.savePerson(person); repo.saveMedication(person, null, schedule)
-        repository(date.plusDays(1)).deletePerson(person)
+        repository(date.plusDays(1)).archivePerson(person)
         val state = repo.snapshot()
         assertTrue(state.people.single().archived)
         assertEquals(2, Schedule.day(state, date).size)

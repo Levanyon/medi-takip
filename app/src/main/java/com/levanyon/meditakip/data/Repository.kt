@@ -38,13 +38,13 @@ class Repository(private val db: MediDatabase, private val clock: Clock = Clock.
         dao.saveMedication(MedicationEntity(id, person.id))
         dao.saveSchedule(schedule.copy(id = UUID.randomUUID().toString(), medicationId = id, personName = person.name, effectiveFrom = today, effectiveTo = null))
     }
-    suspend fun deleteMedication(id: String) = db.withTransaction {
+    suspend fun archiveMedication(id: String) = db.withTransaction {
         val today = LocalDate.now(clock).toEpochDay()
         dao.medications().find { it.id == id }?.let { dao.saveMedication(it.copy(archived = true)) }
         dao.schedules().filter { it.medicationId == id && it.effectiveTo == null }.forEach { dao.saveSchedule(it.copy(effectiveTo = today - 1)) }
     }
-    suspend fun deletePerson(person: PersonEntity) = db.withTransaction {
-        dao.medications().filter { it.personId == person.id }.forEach { deleteMedication(it.id) }
+    suspend fun archivePerson(person: PersonEntity) = db.withTransaction {
+        dao.medications().filter { it.personId == person.id }.forEach { archiveMedication(it.id) }
         dao.savePerson(person.copy(archived = true))
     }
 }

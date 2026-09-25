@@ -127,8 +127,8 @@ class ScreenLayoutTest {
         lazyScroll("İlacı Düzenle")
         lazyScroll("Başlangıç Tarihi")
         lazyScroll("Son 7 gün")
-        lazyScroll("İlacı Sil")
-        compose.onNodeWithText("İlacı Sil").performClick()
+        lazyScroll("İlacı Arşivle")
+        compose.onNodeWithText("İlacı Arşivle").performClick()
         assertTrue(deleted)
     }
     @Test fun settingsContainOnlySettingsAndKeepPermissionActions() {
@@ -205,7 +205,7 @@ class ScreenLayoutTest {
         compose.onNodeWithText("Kaydet").performScrollTo().assertIsDisplayed().performClick()
         assertEquals(person.name, saved?.name)
         assertEquals("p", saved?.id)
-        compose.onNodeWithText("Kişiyi Sil").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Kişiyi Arşivle").performScrollTo().assertIsDisplayed()
     }
     @Test @Config(qualifiers = "w640dp-h320dp")
     fun medicationFormKeepsExistingScheduleWhenSavedInLandscape() {
@@ -257,7 +257,7 @@ class ScreenLayoutTest {
     fun longConfirmationKeepsCancelReachableWithoutConfirming() {
         var dismissed = false
         var confirmed = false
-        content { DeleteConfirmation("Geçmiş kayıtları korunacak. ".repeat(30), { dismissed = true }, { confirmed = true }) }
+        content { ArchiveConfirmation("Geçmiş kayıtları korunacak. ".repeat(30), { dismissed = true }, { confirmed = true }) }
         compose.onNodeWithText("İptal").performScrollTo().assertIsDisplayed().performClick()
         assertTrue(dismissed)
         assertFalse(confirmed)

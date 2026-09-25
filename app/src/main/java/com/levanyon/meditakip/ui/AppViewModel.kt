@@ -43,9 +43,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
     fun person(person: PersonEntity, onSuccess: () -> Unit = {}) = perform(onSuccess) { repository.savePerson(person) }
-    fun removePerson(person: PersonEntity, onSuccess: () -> Unit = {}) = perform(onSuccess) { repository.deletePerson(person) }
+    fun archivePerson(person: PersonEntity, onSuccess: () -> Unit = {}) = perform(onSuccess) { repository.archivePerson(person) }
     fun medication(person: PersonEntity, id: String?, schedule: MedicationScheduleEntity, onSuccess: () -> Unit = {}) = perform(onSuccess) { repository.saveMedication(person, id, schedule) }
-    fun removeMedication(id: String, onSuccess: () -> Unit = {}) = perform(onSuccess) { repository.deleteMedication(id) }
+    fun archiveMedication(id: String, onSuccess: () -> Unit = {}) = perform(onSuccess) { repository.archiveMedication(id) }
     fun taken(item: Occurrence) = completion(item, true)
     fun undo(item: Occurrence) = completion(item, false)
     private fun completion(item: Occurrence, taken: Boolean) {

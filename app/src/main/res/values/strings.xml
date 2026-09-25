@@ -13,7 +13,7 @@
     <string name="undo">Geri Al</string>
     <string name="save">Kaydet</string>
     <string name="cancel">İptal</string>
-    <string name="delete">Sil</string>
+    <string name="archive">Arşivle</string>
     <string name="edit">Düzenle</string>
     <string name="add">Ekle</string>
     <string name="back">Geri</string>
@@ -77,11 +77,11 @@
     <string name="choose_date">Tarih Seç</string>
     <string name="older_records">Önceki Günleri Göster</string>
     <string name="view_records">Kayıtları Gör</string>
-    <string name="delete_title">Silmek istiyor musunuz?</string>
-    <string name="delete_person_message">%1$s için gelecek programlar durdurulacak. Geçmiş kayıtları korunacak.</string>
-    <string name="delete_medication_message">%1$s programdan kaldırılacak. Geçmiş kayıtları korunacak.</string>
-    <string name="delete_person">Kişiyi Sil</string>
-    <string name="delete_medication">İlacı Sil</string>
+    <string name="archive_title">Arşivlensin mi?</string>
+    <string name="archive_person_message">%1$s arşivlenecek. Hatırlatmaları durur ve Bugün ekranında görünmez. Geçmiş kayıtları Geçmiş ekranında görünmeye devam eder; istediğinizde arşivden çıkarabilirsiniz.</string>
+    <string name="archive_medication_message">%1$s arşivlenecek. Hatırlatması durur. Geçmiş kayıtları Geçmiş ekranında görünmeye devam eder; istediğinizde arşivden çıkarabilirsiniz.</string>
+    <string name="archive_person">Kişiyi Arşivle</string>
+    <string name="archive_medication">İlacı Arşivle</string>
     <string name="dose_help">Kendi programınızdaki doz bilgisini yazın.</string>
     <string name="add_time">Saat Ekle</string>
     <string name="remove_time">%1$s saatini kaldır</string>

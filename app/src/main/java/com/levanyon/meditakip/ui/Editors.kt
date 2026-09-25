@@ -25,7 +25,7 @@ import com.levanyon.meditakip.domain.*
 import java.time.*
 import java.util.UUID
 
-@Composable fun PersonEditor(person: PersonEntity?, dismiss: () -> Unit, delete: (() -> Unit)? = null, save: (PersonEntity) -> Unit) {
+@Composable fun PersonEditor(person: PersonEntity?, dismiss: () -> Unit, archive: (() -> Unit)? = null, save: (PersonEntity) -> Unit) {
     var name by rememberSaveable { mutableStateOf(person?.name ?: "") }
     var note by rememberSaveable { mutableStateOf(person?.note ?: "") }
     val focus = LocalFocusManager.current
@@ -38,9 +38,9 @@ import java.util.UUID
             focus.clearFocus()
             save((person ?: PersonEntity(UUID.randomUUID().toString(), "")).copy(name = name.trim(), note = note))
         }
-        if (person != null && delete != null) {
+        if (person != null && archive != null) {
             Spacer(Modifier.height(MediSpace.large))
-            QuietAction(stringResource(R.string.delete_person), Icons.Default.Delete, MaterialTheme.colorScheme.error, delete)
+            QuietAction(stringResource(R.string.archive_person), Icons.Default.Archive, action = archive)
         }
     }
 }
@@ -157,11 +157,11 @@ import java.util.UUID
     }
 }
 
-@Composable fun DeleteConfirmation(message: String, dismiss: () -> Unit, confirm: () -> Unit) {
-    MediDialog(stringResource(R.string.delete_title), dismiss) {
+/** Archiving is reversible (Arşivden Çıkar), so the confirmation uses the normal primary action, not a red one. */
+@Composable fun ArchiveConfirmation(message: String, dismiss: () -> Unit, confirm: () -> Unit) {
+    MediDialog(stringResource(R.string.archive_title), dismiss) {
         Text(message, style = MaterialTheme.typography.bodyLarge)
-        Button(onClick = confirm, shape = MaterialTheme.shapes.large, modifier = Modifier.fillMaxWidth().heightIn(min = MediSize.primaryAction),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error, contentColor = MaterialTheme.colorScheme.onError)) { Text(stringResource(R.string.delete), style = MaterialTheme.typography.labelLarge) }
+        PrimaryAction(stringResource(R.string.archive), Icons.Default.Archive, action = confirm)
         CancelAction(dismiss)
     }
 }
