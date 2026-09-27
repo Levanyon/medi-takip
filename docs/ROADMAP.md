@@ -199,12 +199,12 @@ Status (2026-09-25): implemented; automated checks: contrast (WCAG AA), 40-case 
 
 Goal: safe installation and safe future updates on the real phone.
 
-- [ ] Test coverage for: domain schedule logic, migrations, reminder trigger computation, stock math, backup round-trip. Key UI flows with Compose tests.
-- [ ] `lint` clean or documented exceptions.
-- [ ] Release build with R8; verify Room/serialization still work after minification.
+- [x] Test coverage for: domain schedule logic, migrations, reminder trigger computation, stock math, backup round-trip. Key UI flows with Compose tests.
+- [x] `lint` clean or documented exceptions.
+- [ ] Release build with R8; verify Room/serialization still work after minification. *(Deliberately off for 1.2: a minified APK cannot be run in this environment; enable only after the device checks in RELEASE.md. DECISIONS D6.2.)*
 - [x] Signing keystore: create once, store it and its passwords in two safe places outside the repo. An update signed with a different key cannot be installed over the old app; uninstalling deletes all data. *(Done 2026-09-25, before Phase 2: see `docs/RELEASE.md`; certificate SHA-256 84:E8:0A:AC:...:87:E9:81:7F; backed up in two places.)*
-- [ ] `versionCode` / `versionName` policy and `CHANGELOG.md`.
-- [ ] Update procedure documented in `docs/RELEASE.md`: export backup → install update over existing app → verify data.
+- [x] `versionCode` / `versionName` policy and `CHANGELOG.md`. *(1.2 / code 3; VersionLabelTest keeps the Ayarlar label in sync.)*
+- [x] Update procedure documented in `docs/RELEASE.md`: export backup → install update over existing app → verify data.
 - [ ] Parallel run: 1–2 weeks of real use alongside the family's current method before relying on the app alone.
 
 ## Out of scope (for now)

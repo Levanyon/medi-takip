@@ -262,3 +262,38 @@ Decisions the developer made in advance are marked **(developer)**.
 **D4.9 PDF verification belongs on Android.**
 - The installed Robolectric 4.14.1 has no PdfDocument shadow/native bridge (checked in the existing shadows-framework JAR). Its nativeCreateDocument returns 0, so starting the very first page reports "document is closed" even with native graphics enabled. This is not evidence of a device PDF failure.
 - The two attempted JVM PDF integration checks were moved, not faked: `src/androidTest/.../ReportPdfDeviceTest.kt` is a minimal built-in Instrumentation runner with no new test dependency. It generates an empty and a multi-page Turkish report and opens them with Android PdfRenderer. Run only on a safe debug test installation. These are not counted as passed JVM tests; physical visual/sharing checks remain pending.
+
+## Phase 6 — Quality and release
+
+### Plan
+1. Review and finish the Phase 6 edits left uncommitted in the working tree (restore notification cleanup, version 1.2 / code 3, CHANGELOG, RELEASE/README/ARCHITECTURE updates, R8 switch). Commit them in small steps, each with passing tests.
+2. Decide R8 against the rule "if on, prove the minified APK really runs; if risky, keep it off and explain".
+3. Lint clean or documented exceptions; a test that ties the Ayarlar version label to `versionName`.
+4. Full test suite, `lintDebug`, `assembleDebug`, `assembleRelease`, and an `apksigner` fingerprint check. Tick the ROADMAP boxes.
+
+### Decisions
+
+**D6.1 The uncommitted Phase 6 edits were reviewed and kept (2026-09-27).**
+- They had been sitting in the working tree since 2026-09-25 with no running session behind them. The full suite passed on them (253 tests, 0 failures, 24 opt-in screenshot cases skipped) before anything was committed.
+- Kept as they were: the restore change (after the Room commit, a notification-cleanup failure is logged, not reported as a failed restore), the PDF double-finish guard, dead-code removal, the version bump, and the documentation.
+- `testInstrumentationRunner` points at `ReportPdfDeviceTest`. That is intentional: the class *is* a minimal `Instrumentation` (D4.9), so no test library is needed.
+- The `verifyReleaseSigning` message now says "restore the existing signing configuration" instead of "run new-release-key.ps1". This is safer: the fix for a missing key is restoring the backup, never making a second key. The key itself was not read, touched or copied.
+
+**D6.2 R8 stays off for 1.2.**
+- The rule was to switch R8 on only if the minified APK is shown to really run. This environment has no emulator system images, and VMs/emulators are not allowed, so a minified APK cannot be run here at all. Unit tests run on the unminified classes and say nothing about R8.
+- The worst R8 failure for this app is silent: a stripped or renamed reminder receiver, or a broken action, means **missed reminders without a crash**. That is exactly what the app must not do.
+- The gain is small. The APK is sideloaded once per update, not downloaded from a store.
+- So `isMinifyEnabled = false` (and no resource shrinking). `app/proguard-rules.pro` stays for a later attempt. Turning R8 on later is data-safe (same key, same database) but needs the device checks listed in RELEASE.md first.
+
+**D6.3 Version policy is enforced by a test.** `versionCode` 3 / `versionName` 1.2. `VersionLabelTest` fails if the Ayarlar label ("MediTakip 1.2") and `versionName` drift apart. The debug build's `-debug` suffix is ignored. Policy and CHANGELOG: see RELEASE.md.
+
+**D6.4 Lint.** `lintDebug` reported one warning: an unused `stock_section` string, now removed. Lint is otherwise clean. The only exceptions are the two documented in D5.5 (`PluralsCandidate`, `UseKtx`).
+
+**D6.5 Coverage map (roadmap item → tests).**
+- Schedule logic: `domain` tests (ScheduleTest, HistoryMatrixTest and others).
+- Migrations: `MigrationTest` (committed `1.json` → v2).
+- Reminder trigger computation: `ReminderPlanTest`, `ReminderIntegrationTest`.
+- Stock math: `StockTest`, `StockRepositoryTest`.
+- Backup round-trip: `BackupTest`.
+- UI flows: `UiFlowTest`, `HistoryCorrectionTest`, `SkipDialogFlowTest`, `BackupUiTest`, `ScreenLayoutTest`, `AccessibilityTest`, `ContrastTest`.
+- PDF: device-only (`ReportPdfDeviceTest`, D4.9).

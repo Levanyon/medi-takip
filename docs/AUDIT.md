@@ -194,4 +194,4 @@ Not covered: **migrations** (none exist yet), person rename, same-day-edit inter
 | 3.x late marking, skip, history correction, stock | ✗ |
 | 4.x backup/restore/report | ✗ (`LocalBackup` interface only) |
 | 5.x glossary, splash screen, font-scale matrix | partial (layout tests at 1.5–2×) |
-| 6.x R8 release, keystore procedure, changelog | partial (local signing config exists; `isMinifyEnabled = false`) |
+| 6.x R8 release, keystore procedure, changelog | done except R8: release key, version policy, CHANGELOG and update procedure exist; R8 deliberately off (DECISIONS D6.2) |
