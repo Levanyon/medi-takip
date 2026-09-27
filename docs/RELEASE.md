@@ -37,7 +37,7 @@ keytool -list -v -keystore E:\meditakip\meditakip-release.p12 -storetype PKCS12 
 
 ## Build and verify in PowerShell
 
-From `C:\Users\musta\python\uygulama-proje`:
+From the repository root:
 
 ```powershell
 . .\tools\env.ps1
