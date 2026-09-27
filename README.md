@@ -11,11 +11,11 @@ Offline native Android medication schedule tracker for families. Package: `com.l
 - Bugün: person selector, that person's timeline for today, progress summary, İçildi and Geri Al.
 - Geçmiş: person selector (archived people included) and a date × (medication, time) table; tapping a cell shows its details.
 - Local notifications, optional second reminder (15/30/60/120 minutes), Android notification/exact-alarm settings, system/light/dark theme.
-- Versioned schedules and UTC completion timestamps persisted by Room.
+- Versioned schedules, actual/recorded timestamps and Taken/Skipped states persisted by Room; late marking and confirmed history correction. Optional stock tracking with decrement/undo and low-stock notices.
 
 Schedule changes take effect today. Previous days are preserved; today's completed entries are retained. Archiving a person or medication stops future schedules and retains history; nothing with history is ever hard-deleted. Dates before a medication was first entered are not fabricated as historical schedules. Times follow the phone's current time zone. DST gaps shift forward; repeated local times occur once at the earlier offset.
 
-Local backup export/import is deferred to V2. `data/LocalBackup.kt` defines the boundary and validation requirements. Android cloud backup and automatic device transfer are disabled. Uninstalling or clearing app storage removes records.
+Local JSON backup (format 1 / schema 2) is available in Ayarlar: export to a chosen local document, validate and preview before confirmation, then atomically replace Room data after keeping a private safety copy. A calm reminder appears after 30 days, with a first-use grace period. Backups are not encrypted; keep them in safe local storage. Person details offer a neutral PDF of current medications and the last 30 days of recorded history. Android cloud backup and automatic device transfer remain disabled. Uninstalling or clearing app storage removes records.
 
 ## Open and build on Windows
 
@@ -75,7 +75,7 @@ Alternative USB debugging installation: enable Developer options and USB debuggi
 & ".tools\android-sdk\platform-tools\adb.exe" install -r .\app\build\outputs\apk\release\app-release.apk
 ```
 
-Updates signed with the same release key keep the app's data: install them over the existing app **without uninstalling**. The one-time switch from the old debug-signed app to the release app (September 2026) required an uninstall. That was accepted because the app was not in real use yet.
+Updates signed with the same release key keep the app's data: install them over the existing app **without uninstalling**. Before every update, create a local backup. Follow [docs/RELEASE.md](docs/RELEASE.md); never reuse historical uninstall instructions.
 
 ## Reminder behavior and limitations
 
@@ -87,6 +87,6 @@ Android can delay alarms while idle, especially multiple alarms close together. 
 
 JVM tests cover weekday/time generation, date boundaries, DST, inactive schedules, future starts, retry across midnight and completion suppression. Robolectric tests exercise the real Room database, repository transactions, duplicate Taken, Undo, history-preserving edits, archive behavior and rollback on invalid edits.
 
-Reports: `app/build/reports/tests/testDebugUnitTest/index.html` and `app/build/reports/lint-results-debug.html`. Room's version-1 schema is checked in under `app/schemas`; future schema changes must supply migrations rather than destructive fallback. See `docs/ARCHITECTURE.md` and `docs/DEVICE-TESTS.md`.
+Reports: `app/build/reports/tests/testDebugUnitTest/index.html` and `app/build/reports/lint-results-debug.html`. Room schemas 1 and 2 are checked in under `app/schemas`; the current version is 2 with explicit MIGRATION_1_2, and future schema changes must supply migrations rather than destructive fallback. See `docs/ARCHITECTURE.md` and `docs/DEVICE-TESTS.md`.
 
 Physical-device delivery and reboot tests require a connected device; passing unit tests and a build alone does not verify those behaviors.

@@ -27,7 +27,7 @@ android {
     namespace = "com.levanyon.meditakip"
     compileSdk = 35
     defaultConfig {
-        applicationId = "com.levanyon.meditakip"; minSdk = 26; targetSdk = 35; versionCode = 2; versionName = "1.1"
+        applicationId = "com.levanyon.meditakip"; minSdk = 26; targetSdk = 35; versionCode = 3; versionName = "1.2"
         testInstrumentationRunner = "com.levanyon.meditakip.data.ReportPdfDeviceTest"
         manifestPlaceholders["appLabel"] = "MediTakip"
     }
@@ -46,7 +46,9 @@ android {
     }
     buildTypes {
         release {
+            // R8 stays off until a minified APK has been run on a real device (DECISIONS D6.2).
             isMinifyEnabled = false
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             if (signingFile != null) signingConfig = signingConfigs.getByName("release")
         }
         // Debug installs as a separate app, so a test build can never replace (or touch the data of)
@@ -70,7 +72,7 @@ ksp { arg("room.schemaLocation", "$projectDir/schemas") }
 val verifyReleaseSigning by tasks.registering {
     doLast {
         if (signingFile == null) throw GradleException(
-            "No release signing key found. Run tools\\new-release-key.ps1 first " +
+            "No release signing key found. Restore the existing signing configuration " +
             "(or set the MEDITAKIP_SIGNING environment variable). See docs/RELEASE.md."
         )
     }

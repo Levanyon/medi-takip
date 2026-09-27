@@ -84,8 +84,7 @@
     <string name="theme_light">Açık</string>
     <string name="theme_dark">Koyu</string>
     <string name="privacy_body">Bilgileriniz yalnızca bu telefonda saklanır. Hesap, internet bağlantısı, reklam, analiz veya bulut yedeklemesi kullanılmaz.</string>
-    <string name="backup_body">Yerel dosya yedeklemesi ileriki sürümler için planlanmıştır. Uygulamayı kaldırmak veya depolamayı temizlemek kayıtları siler.</string>
-    <string name="version_label">MediTakip 1.1</string>
+    <string name="version_label">MediTakip 1.2</string>
     <string name="welcome_title">MediTakip\'e Hoş Geldiniz</string>
     <string name="welcome_body">Ailenizin ilaçlarını tek bir yerden, kolayca takip edin.</string>
     <string name="get_started">Başlayalım</string>
@@ -230,7 +229,6 @@
     <string name="history_confirm_time">%1$s, %2$s: İçildiği saat %3$s olarak değiştirilecek.</string>
     <string name="history_confirm_remove">%1$s, %2$s: Kayıt kaldırılacak; doz işaretlenmemiş görünecek.</string>
     <!-- Phase 3: stock -->
-    <string name="stock_section">Stok</string>
     <string name="stock_tracking">Stok takibi</string>
     <string name="stock_tracking_help">Her İçildi işaretinde stoktan düşer, Geri Al geri ekler. Azaldığında haber verilir.</string>
     <string name="stock_quantity">Elde kalan miktar</string>
@@ -269,8 +267,6 @@
     <string name="backup_too_new">Bu yedek, uygulamanın daha yeni bir sürümüyle alınmış. Önce MediTakip\'i güncelleyin.</string>
     <string name="backup_too_large">Dosya bir yedek için fazla büyük.</string>
     <string name="backup_damaged">Yedek dosyası bozuk veya eksik. Mevcut verileriniz değişmedi.</string>
-    <string name="backup_reminder_line">Son yedek %1$d gün önce · Yedek al</string>
-    <string name="backup_reminder_never">Henüz yedek alınmadı · Yedek al</string>
     <string name="backup_busy">Devam eden işlem tamamlandıktan sonra tekrar deneyin.</string>
     <string name="backup_privacy">Yedek sağlık bilgilerinizi içerir ve şifrelenmez. Güvendiğiniz yerel bir klasör seçin.</string>
     <string name="backup_first_due">Kayıtlarınızı korumak için ilk yedeğinizi oluşturabilirsiniz.</string>

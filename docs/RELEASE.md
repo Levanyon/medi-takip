@@ -1,8 +1,10 @@
-# MediTakip — signing, building and installing a release
+# MediTakip — Windows APK release and safe updates
 
-The phone runs the **release** build, signed with MediTakip's own release key. Android only installs an update over an existing app if it is signed with the **same key**. If the key or its password is lost, the next version cannot be installed over the app. The only way out is to uninstall, which **deletes all data** on the phone. Treat the key like the house keys.
+Current release candidate: **1.2 (versionCode 3)**. Physical Samsung verification and 1–2 weeks of parallel use remain required. See [DEVICE-TESTS.md](DEVICE-TESTS.md).
 
-Debug builds are a separate app (`com.levanyon.meditakip.debug`, shown as "MediTakip (debug)") signed with the Android debug key. They are only for testing and never replace the real app.
+The real app is `com.levanyon.meditakip`. Debug is a separate app, `com.levanyon.meditakip.debug`, labelled MediTakip (debug). Debug cannot update the real app or access its private database.
+
+**Keep the existing release key. Never create a replacement to fix a signing error. Never uninstall MediTakip or clear storage to install an update.** Uninstalling removes local records. A different signing identity prevents an in-place update.
 
 ## Key facts
 
@@ -18,71 +20,69 @@ Debug builds are a separate app (`com.levanyon.meditakip.debug`, shown as "MediT
 
 The SHA-256 fingerprint is public information. It identifies the key and is used to check backups and APKs.
 
-## 1. Create the key (once)
+## Existing key and its backups
 
-In PowerShell, from the repository root:
+The key in the table already exists outside this repository. No key/password was created, changed or copied during Phase 4/6. Gradle resolves signing configuration from MEDITAKIP_SIGNING, then the external properties file above, then the ignored legacy root properties file. No unsigned/debug-signed release fallback exists.
 
-```
-.\tools\new-release-key.ps1
-```
+The user should retain **two encrypted copies outside the repository**, for example two encrypted removable drives kept separately; store passwords separately in an offline password manager or another secure location. The existing `.p12` and its corresponding configuration are the files to protect. Do not put them in Git, chat, e-mail or an unencrypted synced folder. The agent does not copy these files. Restore the same key from those copies if the working copy is lost; do not generate a new identity.
 
-- Choose a password of **at least 12 characters, using only English letters, digits and symbols**. The PKCS12 key format in JDK 17 rejects Turkish letters (ş, ğ, ı, İ, ö, ü, ç).
-- The script refuses to run if a key already exists. It never overwrites one.
-- It prints the certificate SHA-256 fingerprint. Record it in the table above.
+To check a backup copy of the key (for example on the USB drive), replace the path and enter the password when asked. The `SHA256:` line must match the table:
 
-## 2. Back up the key (immediately, and after any change)
-
-Keep **two copies in two different places**, and keep the password **separately** from the key file:
-
-1. **An encrypted USB stick kept at home.** Encrypt the stick with BitLocker To Go (right-click the drive → *Turn on BitLocker*) and copy the whole `%USERPROFILE%\AndroidKeys\meditakip\` folder onto it.
-2. **A password manager** (Bitwarden, 1Password, KeePass…). Store the password as an entry and attach `meditakip-release.p12` as a file. If you use personal cloud storage instead, put the key inside a 7-Zip archive with AES-256 encryption and a different strong password.
-3. Optional: write the password on paper and keep it at home, away from the USB stick.
-
-Never put the key or password in the repository, e-mail, chat apps, the desktop, or an unencrypted synced folder (e.g. OneDrive).
-
-**Check a backup** (for example after copying to the USB stick), replacing the path with the backup copy:
-
-```
+```powershell
 . .\tools\env.ps1
 keytool -list -v -keystore E:\meditakip\meditakip-release.p12 -storetype PKCS12 -alias meditakip
 ```
 
-Enter the password. The `SHA256:` line must match the fingerprint in the table above.
+`.gitignore` excludes `.p12`, `.jks`, `.keystore`, signing properties and AndroidKeys. Certificate fingerprints are public identifiers, not private-key material. Matching the documented fingerprint is necessary for update compatibility; the phone's installed package/version must also be checked before installation.
 
-## 3. Build the release APK
+## Build and verify in PowerShell
 
-```
+From `C:\Users\musta\python\uygulama-proje`:
+
+```powershell
 . .\tools\env.ps1
-.\gradlew.bat assembleRelease --offline
+.\gradlew.bat testDebugUnitTest lintDebug assembleDebug assembleRelease --offline
+$bt = Join-Path $env:ANDROID_HOME 'build-tools\35.0.0'
+& "$bt\apksigner.bat" verify --verbose --print-certs app\build\outputs\apk\debug\app-debug.apk
+& "$bt\apksigner.bat" verify --verbose --print-certs app\build\outputs\apk\release\app-release.apk
 ```
 
-- Output: `app\build\outputs\apk\release\app-release.apk`
-- If no key is configured, the build **stops** with "No release signing key found". It never produces an unsigned APK.
-- To use a key from another location for one build, set `$env:MEDITAKIP_SIGNING` to that `keystore.properties` path.
+If ANDROID_HOME is not set, use `.tools\android-sdk\build-tools\35.0.0` for `$bt`. Release SHA-256 must exactly match the table. Debug must verify too, but uses the separate Android debug certificate. A failed check blocks installation.
 
-Verify the signature before installing:
+Actual Gradle outputs:
+- Debug: `app\build\outputs\apk\debug\app-debug.apk`
+- Signed release: `app\build\outputs\apk\release\app-release.apk`
 
+You may copy the verified release APK as `MediTakip-release.apk` for distribution; renaming does not alter its signature. Build outputs stay out of Git.
+
+R8 (minification and resource shrinking) is **off** for 1.2; see DECISIONS D6.2. It can only be turned on after a minified APK has been installed on a safe test device and these were checked: Room open/migration, İçildi/Geri Al, a notification's İçildi and 10 dk ertele, reminder after reboot, JSON backup round-trip and PDF sharing. `app/proguard-rules.pro` is kept for that attempt. If R8 is ever on, keep the matching `app\build\outputs\mapping\release\mapping.txt` privately with each released APK for crash diagnosis.
+
+## Android Studio on Windows
+
+1. Open the existing project; use JDK 17 and SDK 35, then sync.
+2. For debug, select the debug build variant and **Build > Build Bundle(s) / APK(s) > Build APK(s)** (the equivalent APK menu in newer Studio).
+3. For release, run `assembleRelease` in Studio's PowerShell terminal using the existing signing configuration above. Alternatively choose **Generate Signed Bundle / APK > APK**, select the **existing** external `.p12`, enter its existing credentials locally, and choose release. Never select Create new.
+4. Verify the actual output with apksigner before copying it. The command-line paths above are guaranteed for the Gradle tasks; the signing wizard may use the output folder selected in that wizard.
+
+## Safe update on the physical phone
+
+1. Open the installed MediTakip. In **Ayarlar > Yedekleme > Yedek Oluştur**, save a manual JSON backup to local storage and retain a separate safe copy. If upgrading a version without export, preserve the installation/data and test the update on a safe device first; do not uninstall to work around it.
+2. Keep the existing app installed. Build the release APK, verify its existing signing fingerprint and ensure its versionCode is higher than the installed release.
+3. Connect the unlocked phone to Windows by USB, choose File transfer, and copy the signed APK to Downloads.
+4. On the phone, open Files > Downloads > APK. If prompted, temporarily allow installation from this Files app, then select **Update/Install** over the existing MediTakip. Revoke the Files installation permission afterward if desired.
+5. **Never uninstall first.** On conflict or downgrade errors stop and verify package, certificate and version; do not clear data, force a downgrade or change keys.
+6. Open MediTakip. Verify people, medications, history, stock, reminders and the backup screen. Confirm old history remains unchanged.
+7. Run the test reminder from Hatırlatma Durumu, then an ordinary scheduled reminder with the phone locked.
+8. Follow DEVICE-TESTS.md and keep the family's existing reminder method in parallel for **1–2 weeks** before relying on this app alone.
+
+Optional USB debugging update (authorize the Windows computer on the phone):
+
+```powershell
+& '.tools\android-sdk\platform-tools\adb.exe' install -r app\build\outputs\apk\release\app-release.apk
 ```
-$bt = Get-ChildItem .tools\android-sdk\build-tools -Directory | Select-Object -Last 1
-& "$($bt.FullName)\apksigner.bat" verify --print-certs app\build\outputs\apk\release\app-release.apk
-```
 
-The `SHA-256 digest` must equal the fingerprint in the table above (apksigner prints it without colons).
+No installation, uninstall or real-data modification was performed during this development session. An earlier one-time debug-to-release switch is historical; its uninstall instruction must never be reused for current updates.
 
-## 4. Install on the phone
+## Version policy
 
-**First release install (one time, 2026-09):** the phone still has the old debug-signed app. Uninstall it first (this deletes its test data), then install `app-release.apk`. This was agreed because the app was not in real use yet.
-
-**Every later update:** install `app-release.apk` over the existing app **without uninstalling**. Data is kept because the key is the same. Before an update, export a backup once Phase 4 exists (see `docs/ROADMAP.md`).
-
-Copy the APK to the phone's *Download* folder and open it, or use USB debugging:
-
-```
-& ".tools\android-sdk\platform-tools\adb.exe" install -r app\build\outputs\apk\release\app-release.apk
-```
-
-If Android reports that the package conflicts with an existing one, the APK was signed with a different key. **Do not uninstall** unless losing the data is acceptable. Check the fingerprint first.
-
-## 5. If the key is lost
-
-Restore it from a backup (section 2) and check the fingerprint. If no backup exists, a new key can be created, but the app must then be uninstalled and reinstalled, and all data on the phone is lost unless a Phase 4 backup file exists.
+`versionCode` is an integer increased by one for each distributed release; never reuse or decrease it. `versionName` is user-facing: 1.1/code 2 → 1.2/code 3 for these backup/report and reliability milestones. Patch fixes may use 1.2.1 with code 4; a subsequent feature release increases the minor version. Room schema version is independent: still 2, with explicit migration 1 → 2. Update CHANGELOG.md and the Turkish Settings version label together.

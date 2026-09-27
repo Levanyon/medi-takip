@@ -140,7 +140,7 @@ class ScreenLayoutTest {
         lazyScroll("İkinci Hatırlatma")
         lazyScroll("Görünüm")
         lazyScroll("Uygulama Hakkında")
-        lazyScroll("MediTakip 1.1")
+        lazyScroll("MediTakip 1.2")
         compose.onNodeWithText("İlaç ve Kişi Yönetimi").assertDoesNotExist()
     }
     @Test fun reminderStatusShowsEachRequirementWithFixAndTests() {
