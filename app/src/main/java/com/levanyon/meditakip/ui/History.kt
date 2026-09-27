@@ -227,7 +227,7 @@ fun LazyListScope.historyTable(matrix: HistoryMatrix, today: LocalDate, scroll: 
             occurrence.skipped -> stringResource(R.string.skipped) + (occurrence.note?.let { " · $it" } ?: "")
             else -> stringResource(R.string.not_marked)
         })
-        if (editable && corrections != null) {
+        if (editable) {
             when {
                 !occurrence.handled -> {
                     PrimaryAction(stringResource(R.string.history_mark_taken), Icons.Default.Check) {

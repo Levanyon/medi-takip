@@ -36,7 +36,7 @@ object ReportPdf {
                     val top = layout.getLineTop(line)
                     val bottom = layout.getLineBottom(line)
                     val height = bottom - top
-                    if (y + height > 786f) { document.finishPage(current); current = page(); y = 48f }
+                    if (y + height > 786f) { document.finishPage(current); unfinished = null; current = page(); y = 48f }
                     current.canvas.save()
                     current.canvas.clipRect(40f, y, 555f, y + height)
                     current.canvas.translate(40f, y - top)

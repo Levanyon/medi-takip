@@ -181,7 +181,11 @@ class Reminders(private val app: MediApp) {
 
     /** Serialize restore with alarm delivery/actions; never issue a historical reminder backlog. */
     suspend fun restoreData(replace: suspend () -> Unit) {
-        lock.withLock { replace(); notifications.cancelAll() }
+        lock.withLock {
+            replace()
+            // The database has committed: a platform cleanup failure must not be reported as rollback.
+            try { notifications.cancelAll() } catch (e: Exception) { app.reminderLog.record("restore-notifications", e) }
+        }
         try { rebuild(false) } catch (e: Exception) { app.reminderLog.record("restore-reschedule", e) }
     }
 

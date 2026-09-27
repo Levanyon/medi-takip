@@ -60,7 +60,7 @@ private const val SETTINGS = 3
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     LaunchedEffect(Unit) { while (true) { now = LocalDateTime.now().truncatedTo(ChronoUnit.MINUTES); delay(1000) } }
-    val lastBackup by vm.lastBackup.collectAsStateWithLifecycle()
+
     val today = now.toLocalDate()
     val formOpen = personEditor || medicationPersonId != null
     fun back() { when { medicationId != null -> medicationId = null; personId != null -> personId = null; reminderStatus -> reminderStatus = false; else -> section = TODAY } }

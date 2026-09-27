@@ -44,6 +44,29 @@ class ReminderIntegrationTest {
     private fun doseNotifications() = notifications.activeNotifications.filter { it.id == Reminders.DOSE_ID }
     private fun now() = LocalDateTime.now().withSecond(0).withNano(0)
 
+    @Test fun restoreClearsOldNotificationsAndSchedulesFutureWithoutBacklog() = runBlocking {
+        add(LocalDate.now().plusDays(1).atTime(8, 0))
+        app.reminders.sendTestNotification()
+        assertTrue(notifications.activeNotifications.isNotEmpty())
+        val text = BackupCodec.encode(app.repository.snapshot(), app.preferences.state.value, System.currentTimeMillis(), "test")
+        app.reminders.restoreData { app.backups.restore(BackupCodec.decode(text)) }
+        assertTrue(notifications.activeNotifications.isEmpty())
+        assertTrue(app.preferences.nextAlarm > System.currentTimeMillis())
+        assertEquals(2, shadowOf(app.getSystemService(AlarmManager::class.java)).scheduledAlarms.size)
+    }
+
+    @Test fun rejectedRestoreLeavesExistingRemindersIntact() = runBlocking {
+        add(LocalDate.now().plusDays(1).atTime(8, 0))
+        app.reminders.rebuild(false)
+        app.reminders.sendTestNotification()
+        val next = app.preferences.nextAlarm
+        try { app.reminders.restoreData { throw java.io.IOException("test failure") }; fail("Expected failure") }
+        catch (_: java.io.IOException) { }
+        assertEquals(next, app.preferences.nextAlarm)
+        assertTrue(notifications.activeNotifications.isNotEmpty())
+        assertEquals(2, shadowOf(app.getSystemService(AlarmManager::class.java)).scheduledAlarms.size)
+    }
+
     @Test fun alarmClockAndSafetyAlarmRestoreAndCancel() = runBlocking {
         add(LocalDate.now().plusDays(1).atTime(8, 0))
         val alarms = shadowOf(app.getSystemService(AlarmManager::class.java))
