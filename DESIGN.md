@@ -1,24 +1,36 @@
 # MediTakip design system
 
-MediTakip should look like a modern Android 16-era application, not a legacy Material 2 or early Material 3 application. Use strong visual hierarchy, tonal surfaces, expressive but restrained shapes and motion, edge-to-edge layouts, adaptive sizing, generous spacing, accessible touch targets, and responsive layouts. Avoid excessive cards, borders, heavy shadows, cramped screens, fixed-width layouts, and spreadsheet-like UI.
+MediTakip follows Quiet Luxury Healthcare: calm petrol and jade, warm neutral surfaces, readable system typography and restrained depth. Use clear hierarchy, edge-to-edge layouts, adaptive sizing and accessible touch targets. Avoid decorative gradients, glass effects, heavy shadows and pill-shaped controls everywhere. Premium redesign Phase 1 establishes shared foundations only; the Today screen redesign requires separate review and approval.
 
 ## Foundation
 
-Keep the established green identity and Turkish interface. Use stable Compose Material 3 components; expressive design does not require experimental dependencies. `Theme.kt` owns colors, typography and shapes. `DesignSystem.kt` owns shared dimensions, motion durations, adaptive layout and navigation. `Components.kt` provides reusable screen headings, actions, status indicators, progress and medication/person rows. Changes here must not alter schedule, reminder or persistence behavior.
+Keep the established green identity and Turkish interface. Use stable Compose Material 3 components without new dependencies. `Theme.kt` owns colors and typography and applies `MediShapes`. `DesignSystem.kt` owns shared spacing, radius, border and elevation tokens, motion durations, adaptive layout and navigation. `Components.kt` and `ScreenComponents.kt` provide shared components. Changes here must not alter schedule, reminder or persistence behavior.
 
 ## Color, shape and hierarchy
 
-- Use background for the page, surfaceContainerLow for grouped content, surfaceContainer for navigation, and surfaceContainerHigh for neutral status. Reserve primaryContainer for the main progress summary and selected states; secondaryContainer signals recorded completion. Use paired on-colors. Never convey status with color alone: retain text and icons.
-- Light and dark palettes have explicit container levels. Do not introduce dynamic colors that replace the green identity, decorative gradients, outlined boxes or heavy shadows. Shared surfaces use zero elevation; tonal contrast supplies depth.
-- Shape roles: 8dp extra-small details, 12dp small elements, 20dp medium surfaces, 28dp actionable rows/buttons, 36dp hero surfaces/dialogs, and capsules for status. Do not nest cards merely to separate text.
-- Typography: headlineLarge for screen titles; titleLarge for section/medication names; headlineSmall for scheduled time; bodyLarge/bodyMedium for content; labelLarge for actions/status; labelMedium/bodySmall for navigation/metadata. Small text stays at least 14sp. Let text wrap and height grow; never reduce font scale or ellipsize essential information to force a fit.
+- Use background for pages, surfaceContainerLow for grouped content/dialogs/navigation, surfaceContainer for quiet icon controls, and surfaceContainerHigh for neutral status. PrimaryContainer identifies selected/completed states; secondaryContainer supports secondary actions and avatars. Amber is for warnings and red for errors/destructive states. Retain text and icons alongside status colors.
+- Both palettes explicitly define surface levels, tint and inverse snackbar roles. Most surfaces and buttons are flat; dialogs and navigation use only 2dp shadow. `mediSurfaceBorder()` supplies a subtle 1dp outlineVariant border for navigation, dialogs and empty states. Decorative borders are not relied on for accessible status contrast.
+- `MediRadius`: detail 10dp, control 14dp, card 20dp, prominent 24dp, dialog 28dp; mapped to `MediShapes` from extraSmall through extraLarge. Avatars remain circular. Do not nest cards merely to separate text.
+- Typography uses Android SansSerif: screen headings 32/38sp, section headings 18/24sp, card titles 20/26sp, scheduled times 23/30sp with tabular numerals, body 16/24sp, labels 14/20sp, buttons 16/22sp (size/line height). Small text stays at least 14sp. Let text wrap and height grow; never reduce font scale or ellipsize essential information to force a fit.
+
+| Role | Light | Dark |
+|---|---|---|
+| Primary / onPrimary | `#0B5A4C` / `#FFFFFF` | `#8FD7BE` / `#053A30` |
+| Primary container / content | `#D6EEE6` / `#073C33` | `#174A3F` / `#D5F3E7` |
+| Background / content | `#F5F7F3` / `#18231F` | `#0D1512` / `#E0E9E4` |
+| Surface | `#FAFBF8` | `#111B17` |
+| Containers low / normal / high | `#F1F4EF` / `#E9EEE9` / `#E2E8E3` | `#17211D` / `#1D2924` / `#25322C` |
+| Secondary container / content | `#E3ECE7` / `#2D443B` | `#2A4037` / `#D6E9E0` |
+| Muted text | `#53615B` | `#BCCAC3` |
+| Warning / warning container | `#8A6338` / `#F4E7D4` | `#E4C18F` / `#503D25` |
+| Error / error container | `#BA4B4B` / `#FFDAD8` | `#FFB4AB` / `#93000A` |
 
 ## Layout and accessibility
 
-- Use MediSpace (4/8/12/16/20/24/32dp) for spacing. Interactive targets are at least 48dp; primary actions are at least 56dp. These are minimum heights, not text-clipping fixed heights.
+- Retain MediSpace (4/8/12/16/20/24/32/40dp) for spacing; 40dp is reserved for spacious feature sections. Interactive targets are at least 48dp; primary and secondary actions are at least 56dp. These are minimum heights, not text-clipping fixed heights. Icons use MediSize: 18dp status, 24dp controls, 32dp feature icons.
 - MediContent fills available width up to an 840dp reading measure and centers on larger screens. This cap is not a fixed screen width. Existing scrolling screens retain their scrolling behavior.
 - AdaptivePair measures content and places the second item below the first when they cannot fit side by side. Use it for short heading/status pairs instead of assuming a device width or font size.
-- Bottom navigation has four destinations (Bugün, Kişiler, Geçmiş, Ayarlar) with native Material selection semantics; selected tabs use filled icons, others outlined. Tabs share available width; when measured labels cannot fit at enlarged text sizes, the bar scrolls horizontally. Text remains readable and every destination is reachable.
+- Bottom navigation retains four destinations (Bugün, Kişiler, Geçmiş, Ayarlar) with native Material selection semantics; selected tabs use filled icons, others outlined. The contained shell respects bottom/horizontal safe insets. Tabs share available width; measured label width triggers horizontal scrolling when necessary and minimum bar height grows with the label line height. The reusable component is also tested with five destinations without adding a production destination.
 - MainActivity enables edge-to-edge. Scaffold uses safeDrawing insets; the content consumes its scaffold padding. Navigation handles horizontal/bottom safe insets; onboarding applies safeDrawing. Add/edit forms use FormScreen (see below), never a Dialog window. Never add guessed status/navigation-bar padding. Keep Android's three-button navigation contrast scrim.
 
 ## Information architecture

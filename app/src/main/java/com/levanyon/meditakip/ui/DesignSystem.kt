@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -32,8 +33,35 @@ object MediSize {
     val touch = 48.dp
     val primaryAction = 56.dp
     val icon = 24.dp
+    val statusIcon = 18.dp
+    val featureIcon = 32.dp
     val readingWidth = 840.dp
 }
+
+/** Controls are distinct from cards; only identity avatars use circles. */
+object MediRadius {
+    val detail = 10.dp
+    val control = 14.dp
+    val card = 20.dp
+    val prominent = 24.dp
+    val dialog = 28.dp
+}
+
+val MediShapes = Shapes(
+    extraSmall = RoundedCornerShape(MediRadius.detail),
+    small = RoundedCornerShape(MediRadius.control),
+    medium = RoundedCornerShape(MediRadius.card),
+    large = RoundedCornerShape(MediRadius.prominent),
+    extraLarge = RoundedCornerShape(MediRadius.dialog)
+)
+
+/** Decorative borders supplement surface contrast, never convey status alone. */
+object MediBorder {
+    val width = 1.dp
+}
+
+@Composable
+fun mediSurfaceBorder() = BorderStroke(MediBorder.width, MaterialTheme.colorScheme.outlineVariant)
 
 object MediMotion {
     const val feedbackMillis = 160
@@ -42,9 +70,9 @@ object MediMotion {
 
 object MediElevation {
     val flat = 0.dp
-    val card = 1.dp
-    val raised = 3.dp
-    val navigation = 6.dp
+    val card = 0.dp
+    val raised = 2.dp
+    val navigation = 2.dp
 }
 
 /** A fluid reading column; the outer surface still paints edge to edge. */
@@ -97,7 +125,8 @@ fun MediNavigationBar(
     val density = LocalDensity.current
     val labelStyle = MaterialTheme.typography.labelMedium
     val labelWidth = labels.maxOf { textMeasurer.measure(it, style = labelStyle).size.width }
-    val itemWidth = maxOf(MediSize.touch, with(density) { labelWidth.toDp() } + MediSpace.large)
+    val itemWidth = maxOf(MediSize.touch, with(density) { labelWidth.toDp() } + MediSpace.regular)
+    val barHeight = with(density) { labelStyle.lineHeight.toDp() } + MediSize.icon + MediSpace.extraLarge
 
     MediContent(
         Modifier
@@ -106,15 +135,16 @@ fun MediNavigationBar(
     ) {
         Surface(
             shape = MaterialTheme.shapes.extraLarge,
-            color = MaterialTheme.colorScheme.surfaceContainerLowest,
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f)),
+            color = MaterialTheme.colorScheme.surfaceContainerLow,
+            border = mediSurfaceBorder(),
+            tonalElevation = MediElevation.flat,
             shadowElevation = MediElevation.navigation
         ) {
             BoxWithConstraints(Modifier.fillMaxWidth()) {
                 val barWidth = maxOf(maxWidth, itemWidth * labels.size)
                 Box(Modifier.horizontalScroll(rememberScrollState())) {
                     NavigationBar(
-                        modifier = Modifier.width(barWidth),
+                        modifier = Modifier.width(barWidth).heightIn(min = barHeight),
                         containerColor = Color.Transparent,
                         tonalElevation = MediElevation.flat,
                         windowInsets = WindowInsets(0, 0, 0, 0)

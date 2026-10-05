@@ -44,34 +44,41 @@ val ScreenPadding = PaddingValues(start = MediSpace.page, end = MediSpace.page, 
 }
 @Composable fun SectionHeader(title: String, subtitle: String? = null) {
     Column(Modifier.padding(top = MediSpace.medium, bottom = MediSpace.tiny), verticalArrangement = Arrangement.spacedBy(MediSpace.tiny)) {
-        Text(title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { heading() })
+        Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
         subtitle?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
     }
 }
 @Composable fun BackHeader(title: String, back: () -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = back, modifier = Modifier.size(MediSize.touch)) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) }
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MediSpace.small)) {
+        MediIconButton(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back), action = back)
         Text(title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f).semantics { heading() })
     }
 }
+/** A calm control surface with an explicit label and a full touch target. */
+@Composable fun MediIconButton(icon: ImageVector, contentDescription: String, enabled: Boolean = true, action: () -> Unit) {
+    FilledTonalIconButton(onClick = action, enabled = enabled, modifier = Modifier.size(MediSize.touch), shape = MaterialTheme.shapes.small,
+        colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = MaterialTheme.colorScheme.surfaceContainer, contentColor = MaterialTheme.colorScheme.onSurface)) {
+        Icon(icon, contentDescription, Modifier.size(MediSize.icon))
+    }
+}
 @Composable fun PrimaryAction(label: String, icon: ImageVector = Icons.Default.Add, enabled: Boolean = true, action: () -> Unit) {
-    Button(onClick = action, enabled = enabled, modifier = Modifier.fillMaxWidth().heightIn(min = MediSize.primaryAction), shape = MaterialTheme.shapes.large, contentPadding = PaddingValues(MediSpace.regular)) {
-        Icon(icon, null, Modifier.size(MediSize.icon)); Spacer(Modifier.width(MediSpace.medium)); Text(label, style = MaterialTheme.typography.labelLarge)
+    Button(onClick = action, enabled = enabled, modifier = Modifier.fillMaxWidth().heightIn(min = MediSize.primaryAction), shape = MaterialTheme.shapes.small, elevation = ButtonDefaults.buttonElevation(defaultElevation = MediElevation.flat, pressedElevation = MediElevation.flat, focusedElevation = MediElevation.flat, hoveredElevation = MediElevation.flat), contentPadding = PaddingValues(MediSpace.regular)) {
+        Icon(icon, null, Modifier.size(MediSize.icon)); Spacer(Modifier.width(MediSpace.medium)); Text(label, style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center)
     }
 }
 /** Low-emphasis action for secondary paths; still a full 48dp target. */
 @Composable fun QuietAction(label: String, icon: ImageVector? = null, color: Color = MaterialTheme.colorScheme.primary, action: () -> Unit) {
-    TextButton(onClick = action, modifier = Modifier.fillMaxWidth().heightIn(min = MediSize.touch), shape = MaterialTheme.shapes.large) {
-        icon?.let { Icon(it, null, tint = color); Spacer(Modifier.width(MediSpace.small)) }
+    TextButton(onClick = action, modifier = Modifier.fillMaxWidth().heightIn(min = MediSize.touch), shape = MaterialTheme.shapes.small) {
+        icon?.let { Icon(it, null, tint = color, modifier = Modifier.size(MediSize.icon)); Spacer(Modifier.width(MediSpace.small)) }
         Text(label, color = color, style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center)
     }
 }
 /** Tonal, centered empty state: icon badge, title, one helpful sentence and at most one action. */
 @Composable fun EmptyState(title: String, body: String, icon: ImageVector = Icons.Default.Medication, actionLabel: String? = null, action: (() -> Unit)? = null) {
-    Surface(shape = MaterialTheme.shapes.extraLarge, color = MaterialTheme.colorScheme.surfaceContainerLow, modifier = Modifier.fillMaxWidth()) {
+    Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainerLow, border = mediSurfaceBorder(), tonalElevation = MediElevation.flat, modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(horizontal = MediSpace.large, vertical = MediSpace.extraLarge), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(MediSpace.regular)) {
-            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) { Icon(icon, null, Modifier.padding(MediSpace.page).size(36.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer) }
-            Text(title, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
+            Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.primaryContainer) { Icon(icon, null, Modifier.padding(MediSpace.regular).size(MediSize.featureIcon), tint = MaterialTheme.colorScheme.onPrimaryContainer) }
+            Text(title, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center, modifier = Modifier.semantics { heading() })
             Text(body, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
             if (action != null && actionLabel != null) PrimaryAction(actionLabel, action = action)
         }
@@ -79,18 +86,18 @@ val ScreenPadding = PaddingValues(start = MediSpace.page, end = MediSpace.page, 
 }
 @Composable fun Avatar(name: String, large: Boolean = true) {
     val size = if (large) MediSize.primaryAction else MediSize.touch
-    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
+    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.secondaryContainer) {
         Box(Modifier.sizeIn(minWidth = size, minHeight = size).padding(MediSpace.small), contentAlignment = Alignment.Center) {
-            Text(name.take(1).uppercase(TurkishFormat.locale), style = if (large) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+            Text(name.take(1).uppercase(TurkishFormat.locale), style = if (large) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSecondaryContainer)
         }
     }
 }
 @Composable fun StatusChip(label: String, completed: Boolean = false, showIcon: Boolean = true, icon: ImageVector? = null) {
-    Surface(shape = CircleShape, color = if (completed) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
+    Surface(shape = MaterialTheme.shapes.extraSmall, color = if (completed) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
         contentColor = if (completed) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant) {
         Row(Modifier.padding(horizontal = MediSpace.medium, vertical = MediSpace.small), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MediSpace.small)) {
-            if (showIcon) Icon(icon ?: if (completed) Icons.Default.CheckCircle else Icons.Default.Schedule, null, Modifier.size(18.dp))
-            Text(label, style = MaterialTheme.typography.labelLarge)
+            if (showIcon) Icon(icon ?: if (completed) Icons.Default.CheckCircle else Icons.Default.Schedule, null, Modifier.size(MediSize.statusIcon))
+            Text(label, style = MaterialTheme.typography.labelMedium)
         }
     }
 }

@@ -1,6 +1,7 @@
 package com.levanyon.meditakip.ui
 
 import android.graphics.Bitmap
+import androidx.compose.material.icons.filled.Today
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalDensity
 import androidx.activity.ComponentActivity
@@ -38,7 +39,7 @@ import java.time.*
 class ScreenshotTest(private val screen: String, private val dark: Boolean) {
     companion object {
         @JvmStatic @ParameterizedRobolectricTestRunner.Parameters(name = "{0}-dark={1}")
-        fun params() = listOf("today", "people", "person", "medication", "history", "settings", "status", "onboarding", "personForm", "medicationForm", "empty", "brand")
+        fun params() = listOf("today", "people", "person", "medication", "history", "settings", "status", "onboarding", "personForm", "medicationForm", "empty", "brand", "designSystem")
             .flatMap { listOf(arrayOf<Any>(it, false), arrayOf<Any>(it, true)) }
     }
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
@@ -64,7 +65,7 @@ class ScreenshotTest(private val screen: String, private val dark: Boolean) {
         compose.setContent {
             CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, 1f)) {
                 MediTheme(if (dark) "Dark" else "Light") {
-                    androidx.compose.material3.Surface {
+                    androidx.compose.material3.Surface(color = androidx.compose.material3.MaterialTheme.colorScheme.background) {
                         val vm: AppViewModel = viewModel()
                         val access = PermissionAccess(PermissionState(true, true, PermissionAction.NONE, PermissionAction.NONE, false), false, {}, {})
                         MediContent {
@@ -81,6 +82,7 @@ class ScreenshotTest(private val screen: String, private val dark: Boolean) {
                                 "medicationForm" -> MedicationEditor(anne, null, {}) { _, _ -> }
                                 "empty" -> TodayScreen(Snapshot(), date.atTime(9, 0), null, {}, vm, {}, {}, {}, {})
                                 "brand" -> BrandPreview()
+                                "designSystem" -> DesignSystemPreview()
                             }
                         }
                     }
@@ -94,6 +96,30 @@ class ScreenshotTest(private val screen: String, private val dark: Boolean) {
             val bitmap = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
             view.draw(Canvas(bitmap))
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)
+        }
+    }
+}
+
+/** Shared-component review sheet; no production screen or data changes. */
+@Composable
+private fun DesignSystemPreview() {
+    val labels = listOf("Bugün", "İlaçlar", "Kişiler", "Geçmiş", "Ayarlar")
+    androidx.compose.material3.Scaffold(
+        containerColor = androidx.compose.material3.MaterialTheme.colorScheme.background,
+        bottomBar = { MediNavigationBar(labels, List(5) { androidx.compose.material.icons.Icons.Default.Today }, 0) {} }
+    ) { padding ->
+        androidx.compose.foundation.lazy.LazyColumn(
+            androidx.compose.ui.Modifier.padding(padding), contentPadding = ScreenPadding,
+            verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(MediSpace.regular)
+        ) {
+            item { ScreenHeading("MediTakip", "Sakin, anlaşılır, her gün yanınızda.") }
+            item { SectionHeader("Günlük bakım", "Ortak bileşenler") }
+            item { BackHeader("Kişi bilgileri") {} }
+            item { PrimaryAction("İlaç Ekle") {} }
+            item { SecondaryAction("Bilgileri düzenle") {} }
+            item { QuietAction("Daha sonra") {} }
+            item { AdaptivePair({ Avatar("Ayşe") }, { StatusChip("İçildi • 08:00", completed = true) }) }
+            item { EmptyState("Henüz kişi eklenmemiş", "İlk kişiyi ekleyerek başlayın.") }
         }
     }
 }

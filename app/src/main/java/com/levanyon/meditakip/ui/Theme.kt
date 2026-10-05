@@ -3,7 +3,6 @@ package com.levanyon.meditakip.ui
 import android.content.Context
 import android.view.ContextThemeWrapper
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -13,7 +12,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
@@ -64,8 +62,16 @@ internal val LightColors = lightColorScheme(
 
     surfaceVariant = Color(0xFFE3E9E5),
     onSurfaceVariant = Color(0xFF53615B),
-    outline = Color(0xFF7A8882),
+    outline = Color(0xFF718078),
     outlineVariant = Color(0xFFC9D2CD),
+
+    surfaceTint = Color(0xFF0B5A4C),
+    surfaceBright = Color(0xFFFAFBF8),
+    surfaceDim = Color(0xFFDBE3DD),
+    inverseSurface = Color(0xFF25322C),
+    inverseOnSurface = Color(0xFFF1F4EF),
+    inversePrimary = Color(0xFF8FD7BE),
+    scrim = Color(0xFF000000),
 
     error = Color(0xFFBA4B4B),
     onError = Color(0xFFFFFFFF),
@@ -105,6 +111,14 @@ internal val DarkColors = darkColorScheme(
     outline = Color(0xFF87968E),
     outlineVariant = Color(0xFF405149),
 
+    surfaceTint = Color(0xFF8FD7BE),
+    surfaceBright = Color(0xFF2D3B34),
+    surfaceDim = Color(0xFF0D1512),
+    inverseSurface = Color(0xFFE0E9E4),
+    inverseOnSurface = Color(0xFF18231F),
+    inversePrimary = Color(0xFF0B5A4C),
+    scrim = Color(0xFF000000),
+
     error = Color(0xFFFFB4AB),
     onError = Color(0xFF690005),
     errorContainer = Color(0xFF93000A),
@@ -116,13 +130,7 @@ fun MediTheme(theme: String, content: @Composable () -> Unit) {
     val dark = theme == "Dark" || (theme == "System" && isSystemInDarkTheme())
     MaterialTheme(
         colorScheme = if (dark) DarkColors else LightColors,
-        shapes = Shapes(
-            extraSmall = RoundedCornerShape(10.dp),
-            small = RoundedCornerShape(14.dp),
-            medium = RoundedCornerShape(20.dp),
-            large = RoundedCornerShape(26.dp),
-            extraLarge = RoundedCornerShape(32.dp)
-        ),
+        shapes = MediShapes,
         typography = Typography(
             headlineLarge = TextStyle(
                 fontFamily = FontFamily.SansSerif,
@@ -142,7 +150,9 @@ fun MediTheme(theme: String, content: @Composable () -> Unit) {
                 fontFamily = FontFamily.SansSerif,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 23.sp,
-                lineHeight = 29.sp
+                lineHeight = 30.sp,
+                // Scheduled times use headlineSmall: stable digit widths aid scanning.
+                fontFeatureSettings = "tnum"
             ),
             titleLarge = TextStyle(
                 fontFamily = FontFamily.SansSerif,
@@ -153,14 +163,14 @@ fun MediTheme(theme: String, content: @Composable () -> Unit) {
             titleMedium = TextStyle(
                 fontFamily = FontFamily.SansSerif,
                 fontWeight = FontWeight.SemiBold,
-                fontSize = 17.sp,
+                fontSize = 18.sp,
                 lineHeight = 24.sp
             ),
             titleSmall = TextStyle(
                 fontFamily = FontFamily.SansSerif,
                 fontWeight = FontWeight.SemiBold,
-                fontSize = 15.sp,
-                lineHeight = 22.sp
+                fontSize = 16.sp,
+                lineHeight = 24.sp
             ),
             bodyLarge = TextStyle(
                 fontFamily = FontFamily.SansSerif,
@@ -169,31 +179,31 @@ fun MediTheme(theme: String, content: @Composable () -> Unit) {
             ),
             bodyMedium = TextStyle(
                 fontFamily = FontFamily.SansSerif,
-                fontSize = 15.sp,
-                lineHeight = 22.sp
+                fontSize = 16.sp,
+                lineHeight = 24.sp
             ),
             bodySmall = TextStyle(
                 fontFamily = FontFamily.SansSerif,
-                fontSize = 13.sp,
-                lineHeight = 19.sp
+                fontSize = 14.sp,
+                lineHeight = 20.sp
             ),
             labelLarge = TextStyle(
                 fontFamily = FontFamily.SansSerif,
                 fontWeight = FontWeight.SemiBold,
-                fontSize = 15.sp,
-                lineHeight = 20.sp
+                fontSize = 16.sp,
+                lineHeight = 22.sp
             ),
             labelMedium = TextStyle(
                 fontFamily = FontFamily.SansSerif,
                 fontWeight = FontWeight.SemiBold,
-                fontSize = 13.sp,
-                lineHeight = 18.sp
+                fontSize = 14.sp,
+                lineHeight = 20.sp
             ),
             labelSmall = TextStyle(
                 fontFamily = FontFamily.SansSerif,
                 fontWeight = FontWeight.Medium,
-                fontSize = 12.sp,
-                lineHeight = 17.sp
+                fontSize = 14.sp,
+                lineHeight = 20.sp
             )
         ),
         content = content

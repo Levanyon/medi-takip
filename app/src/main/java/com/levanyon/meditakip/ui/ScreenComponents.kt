@@ -8,6 +8,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.window.Dialog
 import com.levanyon.meditakip.R
 
@@ -26,7 +29,9 @@ fun FormScreen(title: String, dismiss: () -> Unit, content: @Composable ColumnSc
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         MediContent(Modifier.fillMaxSize()) {
             Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))) {
-                Box(Modifier.padding(horizontal = MediSpace.small, vertical = MediSpace.tiny)) { BackHeader(title, dismiss) }
+                Surface(color = MaterialTheme.colorScheme.surfaceContainerLow) {
+                    Box(Modifier.fillMaxWidth().padding(horizontal = MediSpace.small, vertical = MediSpace.small)) { BackHeader(title, dismiss) }
+                }
                 Column(
                     Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())
                         .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom))
@@ -42,9 +47,10 @@ fun FormScreen(title: String, dismiss: () -> Unit, content: @Composable ColumnSc
 @Composable
 fun MediDialog(title: String, dismiss: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
     Dialog(onDismissRequest = dismiss) {
-        Surface(shape = MaterialTheme.shapes.extraLarge, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
+        Surface(shape = MaterialTheme.shapes.extraLarge, color = MaterialTheme.colorScheme.surfaceContainerLow,
+            border = mediSurfaceBorder(), tonalElevation = MediElevation.flat, shadowElevation = MediElevation.raised) {
             Column(Modifier.verticalScroll(rememberScrollState()).padding(MediSpace.large), verticalArrangement = Arrangement.spacedBy(MediSpace.regular)) {
-                Text(title, style = MaterialTheme.typography.headlineSmall)
+                Text(title, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() })
                 content()
             }
         }
@@ -53,11 +59,11 @@ fun MediDialog(title: String, dismiss: () -> Unit, content: @Composable ColumnSc
 
 @Composable
 fun SecondaryAction(label: String, enabled: Boolean = true, action: () -> Unit) {
-    FilledTonalButton(onClick = action, enabled = enabled, shape = MaterialTheme.shapes.large,
-        modifier = Modifier.fillMaxWidth().heightIn(min = MediSize.primaryAction), contentPadding = PaddingValues(MediSpace.regular)) { Text(label, style = MaterialTheme.typography.labelLarge) }
+    FilledTonalButton(onClick = action, enabled = enabled, shape = MaterialTheme.shapes.small,
+        modifier = Modifier.fillMaxWidth().heightIn(min = MediSize.primaryAction), contentPadding = PaddingValues(MediSpace.regular)) { Text(label, style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center) }
 }
 
 @Composable
 fun CancelAction(dismiss: () -> Unit) {
-    TextButton(onClick = dismiss, modifier = Modifier.fillMaxWidth().heightIn(min = MediSize.touch)) { Text(stringResource(R.string.cancel), style = MaterialTheme.typography.labelLarge) }
+    QuietAction(stringResource(R.string.cancel), action = dismiss)
 }

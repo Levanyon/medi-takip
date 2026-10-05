@@ -5,6 +5,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.Text
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
@@ -59,7 +62,72 @@ class DesignSystemTest {
             val tab = compose.onNode(hasText(label) and isSelectable())
             tab.performScrollTo().assertIsDisplayed().performClick().assertIsSelected()
             tab.assertWidthIsAtLeast(48.dp).assertHeightIsAtLeast(48.dp)
+            assertTextFits(label)
         }
+    }
+
+    private fun assertTextFits(label: String) {
+        val results = mutableListOf<TextLayoutResult>()
+        compose.onNodeWithText(label, useUnmergedTree = true)
+            .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(results) }
+        assertTrue("Text layout should be available for $label", results.isNotEmpty())
+        // Navigation measures labels more than once. A reused paragraph can retain the wider
+        // measurement constraint even when its glyphs fit the final Text size; check ink lines.
+        results.forEach { result ->
+            assertTrue("$label must fit vertically", !result.didOverflowHeight)
+            (0 until result.lineCount).forEach { line ->
+                assertTrue("$label must not ellipsize", !result.isLineEllipsized(line))
+                assertTrue("$label line must fit horizontally",
+                    result.getLineLeft(line) >= -0.5f && result.getLineRight(line) <= result.size.width + 0.5f)
+            }
+        }
+    }
+
+    @Test fun fiveNavigationItemsFitAtDefaultFontSize() {
+        val labels = listOf("Bugün", "İlaçlar", "Kişiler", "Geçmiş", "Ayarlar")
+        compose.setContent {
+            CompositionLocalProvider(LocalDensity provides Density(1f, 1f)) {
+                MediTheme("Dark") {
+                    Box(Modifier.width(360.dp)) {
+                        MediNavigationBar(labels, List(5) { Icons.Default.Today }, 0) {}
+                    }
+                }
+            }
+        }
+        labels.forEach { label ->
+            val tab = compose.onNode(hasText(label) and isSelectable()).assertIsDisplayed()
+            val bounds = tab.fetchSemanticsNode().boundsInRoot
+            assertTrue("Every default-size tab fits inside the shell", bounds.left >= 12f && bounds.right <= 348f)
+            tab.assertWidthIsAtLeast(48.dp).assertHeightIsAtLeast(48.dp)
+            assertTextFits(label)
+        }
+    }
+
+    @Test fun sharedActionsAndBackHeaderRemainAccessibleAtLargeFonts() {
+        var secondary = false
+        var quiet = false
+        var back = false
+        compose.setContent {
+            CompositionLocalProvider(LocalDensity provides Density(1f, 2f)) {
+                MediTheme("Dark") {
+                    Column(Modifier.width(280.dp)) {
+                        BackHeader("Kişi bilgilerini düzenle") { back = true }
+                        SecondaryAction("Kişi bilgilerini kaydet") { secondary = true }
+                        QuietAction("Değişikliklerden vazgeç") { quiet = true }
+                        PrimaryAction("Kaydet", enabled = false) { error("Disabled action invoked") }
+                    }
+                }
+            }
+        }
+        listOf("Kişi bilgilerini kaydet", "Değişikliklerden vazgeç").forEach { label ->
+            compose.onNodeWithText(label).assertHeightIsAtLeast(48.dp).performClick()
+            assertTextFits(label)
+        }
+        compose.onNodeWithContentDescription("Geri").assertWidthIsAtLeast(48.dp).assertHeightIsAtLeast(48.dp).performClick()
+        compose.onNodeWithText("Kaydet").assertIsNotEnabled()
+        compose.onNodeWithText("Kişi bilgilerini düzenle")
+            .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
+        assertTrue(secondary && quiet && back)
     }
 
     @Test fun longPrimaryActionGrowsAndKeepsItsTouchTarget() {

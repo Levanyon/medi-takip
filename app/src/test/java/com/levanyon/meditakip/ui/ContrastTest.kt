@@ -31,6 +31,17 @@ class ContrastTest {
         "onSecondaryContainer/secondaryContainer (tonal buttons)" to (c.onSecondaryContainer to c.secondaryContainer),
         "onTertiaryContainer/tertiaryContainer (warnings)" to (c.onTertiaryContainer to c.tertiaryContainer),
         "error/background" to (c.error to c.background),
+        "error/surfaceContainerLow (dialog errors)" to (c.error to c.surfaceContainerLow),
+        "onError/error" to (c.onError to c.error),
+        "onErrorContainer/errorContainer" to (c.onErrorContainer to c.errorContainer),
+        "onSecondary/secondary" to (c.onSecondary to c.secondary),
+        "onTertiary/tertiary" to (c.onTertiary to c.tertiary),
+        "onSurface/surface" to (c.onSurface to c.surface),
+        "onSurface/surfaceContainerHighest" to (c.onSurface to c.surfaceContainerHighest),
+        "onSurfaceVariant/primaryContainer (highlighted notes)" to (c.onSurfaceVariant to c.primaryContainer),
+        "onSurfaceVariant/surfaceContainerLowest" to (c.onSurfaceVariant to c.surfaceContainerLowest),
+        "inverseOnSurface/inverseSurface (snackbar)" to (c.inverseOnSurface to c.inverseSurface),
+        "inversePrimary/inverseSurface (snackbar action)" to (c.inversePrimary to c.inverseSurface),
     )
     private fun iconPairs(c: ColorScheme) = mapOf(
         "outline/surfaceContainerLow (pending marker)" to (c.outline to c.surfaceContainerLow),
