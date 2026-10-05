@@ -3,7 +3,6 @@ package com.levanyon.meditakip.ui
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -19,10 +18,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
@@ -107,7 +103,11 @@ val ScreenPadding = PaddingValues(start = MediSpace.page, end = MediSpace.page, 
  * with many people the track scrolls horizontally so nobody becomes unreachable.
  */
 data class PersonTab(val id: String, val name: String, val remaining: Int = 0, val archived: Boolean = false)
-@Composable fun PersonSelector(people: List<PersonTab>, selected: String?, onSelect: (String) -> Unit, showCounts: Boolean = true) {
+@Composable fun PersonSelector(people: List<PersonTab>, selected: String?, onSelect: (String) -> Unit, showCounts: Boolean = true, tonal: Boolean = false) {
+    if (tonal) {
+        TodayPersonSelector(people, selected, onSelect, showCounts)
+        return
+    }
     Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
         Row(Modifier.horizontalScroll(rememberScrollState()).selectableGroup().padding(MediSpace.tiny), horizontalArrangement = Arrangement.spacedBy(MediSpace.tiny)) {
             people.forEach { person ->
@@ -137,73 +137,52 @@ data class PersonTab(val id: String, val name: String, val remaining: Int = 0, v
     }
 }
 
-/** A single compact summary: progress ring + "3 / 5 tamamlandı" + what is next. */
+/** Supporting progress only; the next dose is presented once, in the hero below. */
+@Suppress("UNUSED_PARAMETER") // Preserve the existing public API.
 @Composable fun DaySummary(progress: DailyProgress, next: Occurrence?) {
     val fraction by animateFloatAsState(progress.fraction, animationSpec = tween(MediMotion.progressMillis), label = "progress")
-    val done = progress.total > 0 && progress.remaining == 0
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MediSpace.regular), modifier = Modifier.padding(vertical = MediSpace.tiny)) {
-        Box(contentAlignment = Alignment.Center) {
-            CircularProgressIndicator(progress = { fraction }, modifier = Modifier.size(52.dp), strokeWidth = 6.dp, trackColor = MaterialTheme.colorScheme.surfaceContainerHighest, gapSize = 0.dp)
-            if (done) Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary)
-        }
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(if (done) stringResource(R.string.all_taken_today) else stringResource(R.string.completed_fraction, progress.completed, progress.total), style = MaterialTheme.typography.titleMedium)
-            next?.let { Text(stringResource(R.string.today_summary_next, it.time.toString(), it.schedule.name), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-        }
+    val summary = stringResource(R.string.completed_fraction, progress.completed, progress.total)
+    Column(Modifier.padding(vertical = MediSpace.small), verticalArrangement = Arrangement.spacedBy(MediSpace.small)) {
+        AdaptivePair(
+            leading = { Text(stringResource(R.string.today_medications), style = MaterialTheme.typography.titleSmall, modifier = Modifier.semantics { heading() }) },
+            trailing = { Text(summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        )
+        LinearProgressIndicator(progress = { fraction }, modifier = Modifier.fillMaxWidth().height(MediSpace.tiny).semantics { contentDescription = summary },
+            color = MaterialTheme.colorScheme.primary, trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            gapSize = 0.dp, drawStopIndicator = {})
     }
 }
 
 enum class DoseStatus { NEXT, PENDING, OVERDUE, TAKEN, SKIPPED, MISSED }
 
 /**
- * Timeline entry: a status rail on the left and a tonal row with time, medication, dose, status and its
- * actions. Every pending dose keeps its own İçildi button (only the highlighted one is filled) plus a
- * quieter Atla. A taken dose offers Saati değiştir and Geri Al; a skipped dose shows its note and Geri Al.
+ * Today's single highlighted dose uses the hero; all others are plain, readable timeline entries.
+ * The callbacks and status semantics are shared by both presentations.
  */
 @Composable
+@Suppress("UNUSED_PARAMETER") // `last` remains source-compatible; no decorative connector is needed.
 fun ScheduledDoseRow(
     item: Occurrence, editable: Boolean = false, busy: Boolean = false, status: DoseStatus = defaultStatus(item, editable),
     highlight: Boolean = status == DoseStatus.NEXT, last: Boolean = true,
     onTaken: () -> Unit = {}, onUndo: () -> Unit = {}, onSkip: () -> Unit = {}, onChangeTime: () -> Unit = {},
 ) {
+    if (highlight && !item.handled) {
+        NextDoseHero(item, status) {
+            if (editable) DoseActions(item, true, busy, onTaken, onUndo, onSkip, onChangeTime)
+        }
+        return
+    }
     val scheme = MaterialTheme.colorScheme
-    val completed = item.handled
-    val background by animateColorAsState(if (highlight && !completed) scheme.primaryContainer else scheme.surfaceContainerLow, animationSpec = tween(MediMotion.feedbackMillis), label = "doseStatus")
-    val foreground = if (highlight && !completed) scheme.onPrimaryContainer else scheme.onSurface
-    val lineColor = scheme.outlineVariant
-    // The connector to the next entry is drawn (not measured), so rows keep their natural height; it spans the
-    // list spacing below the row. Decorative only: the status is also written as text in the row.
-    Row(Modifier.fillMaxWidth().drawBehind {
-        if (!last) {
-            val x = 14.dp.toPx()
-            drawLine(lineColor, Offset(x, (MediSpace.page + 28.dp).toPx()), Offset(x, size.height + MediSpace.medium.toPx()), strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round)
-        }
-    }, horizontalArrangement = Arrangement.spacedBy(MediSpace.medium)) {
-        Box(Modifier.width(28.dp).padding(top = MediSpace.page), contentAlignment = Alignment.TopCenter) {
-            val (icon, tint) = when (status) {
-                DoseStatus.TAKEN -> Icons.Default.CheckCircle to scheme.primary
-                DoseStatus.SKIPPED -> Icons.Default.DoNotDisturbOn to scheme.onSurfaceVariant
-                DoseStatus.OVERDUE -> Icons.Default.Error to scheme.tertiary
-                DoseStatus.NEXT -> Icons.Default.RadioButtonChecked to scheme.primary
-                else -> Icons.Outlined.Circle to scheme.outline
-            }
-            Icon(icon, null, tint = tint, modifier = Modifier.size(24.dp))
-        }
-        Box(Modifier.weight(1f)) {
-            Surface(shape = MaterialTheme.shapes.large, color = background, contentColor = foreground, modifier = Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(MediSpace.regular), verticalArrangement = Arrangement.spacedBy(MediSpace.tiny)) {
-                    AdaptivePair(
-                        leading = { Text(item.time.toString(), style = MaterialTheme.typography.headlineSmall) },
-                        trailing = { DoseStatusLabel(status, item) }
-                    )
-                    Text(item.schedule.name, style = MaterialTheme.typography.titleLarge)
-                    Text(item.schedule.dose, style = MaterialTheme.typography.bodyLarge, color = if (highlight && !completed) foreground else scheme.onSurfaceVariant)
-                    if (item.schedule.note.isNotBlank() && !completed) Text(item.schedule.note, style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant)
-                    if (item.skipped && !item.note.isNullOrBlank()) Text(stringResource(R.string.skipped_note, item.note), style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant)
-                    if (editable) DoseActions(item, highlight, busy, onTaken, onUndo, onSkip, onChangeTime)
-                }
-            }
-        }
+    Column(Modifier.fillMaxWidth().padding(vertical = MediSpace.small), verticalArrangement = Arrangement.spacedBy(MediSpace.tiny)) {
+        AdaptivePair(
+            leading = { Text(item.time.toString(), style = MaterialTheme.typography.headlineSmall, color = if (item.handled) scheme.onSurfaceVariant else scheme.onSurface) },
+            trailing = { DoseStatusLabel(status, item) }
+        )
+        Text(item.schedule.name, style = MaterialTheme.typography.titleMedium, color = if (item.handled) scheme.onSurfaceVariant else scheme.onSurface)
+        Text(item.schedule.dose, style = MaterialTheme.typography.bodyLarge, color = scheme.onSurfaceVariant)
+        if (item.schedule.note.isNotBlank() && !item.handled) Text(item.schedule.note, style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant)
+        if (item.skipped && !item.note.isNullOrBlank()) Text(stringResource(R.string.skipped_note, item.note), style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant)
+        if (editable) DoseActions(item, false, busy, onTaken, onUndo, onSkip, onChangeTime)
     }
 }
 
@@ -215,11 +194,11 @@ fun ScheduledDoseRow(
         FlowRow(Modifier.fillMaxWidth().padding(top = MediSpace.small), horizontalArrangement = Arrangement.spacedBy(MediSpace.small), verticalArrangement = Arrangement.spacedBy(MediSpace.tiny)) {
             if (!item.skipped) {
                 val timeDescription = stringResource(R.string.change_time_description, item.personName, item.schedule.name, item.time.toString())
-                TextButton(onClick = onChangeTime, enabled = !busy, shape = MaterialTheme.shapes.large, modifier = Modifier.heightIn(min = MediSize.touch).semantics { contentDescription = timeDescription }) {
+                TextButton(onClick = onChangeTime, enabled = !busy, shape = MaterialTheme.shapes.small, modifier = Modifier.heightIn(min = MediSize.touch).semantics { contentDescription = timeDescription }) {
                     Text(stringResource(R.string.change_time), style = MaterialTheme.typography.labelLarge)
                 }
             }
-            TextButton(onClick = onUndo, enabled = !busy, shape = MaterialTheme.shapes.large, modifier = Modifier.heightIn(min = MediSize.touch).semantics { contentDescription = undoDescription }) {
+            TextButton(onClick = onUndo, enabled = !busy, shape = MaterialTheme.shapes.small, modifier = Modifier.heightIn(min = MediSize.touch).semantics { contentDescription = undoDescription }) {
                 Text(stringResource(R.string.undo), style = MaterialTheme.typography.labelLarge)
             }
         }
@@ -228,13 +207,13 @@ fun ScheduledDoseRow(
         FlowRow(Modifier.fillMaxWidth().padding(top = MediSpace.small), horizontalArrangement = Arrangement.spacedBy(MediSpace.small), verticalArrangement = Arrangement.spacedBy(MediSpace.small)) {
             val takenDescription = stringResource(R.string.dose_action_description, item.personName, item.schedule.name, item.time.toString())
             val skipDescription = stringResource(R.string.skip_action_description, item.personName, item.schedule.name, item.time.toString())
-            val takenModifier = Modifier.weight(1f).widthIn(min = 160.dp).heightIn(min = MediSize.primaryAction).semantics { contentDescription = takenDescription }
-            if (highlight) Button(shape = MaterialTheme.shapes.large, onClick = onTaken, enabled = !busy, modifier = takenModifier) {
+            val takenModifier = (if (highlight) Modifier.weight(1f) else Modifier).heightIn(min = if (highlight) MediSize.primaryAction else MediSize.touch).semantics { contentDescription = takenDescription }
+            if (highlight) Button(shape = MaterialTheme.shapes.small, onClick = onTaken, enabled = !busy, modifier = takenModifier) {
                 Icon(Icons.Default.Check, null); Spacer(Modifier.width(MediSpace.small)); Text(stringResource(R.string.taken), style = MaterialTheme.typography.labelLarge)
-            } else FilledTonalButton(shape = MaterialTheme.shapes.large, onClick = onTaken, enabled = !busy, modifier = takenModifier) {
+            } else TextButton(shape = MaterialTheme.shapes.small, onClick = onTaken, enabled = !busy, modifier = takenModifier) {
                 Icon(Icons.Default.Check, null); Spacer(Modifier.width(MediSpace.small)); Text(stringResource(R.string.taken), style = MaterialTheme.typography.labelLarge)
             }
-            TextButton(onClick = onSkip, enabled = !busy, shape = MaterialTheme.shapes.large, modifier = Modifier.heightIn(min = MediSize.primaryAction).semantics { contentDescription = skipDescription }) {
+            TextButton(onClick = onSkip, enabled = !busy, shape = MaterialTheme.shapes.small, modifier = Modifier.heightIn(min = MediSize.touch).semantics { contentDescription = skipDescription }) {
                 Text(stringResource(R.string.skip), style = MaterialTheme.typography.labelLarge)
             }
         }
@@ -247,17 +226,17 @@ fun defaultStatus(item: Occurrence, editable: Boolean) = when {
     else -> DoseStatus.MISSED
 }
 @Composable private fun DoseStatusLabel(status: DoseStatus, item: Occurrence) {
-    when (status) {
-        DoseStatus.TAKEN -> StatusChip(stringResource(R.string.taken_status, TurkishFormat.completed(item.takenAt!!, item.date)), completed = true, showIcon = false)
-        DoseStatus.SKIPPED -> StatusChip(stringResource(R.string.skipped), icon = Icons.Default.DoNotDisturbOn)
-        DoseStatus.NEXT -> StatusChip(stringResource(R.string.next_label), icon = Icons.Default.NotificationsActive)
-        DoseStatus.OVERDUE -> Surface(shape = CircleShape, color = MaterialTheme.colorScheme.tertiaryContainer, contentColor = MaterialTheme.colorScheme.onTertiaryContainer) {
-            Row(Modifier.padding(horizontal = MediSpace.medium, vertical = MediSpace.small), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MediSpace.small)) {
-                Icon(Icons.Default.Alarm, null, Modifier.size(18.dp)); Text(stringResource(R.string.overdue), style = MaterialTheme.typography.labelLarge)
-            }
-        }
-        DoseStatus.PENDING -> StatusChip(stringResource(R.string.pending))
-        DoseStatus.MISSED -> StatusChip(stringResource(R.string.not_marked), icon = Icons.Outlined.Circle)
+    val (label, icon) = when (status) {
+        DoseStatus.TAKEN -> stringResource(R.string.taken_status, TurkishFormat.completed(item.takenAt!!, item.date)) to null
+        DoseStatus.SKIPPED -> stringResource(R.string.skipped) to Icons.Default.DoNotDisturbOn
+        DoseStatus.NEXT -> stringResource(R.string.next_label) to null
+        DoseStatus.OVERDUE -> stringResource(R.string.overdue) to Icons.Default.Alarm
+        DoseStatus.PENDING -> stringResource(R.string.pending) to null
+        DoseStatus.MISSED -> stringResource(R.string.not_marked) to Icons.Outlined.Circle
+    }
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MediSpace.small)) {
+        icon?.let { Icon(it, null, Modifier.size(MediSize.statusIcon), tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

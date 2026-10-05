@@ -1,6 +1,11 @@
 <resources>
     <string name="app_name">MediTakip</string>
     <string name="today">Bugün</string>
+    <string name="today_medications">Bugünün ilaçları</string>
+    <string name="today_timeline">Günün planı</string>
+    <string name="today_no_doses">Bugün için planlanan ilaç yok.</string>
+    <string name="today_complete_title">Bugün tamamlandı</string>
+    <string name="today_complete_body">Planlanan tüm ilaçlar işlendi.</string>
     <string name="medications">İlaçlar</string>
     <string name="people">Kişiler</string>
     <string name="history">Geçmiş</string>
@@ -103,8 +108,6 @@
     <string name="next_label">Sıradaki</string>
     <string name="overdue">Saati geçti</string>
     <string name="taken_status">✓ İçildi • %1$s</string>
-    <string name="all_taken_today">Bugünkü ilaçların hepsi içildi</string>
-    <string name="empty_today_person_title">Bugün ilaç yok</string>
     <string name="empty_today_person_body">%1$s için bugüne planlanmış ilaç bulunmuyor.</string>
     <string name="start_title">Henüz kişi eklenmemiş</string>
     <string name="start_body">Önce ilaçlarını takip edeceğiniz kişiyi ekleyin. Ardından ilaçlarını ve saatlerini girebilirsiniz.</string>
@@ -142,7 +145,6 @@
     <string name="empty_person_medications_body">%1$s için ilk ilacı ekleyin; saati gelince hatırlatma alırsınız.</string>
     <string name="history_no_person_body">Geçmişi görmek için önce Kişiler bölümünden bir kişi ekleyin.</string>
     <string name="go_to_people">Kişilere Git</string>
-    <string name="today_summary_next">Sıradaki: %1$s • %2$s</string>
     <!-- Archive and restore (Phase 1, B3) -->
     <string name="restore">Arşivden Çıkar</string>
     <string name="archived_people">Arşivdekiler</string>

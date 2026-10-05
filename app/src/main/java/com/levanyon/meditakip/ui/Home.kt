@@ -4,14 +4,12 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -26,6 +24,7 @@ import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
+import java.time.format.DateTimeFormatter
 
 private const val TODAY = 0
 private const val PEOPLE = 1
@@ -194,7 +193,7 @@ private const val SETTINGS = 3
 }
 
 /**
- * The daily experience: who → how far along → the timeline with one highlighted dose.
+ * The daily experience: who → progress → one next-dose hero → a quiet daily timeline.
  * Every pending dose keeps its own İçildi action.
  */
 @Composable fun TodayScreen(
@@ -211,41 +210,44 @@ private const val SETTINGS = 3
     val minute = now.hour * 60 + now.minute
     // The single dose that deserves the strongest emphasis: the earliest one not yet taken.
     val focus = doses.firstOrNull { !it.handled }
+    val timeline = doses.filter { it.key != focus?.key }
+    fun status(item: Occurrence) = when {
+        item.takenAt != null -> DoseStatus.TAKEN
+        item.skipped -> DoseStatus.SKIPPED
+        item.minute < minute -> DoseStatus.OVERDUE
+        item == focus -> DoseStatus.NEXT
+        else -> DoseStatus.PENDING
+    }
     LazyColumn(contentPadding = ScreenPadding, verticalArrangement = Arrangement.spacedBy(MediSpace.medium)) {
-        item { ScreenHeading(stringResource(R.string.today), TurkishFormat.longWeekdayDate(today)) }
-        if (warning != null) item {
-            Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.tertiaryContainer, contentColor = MaterialTheme.colorScheme.onTertiaryContainer) {
-                Row(Modifier.fillMaxWidth().padding(start = MediSpace.regular, end = MediSpace.tiny, top = MediSpace.small, bottom = MediSpace.small), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MediSpace.medium)) {
-                    Icon(Icons.Default.NotificationsOff, null)
-                    Text(stringResource(warning), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-                    TextButton(onClick = openSettings, modifier = Modifier.heightIn(min = MediSize.touch)) { Text(stringResource(R.string.fix), style = MaterialTheme.typography.labelLarge) }
-                }
-            }
-        }
+        item { ScreenHeading(stringResource(R.string.today), today.format(DateTimeFormatter.ofPattern("d MMMM EEEE", TurkishFormat.locale))) }
         if (person == null) {
+            if (warning != null) item { TodayAlert(stringResource(warning), Icons.Default.NotificationsOff, stringResource(R.string.fix), openSettings) }
             item { EmptyState(stringResource(R.string.start_title), stringResource(R.string.start_body), Icons.Default.People, stringResource(R.string.add_person), addPerson) }
             return@LazyColumn
         }
         item {
             val tabs = people.map { p -> PersonTab(p.id, p.name, entries.count { it.personId == p.id && !it.handled }) }
-            PersonSelector(tabs, person.id, selectPerson)
+            PersonSelector(tabs, person.id, selectPerson, tonal = true)
         }
-        // Low stock for this person (Phase 3): one calm line per medication, opens its detail (Stok ekle).
+        if (warning != null) item { TodayAlert(stringResource(warning), Icons.Default.NotificationsOff, stringResource(R.string.fix), openSettings) }
+        // Existing low-stock information only; no prescription or treatment calculations.
         items(StockPlan.low(snapshot, person.id), key = { "low:${it.medicationId}" }) { low -> LowStockBanner(low) { openMedication(low.medicationId) } }
         if (doses.isEmpty()) {
-            item { EmptyState(stringResource(R.string.empty_today_person_title), stringResource(R.string.empty_today_person_body, person.name), Icons.Default.EventAvailable,
+            val hasMedication = snapshot.medications.any { it.personId == person.id && !it.archived }
+            item { EmptyState(stringResource(if (hasMedication) R.string.today_no_doses else R.string.empty_medications_title),
+                stringResource(if (hasMedication) R.string.empty_today_person_body else R.string.empty_person_medications_body, person.name), Icons.Default.EventAvailable,
                 stringResource(R.string.add_medication_for, person.name)) { addMedication(person.id) } }
         } else {
             item { DaySummary(DailyProgress.from(doses), focus) }
-            itemsIndexed(doses, key = { _, it -> it.key }) { index, item ->
-                val status = when {
-                    item.takenAt != null -> DoseStatus.TAKEN
-                    item.skipped -> DoseStatus.SKIPPED
-                    item.minute < minute -> DoseStatus.OVERDUE
-                    item == focus -> DoseStatus.NEXT
-                    else -> DoseStatus.PENDING
-                }
-                ScheduledDoseRow(item, editable = true, status = status, highlight = item == focus, last = index == doses.lastIndex,
+            if (focus != null) item(key = focus.key) {
+                ScheduledDoseRow(focus, editable = true, status = status(focus), highlight = true,
+                    onTaken = { markTaken(focus) }, onUndo = { vm.undo(focus) }, onSkip = { skip(focus) }, onChangeTime = { changeTime(focus) })
+            } else item {
+                EmptyState(stringResource(R.string.today_complete_title), stringResource(R.string.today_complete_body), Icons.Default.Check)
+            }
+            if (timeline.isNotEmpty()) item { SectionHeader(stringResource(R.string.today_timeline)) }
+            items(timeline, key = { it.key }) { item ->
+                ScheduledDoseRow(item, editable = true, status = status(item), highlight = false,
                     onTaken = { markTaken(item) }, onUndo = { vm.undo(item) }, onSkip = { skip(item) }, onChangeTime = { changeTime(item) })
             }
         }
@@ -258,12 +260,5 @@ private const val SETTINGS = 3
 
 @Composable private fun LowStockBanner(low: LowStock, open: () -> Unit) {
     val text = low.daysLeft?.let { stringResource(R.string.stock_low_banner, low.name, it) } ?: stringResource(R.string.stock_low_banner_no_days, low.name, StockPlan.format(low.quantity))
-    Surface(onClick = open, shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.tertiaryContainer, contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-        modifier = Modifier.fillMaxWidth().heightIn(min = MediSize.touch)) {
-        Row(Modifier.padding(horizontal = MediSpace.regular, vertical = MediSpace.medium), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MediSpace.medium)) {
-            Icon(Icons.Default.Inventory2, null)
-            Text(text, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-            Icon(Icons.Default.ChevronRight, null)
-        }
-    }
+    TodayAlert(text, Icons.Default.Inventory2, onClick = open)
 }

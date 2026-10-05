@@ -1,6 +1,6 @@
 # MediTakip design system
 
-MediTakip follows Quiet Luxury Healthcare: calm petrol and jade, warm neutral surfaces, readable system typography and restrained depth. Use clear hierarchy, edge-to-edge layouts, adaptive sizing and accessible touch targets. Avoid decorative gradients, glass effects, heavy shadows and pill-shaped controls everywhere. Premium redesign Phase 1 establishes shared foundations only; the Today screen redesign requires separate review and approval.
+MediTakip follows Quiet Luxury Healthcare: calm petrol and jade, warm neutral surfaces, readable system typography and restrained depth. Use clear hierarchy, edge-to-edge layouts, adaptive sizing and accessible touch targets. Avoid decorative gradients, glass effects, heavy shadows and pill-shaped controls everywhere. Premium redesign Phase 1 establishes shared foundations; Phase 2 applies them to Today only. Other screens retain their existing presentation pending separate review.
 
 ## Foundation
 
@@ -38,12 +38,16 @@ Keep the established green identity and Turkish interface. Use stable Compose Ma
 Navigation is fixed at four destinations. Medications always belong to a person; there is no top-level İlaçlar destination.
 
 - **Bugün (daily use).** It shows, in order:
-  - The Turkish date.
-  - The segmented PersonSelector. It scrolls horizontally when there are many people, and each person shows a pending-count badge. The selection is persisted in Preferences.lastPerson and shared with Geçmiş.
-  - DaySummary: a progress ring, "x / y tamamlandı" and "Sıradaki: hh:mm • name".
-  - The timeline of ScheduledDoseRows with a status rail.
+  - A calm heading and localized day/month/weekday date.
+  - PersonSelector with its Today-only tonal presentation: a check mark and muted selected surface, pending counts, full wrapping names and horizontal scrolling. The selection remains persisted in Preferences.lastPerson and shared with Geçmiş; History's visual presentation is unchanged.
+  - Compact TodayAlert surfaces for existing reminder health and low-stock information. No prescription or treatment data is invented.
+  - DaySummary: "Bugünün ilaçları", "x / y tamamlandı" and a thin horizontal progress indicator using the existing handled-dose calculation.
+  - One NextDoseHero for the earliest unhandled dose, including overdue doses: strong tabular time, medication, dose, optional note, filled İçildi and quiet Atla.
+  - The remaining ScheduledDoseRows in chronological order under "Günün planı". Plain rows use whitespace instead of individual cards and connectors; handled entries retain readable muted text, explicit status and correction actions. The hero dose is not duplicated here.
 
-  Exactly one dose is highlighted: the earliest one not yet taken. It gets primaryContainer and a filled İçildi button. Every other pending dose keeps a tonal İçildi button. Overdue doses say "Saati geçti" in text. Marking a dose shows a long Snackbar with Geri Al, and taken rows keep a Geri Al text button. The only management link is "<ad> için ilaçları yönet", which opens that person.
+  Exactly one dose is highlighted: the earliest one not yet handled. It gets primaryContainer, a thin border, zero shadow and a filled İçildi button. Every other pending dose keeps a compact text İçildi action and Atla. Overdue doses say "Saati geçti" in text. Marking a dose shows a long Snackbar with Geri Al, and taken rows keep Saati değiştir and Geri Al; skipped rows retain their note and Geri Al. The management link is "<ad> için ilaçları yönet", which opens that person.
+
+  EmptyState handles no people, no medications and no doses scheduled today, retaining working creation actions. When all doses are handled, the hero is replaced by "Bugün tamamlandı — Planlanan tüm ilaçlar işlendi." This includes skipped doses without claiming they were taken. The daily timeline remains available. Phase 1 typography, palette, navigation, max reading width and safe-area behavior are reused without replacement.
 - **Kişiler → Kişi Detay → İlaç Detayı (management).**
   - Kişiler shows PersonRows and an always-visible "Kişi Ekle".
   - Kişi Detay contains only identity, Düzenle, "İlaç Ekle" and MedicationRows. It never shows today's timeline.

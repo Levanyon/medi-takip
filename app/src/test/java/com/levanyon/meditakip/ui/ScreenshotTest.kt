@@ -1,6 +1,7 @@
 package com.levanyon.meditakip.ui
 
 import android.graphics.Bitmap
+import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Today
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalDensity
@@ -12,6 +13,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.*
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.levanyon.meditakip.MediApp
 import com.levanyon.meditakip.data.*
@@ -39,7 +47,8 @@ import java.time.*
 class ScreenshotTest(private val screen: String, private val dark: Boolean) {
     companion object {
         @JvmStatic @ParameterizedRobolectricTestRunner.Parameters(name = "{0}-dark={1}")
-        fun params() = listOf("today", "people", "person", "medication", "history", "settings", "status", "onboarding", "personForm", "medicationForm", "empty", "brand", "designSystem")
+        fun params() = listOf("today", "people", "person", "medication", "history", "settings", "status", "onboarding", "personForm", "medicationForm", "empty", "brand", "designSystem",
+            "todayUpcoming", "todayCompleted", "todayNoMedication", "todayNoDose", "todaySkipped", "todayLargeFont", "todayNarrow", "todayLarger", "todayExpanded")
             .flatMap { listOf(arrayOf<Any>(it, false), arrayOf<Any>(it, true)) }
     }
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
@@ -54,7 +63,14 @@ class ScreenshotTest(private val screen: String, private val dark: Boolean) {
     private val snapshot = Snapshot(listOf(anne, kardes), listOf(MedicationEntity("m1", "p"), MedicationEntity("m2", "p", stockEnabled = true, stockQuantity = 7.0, stockThreshold = 8.0), MedicationEntity("m3", "k")), schedules,
         (1L..8L).flatMap { d -> val day = date.minusDays(d); listOfNotNull(taken("s1", day, 480, 4), if (d % 3 != 0L) taken("s2", day, 780, 2) else null, if (d % 2 == 0L) taken("s2", day, 1200, 9) else null) } + taken("s1", date, 480, 4) + MedicationLogEntity("s2:${date.minusDays(3).toEpochDay()}:1200", "s2", date.minusDays(3).toEpochDay(), 1200, 0, LogStatus.SKIPPED, note = "Dışarıdaydık"))
 
-    @Before fun gate() { Assume.assumeTrue(System.getenv("MEDITAKIP_SCREENSHOTS") != null) }
+    @Before fun gate() {
+        Assume.assumeTrue(System.getenv("MEDITAKIP_SCREENSHOTS") != null)
+        when (screen) {
+            "todayNarrow" -> RuntimeEnvironment.setQualifiers("w320dp-h720dp-xhdpi")
+            "todayLarger" -> RuntimeEnvironment.setQualifiers("w412dp-h900dp-xhdpi")
+            "todayExpanded" -> RuntimeEnvironment.setQualifiers("w1200dp-h900dp-mdpi")
+        }
+    }
     @After fun close() {
         val app = RuntimeEnvironment.getApplication() as MediApp
         runBlocking { app.reminders.scope.coroutineContext[Job]?.cancelAndJoin() }
@@ -63,14 +79,23 @@ class ScreenshotTest(private val screen: String, private val dark: Boolean) {
 
     @Test fun render() {
         compose.setContent {
-            CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, 1f)) {
+            CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, if (screen == "todayLargeFont") 2f else 1f)) {
                 MediTheme(if (dark) "Dark" else "Light") {
                     androidx.compose.material3.Surface(color = androidx.compose.material3.MaterialTheme.colorScheme.background) {
                         val vm: AppViewModel = viewModel()
                         val access = PermissionAccess(PermissionState(true, true, PermissionAction.NONE, PermissionAction.NONE, false), false, {}, {})
                         MediContent {
                             when (screen) {
-                                "today" -> TodayScreen(snapshot, date.atTime(14, 10), "p", {}, vm, {}, {}, {}, {})
+                                "today", "todayUpcoming", "todayCompleted", "todayNoMedication", "todayNoDose", "todaySkipped", "todayLargeFont", "todayNarrow", "todayLarger", "todayExpanded" -> {
+                                    val data = when (screen) {
+                                        "todayCompleted" -> snapshot.copy(logs = snapshot.logs + taken("s2", date, 780, 2) + taken("s2", date, 1200, 3))
+                                        "todayNoMedication" -> Snapshot(people = listOf(anne, kardes))
+                                        "todayNoDose" -> snapshot.copy(schedules = schedules.map { it.copy(start = date.plusDays(1).toEpochDay(), effectiveFrom = date.plusDays(1).toEpochDay()) }, logs = emptyList())
+                                        "todaySkipped" -> snapshot.copy(logs = snapshot.logs + MedicationLogEntity("s2:${date.toEpochDay()}:780", "s2", date.toEpochDay(), 780, 0, LogStatus.SKIPPED, note = "Dışarıdaydık"))
+                                        else -> snapshot
+                                    }
+                                    TodayPreview(data, date.atTime(if (screen == "today") 14 else 12, 10), vm)
+                                }
                                 "people" -> PeopleScreen(snapshot, {}, {})
                                 "person" -> PersonDetail(snapshot, anne, {}, {}, {}, {})
                                 "medication" -> MedicationDetail(snapshot, "m2", date, {}, { _, _ -> }, {})
@@ -90,12 +115,39 @@ class ScreenshotTest(private val screen: String, private val dark: Boolean) {
             }
         }
         compose.waitForIdle()
+        saveScreenshot(screen)
+        if (screen == "todayLargeFont") {
+            compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Sıradaki"))
+            compose.waitForIdle()
+            saveScreenshot("todayLargeFont-hero")
+        }
+        if (screen == "todaySkipped") {
+            compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Not: Dışarıdaydık"))
+            compose.waitForIdle()
+            saveScreenshot("todaySkipped-timeline")
+        }
+    }
+
+    private fun saveScreenshot(name: String) {
         val out = File("build/screenshots").apply { mkdirs() }
-        File(out, "$screen-${if (dark) "dark" else "light"}.png").outputStream().use {
+        File(out, "$name-${if (dark) "dark" else "light"}.png").outputStream().use {
             val view = compose.activity.window.decorView
             val bitmap = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
             view.draw(Canvas(bitmap))
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)
+        }
+    }
+}
+
+/** Real Phase 1 navigation and scaffold padding, with the existing four destinations. */
+@Composable
+private fun TodayPreview(snapshot: Snapshot, now: LocalDateTime, vm: AppViewModel) {
+    Scaffold(containerColor = MaterialTheme.colorScheme.background,
+        bottomBar = { MediNavigationBar(listOf("Bugün", "Kişiler", "Geçmiş", "Ayarlar"),
+            listOf(Icons.Default.Today, Icons.Default.People, Icons.Default.CalendarMonth, Icons.Default.Settings), 0) {} }
+    ) { padding ->
+        MediContent(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
+            TodayScreen(snapshot, now, "p", {}, vm, {}, {}, {}, {})
         }
     }
 }
