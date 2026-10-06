@@ -96,11 +96,11 @@ class ScreenLayoutTest {
         var opened = ""
         var added = false
         content { PeopleScreen(family, { opened = it }) { added = true } }
-        lazyScroll("Kişi Ekle")
-        compose.onNodeWithText("Kişi Ekle").performClick()
+        lazyScroll("Ekle")
+        compose.onNodeWithText("Ekle").performClick()
         assertTrue(added)
         lazyScroll("Kardeş")
-        compose.onAllNodesWithText("1 ilaç kullanımda").assertCountEquals(2)
+        compose.onAllNodesWithText("1 aktif ilaç").assertCountEquals(2)
         compose.onNodeWithText("Kardeş").performClick()
         assertEquals("k", opened)
     }
@@ -109,14 +109,14 @@ class ScreenLayoutTest {
         var edited = false
         var added = false
         content(true) { PersonDetail(fixture, person, {}, { edited = true }, { added = true }, { opened = it }) }
-        lazyScroll("Düzenle")
-        compose.onNodeWithText("Düzenle").performClick()
-        lazyScroll("İlaç Ekle")
-        compose.onNodeWithText("İlaç Ekle").performClick()
+        lazyScroll("Kişiyi düzenle")
+        compose.onNodeWithText("Kişiyi düzenle").performClick()
+        lazyScroll("İlaç ekle")
+        compose.onNodeWithText("İlaç ekle").performClick()
         lazyScroll("Uzun İlaç Adı")
         compose.onNodeWithText("Uzun İlaç Adı").performClick()
         assertTrue(edited); assertTrue(added); assertEquals("m", opened)
-        lazyScroll("Programdaki doz bilgisi")
+        lazyScroll("08:00 • 20:00 · Programdaki doz bilgisi")
         compose.onNodeWithText("Bekliyor").assertDoesNotExist()
         compose.onNodeWithText("İçildi").assertDoesNotExist()
     }
@@ -243,8 +243,8 @@ class ScreenLayoutTest {
         var restored = false
         var opened = ""
         content(true) { PersonDetail(withArchive, withArchive.people.last(), {}, {}, {}, { opened = it }) { restored = true } }
-        compose.onNodeWithText("Düzenle").assertDoesNotExist()
-        compose.onNodeWithText("İlaç Ekle").assertDoesNotExist()
+        compose.onNodeWithText("Kişiyi düzenle").assertDoesNotExist()
+        compose.onNodeWithText("İlaç ekle").assertDoesNotExist()
         lazyScroll("Arşivlenen ilaçlar")
         lazyScroll("Tansiyon")
         compose.onNodeWithText("Tansiyon").performClick()

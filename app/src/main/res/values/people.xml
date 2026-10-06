@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="people_v2_subtitle">İlaçlarını takip ettiğin kişiler</string>
+    <string name="people_add">Ekle</string>
+    <string name="people_add_person">Kişi ekle</string>
+    <string name="people_active_count">%1$d aktif ilaç</string>
+    <string name="people_no_active">Henüz aktif ilaç yok</string>
+    <string name="people_today_remaining">Bugün %1$d doz kaldı</string>
+    <string name="people_today_no_doses">Bugün planlanan doz yok</string>
+    <string name="people_empty_title">Henüz kişi eklenmedi</string>
+    <string name="people_empty_body">İlaç takibine başlamak için ilk kişiyi ekle.</string>
+    <string name="person_today_title">Bugünün durumu</string>
+    <string name="person_remaining">%1$d doz kaldı</string>
+    <string name="person_add_medication">İlaç ekle</string>
+    <string name="person_edit">Kişiyi düzenle</string>
+    <string name="person_active_medications">Aktif ilaçlar</string>
+    <string name="person_inactive_medications">Durdurulan ilaçlar</string>
+    <string name="person_medication_active">Aktif</string>
+    <string name="person_medication_low">Stok az</string>
+    <string name="person_empty_title">Henüz ilaç eklenmedi</string>
+    <string name="person_empty_body">Bu kişi için ilk ilacı eklediğinde günlük takip burada görünecek.</string>
+    <string name="person_medication_schedule">%1$s · %2$s</string>
+</resources>

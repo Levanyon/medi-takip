@@ -7,30 +7,34 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import com.levanyon.meditakip.R
 import com.levanyon.meditakip.data.*
 import com.levanyon.meditakip.domain.*
+import java.time.LocalDate
 
-/** Kişiler: every family member as one clear row, an always-visible Kişi Ekle, archived people last. */
 @Composable
-fun PeopleScreen(snapshot: Snapshot, open: (String) -> Unit, add: () -> Unit) {
+fun PeopleScreen(snapshot: Snapshot, open: (String) -> Unit, add: () -> Unit) =
+    PeopleScreen(snapshot, open, LocalDate.now(), add)
+
+/** Read-only projections of the same schedules and handled doses used by Today. */
+@Composable
+fun PeopleScreen(snapshot: Snapshot, open: (String) -> Unit, today: LocalDate, add: () -> Unit) {
     val people = snapshot.people.filter { !it.archived }
     val archived = snapshot.people.filter { it.archived }
-    val current = MedicationViews.current(snapshot)
-    LazyColumn(contentPadding = ScreenPadding, verticalArrangement = Arrangement.spacedBy(MediSpace.medium)) {
-        item { ScreenHeading(stringResource(R.string.people), stringResource(R.string.people_subtitle)) }
+    val current = remember(snapshot) { MedicationViews.current(snapshot) }
+    val doses = remember(snapshot, today) { Schedule.day(snapshot, today).groupBy { it.personId } }
+    val owners = remember(snapshot) { snapshot.medications.associate { it.id to it.personId } }
+    LazyColumn(contentPadding = PeoplePadding, verticalArrangement = Arrangement.spacedBy(MediSpace.medium)) {
+        item { Box(Modifier.padding(bottom = MediSpace.small)) { PeopleHeading(people.isNotEmpty(), add) } }
         if (people.isEmpty()) {
-            item { EmptyState(stringResource(R.string.empty_people_title), stringResource(R.string.empty_people_body), Icons.Default.People, stringResource(R.string.add_person), add) }
+            item { PeopleEmptyState(add) }
         } else {
-            item { Box(Modifier.padding(bottom = MediSpace.small)) { PrimaryAction(stringResource(R.string.add_person), Icons.Default.PersonAdd, action = add) } }
             items(people, key = { it.id }) { person ->
-                val ids = snapshot.medications.filter { it.personId == person.id }.map { it.id }.toSet()
-                PersonRow(person, current.count { it.medicationId in ids && it.active }) { open(person.id) }
+                PersonSummaryCard(person, current.count { owners[it.medicationId] == person.id && it.active },
+                    DailyProgress.from(doses[person.id].orEmpty())) { open(person.id) }
             }
         }
         if (archived.isNotEmpty()) {
@@ -40,60 +44,58 @@ fun PeopleScreen(snapshot: Snapshot, open: (String) -> Unit, add: () -> Unit) {
     }
 }
 
-/**
- * Kişi Detay is management only: identity, Düzenle, the person's medications and, separately, archived
- * medications. No daily timeline. An archived person shows only "Arşivden Çıkar" as the action.
- */
+/** Management hub; dose state is a summary only, with no duplicated daily timeline. */
 @Composable
-fun PersonDetail(snapshot: Snapshot, person: PersonEntity, back: () -> Unit, edit: () -> Unit, addMedication: () -> Unit, openMedication: (String) -> Unit, report: (() -> Unit)? = null, restore: () -> Unit = {}) {
+fun PersonDetail(
+    snapshot: Snapshot, person: PersonEntity, back: () -> Unit, edit: () -> Unit,
+    addMedication: () -> Unit, openMedication: (String) -> Unit, report: (() -> Unit)? = null,
+    today: LocalDate = LocalDate.now(), restore: () -> Unit = {}
+) {
     val owned = snapshot.medications.filter { it.personId == person.id }
-    val activeIds = owned.filter { !it.archived }.map { it.id }.toSet()
-    val medications = MedicationViews.current(snapshot).filter { it.medicationId in activeIds }
-    val archivedMedications = owned.filter { it.archived }.mapNotNull { MedicationViews.latestRevision(snapshot, it.id) }
+    val ownedIds = owned.filter { !it.archived }.map { it.id }.toSet()
+    val medications = remember(snapshot, person.id) { MedicationViews.current(snapshot).filter { it.medicationId in ownedIds } }
+    val active = medications.filter { it.active }
+    val inactive = medications.filter { !it.active }
+    val archived = owned.filter { it.archived }.mapNotNull { MedicationViews.latestRevision(snapshot, it.id) }
         .sortedBy { it.name.lowercase(TurkishFormat.locale) }
-    val editDescription = stringResource(R.string.edit_person_description, person.name)
-    LazyColumn(contentPadding = ScreenPadding, verticalArrangement = Arrangement.spacedBy(MediSpace.medium)) {
-        item { BackHeader(stringResource(R.string.people), back) }
-        item {
-            Column(Modifier.fillMaxWidth().padding(bottom = MediSpace.small), verticalArrangement = Arrangement.spacedBy(MediSpace.medium)) {
-                AdaptivePair(
-                    leading = {
-                        Row(horizontalArrangement = Arrangement.spacedBy(MediSpace.regular), verticalAlignment = Alignment.CenterVertically) {
-                            Avatar(person.name)
-                            Text(person.name, style = MaterialTheme.typography.headlineMedium)
-                        }
-                    },
-                    trailing = {
-                        if (person.archived) StatusChip(stringResource(R.string.archived), icon = Icons.Default.Archive)
-                        else FilledTonalButton(onClick = edit, shape = MaterialTheme.shapes.large, modifier = Modifier.heightIn(min = MediSize.touch).semantics { contentDescription = editDescription }) {
-                            Icon(Icons.Default.Edit, null); Spacer(Modifier.width(MediSpace.small)); Text(stringResource(R.string.edit), style = MaterialTheme.typography.labelLarge)
-                        }
-                    }
-                )
-                if (person.note.isNotBlank()) Text(person.note, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (person.archived) {
+    val progress = remember(snapshot, today, person.id) { DailyProgress.from(Schedule.day(snapshot, today).filter { it.personId == person.id }) }
+    val lowStock = remember(snapshot, person.id) { StockPlan.low(snapshot, person.id).map { it.medicationId }.toSet() }
+    LazyColumn(contentPadding = PeoplePadding, verticalArrangement = Arrangement.spacedBy(MediSpace.page)) {
+        item { PersonHeader(person, active.size, back) }
+        if (person.note.isNotBlank()) item {
+            Text(person.note, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        if (person.archived) {
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(MediSpace.medium)) {
+                    StatusChip(stringResource(R.string.archived), icon = Icons.Default.Archive)
                     Text(stringResource(R.string.archived_person_body), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     PrimaryAction(stringResource(R.string.restore), Icons.Default.Unarchive, action = restore)
                 }
             }
-        }
-        if (!person.archived) {
-            item { SectionHeader(stringResource(R.string.medications), stringResource(R.string.active_count, medications.count { it.active })) }
-            if (medications.isEmpty()) {
-                item { EmptyState(stringResource(R.string.empty_medications_title), stringResource(R.string.empty_person_medications_body, person.name), Icons.Default.Medication, stringResource(R.string.add_medication), addMedication) }
-            } else {
-                item { PrimaryAction(stringResource(R.string.add_medication), action = addMedication) }
-                items(medications, key = { it.id }) { schedule -> MedicationRow(schedule) { openMedication(schedule.medicationId) } }
+        } else {
+            // No fake 0/0 progress: an empty person follows the approved empty composition.
+            if (progress.total > 0 || medications.isNotEmpty()) item { PersonTodaySummary(progress) }
+            item { PersonAddMedication(addMedication) }
+            if (medications.isEmpty()) item { PersonMedicationsEmptyState() }
+            if (active.isNotEmpty()) item { PersonMedicationGroup(active, lowStock, openMedication) }
+            // Existing stopped medications remain reachable, without calling them active.
+            if (inactive.isNotEmpty()) {
+                item { SectionHeader(stringResource(R.string.person_inactive_medications)) }
+                items(inactive, key = { it.id }) { schedule -> MedicationRow(schedule) { openMedication(schedule.medicationId) } }
             }
+            item { PersonEditAction(person.name, edit) }
         }
         if (report != null) item {
-            SectionHeader(stringResource(R.string.report_title))
-            Text(stringResource(R.string.report_help), style = MaterialTheme.typography.bodyMedium)
-            SecondaryAction(stringResource(R.string.report_create), action = report)
+            Column(verticalArrangement = Arrangement.spacedBy(MediSpace.small)) {
+                SectionHeader(stringResource(R.string.report_title))
+                Text(stringResource(R.string.report_help), style = MaterialTheme.typography.bodyMedium)
+                SecondaryAction(stringResource(R.string.report_create), action = report)
+            }
         }
-        if (archivedMedications.isNotEmpty()) {
+        if (archived.isNotEmpty()) {
             item { SectionHeader(stringResource(R.string.archived_medications)) }
-            items(archivedMedications, key = { "archived:${it.id}" }) { schedule -> MedicationRow(schedule, archived = true) { openMedication(schedule.medicationId) } }
+            items(archived, key = { "archived:${it.id}" }) { schedule -> MedicationRow(schedule, archived = true) { openMedication(schedule.medicationId) } }
         }
     }
 }

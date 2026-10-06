@@ -145,9 +145,9 @@ private const val SETTINGS = 3
             when {
                 medicationId != null -> MedicationDetail(snapshot, medicationId!!, today, ::back, { p, s -> medicationPersonId = p.id; editScheduleId = s.id }, { archiveMedication = true }, vm, addStock = { amount -> vm.addStock(medicationId!!, amount) }, restore = { restoreMedication(medicationId!!) })
                 section == PEOPLE && personId != null -> snapshot.people.find { it.id == personId }?.let { person ->
-                    PersonDetail(snapshot, person, ::back, { editPersonId = person.id; personEditor = true }, { addMedication(person.id) }, { medicationId = it }, restore = { restorePerson(person) }, report = { vm.createReport(person.id) })
+                    PersonDetail(snapshot, person, ::back, { editPersonId = person.id; personEditor = true }, { addMedication(person.id) }, { medicationId = it }, today = today, restore = { restorePerson(person) }, report = { vm.createReport(person.id) })
                 } ?: LaunchedEffect(personId) { personId = null }
-                section == PEOPLE -> PeopleScreen(snapshot, { personId = it }) { addPerson(false) }
+                section == PEOPLE -> PeopleScreen(snapshot, { personId = it }, today) { addPerson(false) }
                 section == HISTORY -> HistoryScreen(snapshot, today, selectedPerson, vm::selectPerson, goToPeople = { section = PEOPLE }, corrections = vm)
                 section == SETTINGS && reminderStatus -> ReminderStatusScreen(vm, access, ::back)
                 section == SETTINGS -> SettingsScreen(vm, hasPeople = snapshot.people.isNotEmpty()) { reminderStatus = true }

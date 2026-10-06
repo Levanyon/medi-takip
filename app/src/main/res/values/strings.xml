@@ -6,7 +6,6 @@
     <string name="today_no_doses">Bugün için planlanan ilaç yok.</string>
     <string name="today_complete_title">Bugün tamamlandı</string>
     <string name="today_complete_body">Planlanan tüm ilaçlar işlendi.</string>
-    <string name="medications">İlaçlar</string>
     <string name="people">Kişiler</string>
     <string name="history">Geçmiş</string>
     <string name="settings">Ayarlar</string>
@@ -17,7 +16,6 @@
     <string name="save">Kaydet</string>
     <string name="cancel">İptal</string>
     <string name="archive">Arşivle</string>
-    <string name="edit">Düzenle</string>
     <string name="back">Geri</string>
     <string name="ok">Tamam</string>
     <string name="continue_label">Devam Et</string>
@@ -37,7 +35,6 @@
     <string-array name="weekday_names"><item>Pazartesi</item><item>Salı</item><item>Çarşamba</item><item>Perşembe</item><item>Cuma</item><item>Cumartesi</item><item>Pazar</item></string-array>
     <string-array name="weekday_short"><item>Pzt</item><item>Sal</item><item>Çar</item><item>Per</item><item>Cum</item><item>Cmt</item><item>Paz</item></string-array>
     <string name="completed_fraction">%1$d / %2$d tamamlandı</string>
-    <string name="people_subtitle">Aile üyelerini ve ilaçlarını buradan yönetin.</string>
     <string name="history_subtitle">Günlere göre hangi ilacın içildiğini tek tabloda görün.</string>
     <string name="settings_subtitle">Hatırlatmalar ve görünüm.</string>
     <string name="active_count">%1$d ilaç kullanımda</string>
@@ -49,7 +46,6 @@
     <string name="choose_person">Kişi Seçin</string>
     <string name="empty_medications_title">Henüz ilaç eklenmemiş</string>
     <string name="empty_people_title">Henüz kişi eklenmemiş</string>
-    <string name="empty_people_body">İlaçlarını takip edeceğiniz aile üyesini ekleyerek başlayın.</string>
     <string name="empty_history_title">Henüz kullanım kaydı yok</string>
     <string name="empty_history_body">İlaçlar içildi olarak işaretlendikçe geçmiş burada görünecek.</string>
     <string name="older_records">Önceki Günleri Göster</string>

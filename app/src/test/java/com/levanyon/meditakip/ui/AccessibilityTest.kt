@@ -78,8 +78,8 @@ class AccessibilityTest(private val scale: Float) {
     }
 
     @Test fun today() { show { TodayScreen(snapshot, date.atTime(12, 0), "p", {}, viewModel(), {}, {}, {}, {}, warning = com.levanyon.meditakip.R.string.reminders_need_attention) }; reachable("İçildi"); reachable("Kardeş") }
-    @Test fun people() { show { PeopleScreen(snapshot, {}, {}) }; reachable("Kişi Ekle"); reachable("Kardeş") }
-    @Test fun personDetail() { show { PersonDetail(snapshot, anne, {}, {}, {}, {}) }; reachable("Düzenle"); reachable("İlaç Ekle") }
+    @Test fun people() { show { PeopleScreen(snapshot, {}, {}) }; reachable("Ekle"); reachable("Kardeş") }
+    @Test fun personDetail() { show { PersonDetail(snapshot, anne, {}, {}, {}, {}) }; reachable("Kişiyi düzenle"); reachable("İlaç ekle") }
     @Test fun medicationDetail() { show { MedicationDetail(snapshot, "m", date, {}, { _, _ -> }, {}) }; reachable("İlacı Düzenle"); reachable("İlacı Arşivle") }
     @Test fun history() { show { HistoryScreen(snapshot, date, "p", {}, {}) }; reachable("Tarih"); reachable("08:05") }
     @Test fun settings() { show { SettingsScreen(viewModel()) }; reachable("Hatırlatma Durumu"); reachable("Koyu") }

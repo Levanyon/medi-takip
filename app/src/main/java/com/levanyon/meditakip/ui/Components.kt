@@ -80,11 +80,12 @@ val ScreenPadding = PaddingValues(start = MediSpace.page, end = MediSpace.page, 
         }
     }
 }
-@Composable fun Avatar(name: String, large: Boolean = true) {
-    val size = if (large) MediSize.primaryAction else MediSize.touch
-    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.secondaryContainer) {
+@Composable fun Avatar(name: String, large: Boolean = true, size: androidx.compose.ui.unit.Dp = if (large) MediSize.primaryAction else MediSize.touch, primary: Boolean = false) {
+    Surface(shape = CircleShape, color = if (primary) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer,
+        modifier = if (primary) Modifier.clearAndSetSemantics {} else Modifier) {
         Box(Modifier.sizeIn(minWidth = size, minHeight = size).padding(MediSpace.small), contentAlignment = Alignment.Center) {
-            Text(name.take(1).uppercase(TurkishFormat.locale), style = if (large) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSecondaryContainer)
+            Text(name.take(1).uppercase(TurkishFormat.locale), style = if (large) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.titleMedium,
+                color = if (primary) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSecondaryContainer)
         }
     }
 }

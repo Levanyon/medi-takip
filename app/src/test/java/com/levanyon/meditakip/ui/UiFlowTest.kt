@@ -45,10 +45,10 @@ class UiFlowTest {
     @Test fun peopleLeadToPersonDetailAndMedicationDetail() {
         compose.setContent { MediTheme("Light") { Home(fixture, viewModel()) } }
         compose.onNode(hasText("Kişiler") and isSelectable()).performClick()
-        compose.onNodeWithText("Kişi Ekle").assertIsDisplayed()
+        compose.onNodeWithText("Ekle").assertIsDisplayed()
         compose.onNodeWithText("Anne").performClick()
-        compose.onNodeWithText("Düzenle").assertIsDisplayed()
-        compose.onNodeWithText("İlaç Ekle").assertIsDisplayed()
+        compose.onNodeWithText("Kişiyi düzenle").assertIsDisplayed()
+        compose.onNodeWithText("İlaç ekle").assertIsDisplayed()
         compose.onNodeWithText("Parol").performClick()
         compose.onNodeWithText("İlacı Düzenle").assertIsDisplayed()
         compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Son 7 gün"))
@@ -57,7 +57,7 @@ class UiFlowTest {
     @Test fun personEditorOpensInsideTheActivityWindowWithSaveReachable() {
         compose.setContent { MediTheme("Dark") { Home(fixture, viewModel()) } }
         compose.onNode(hasText("Kişiler") and isSelectable()).performClick()
-        compose.onNodeWithText("Kişi Ekle").performClick()
+        compose.onNodeWithText("Ekle").performClick()
         compose.onNodeWithText("Ad").assertIsDisplayed()
         compose.onNodeWithText("Kaydet").performScrollTo().assertIsDisplayed()
         // The scaffold underneath is hidden from accessibility while the form is open.
@@ -79,6 +79,7 @@ class UiFlowTest {
         compose.setContent { MediTheme("Light") { Home(archived, viewModel()) } }
         compose.onNode(hasText("Kişiler") and isSelectable()).performClick()
         compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Arşivdekiler"))
+        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Anne"))
         compose.onNodeWithText("Anne").performClick()
         compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Arşivden Çıkar"))
         compose.onNodeWithText("Arşivden Çıkar").performClick()
