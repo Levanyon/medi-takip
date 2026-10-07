@@ -50,6 +50,8 @@ class UiFlowTest {
         compose.onNodeWithText("Kişiyi düzenle").assertIsDisplayed()
         compose.onNodeWithText("İlaç ekle").assertIsDisplayed()
         compose.onNodeWithText("Parol").performClick()
+        compose.onNodeWithContentDescription("İlacı Düzenle").assertIsDisplayed()
+        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("İlacı Düzenle"))
         compose.onNodeWithText("İlacı Düzenle").assertIsDisplayed()
         compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Son 7 gün"))
         compose.onNodeWithText("Son 7 gün").assertIsDisplayed()

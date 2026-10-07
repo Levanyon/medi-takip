@@ -2,11 +2,13 @@ package com.levanyon.meditakip.ui
 
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -15,8 +17,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
@@ -63,8 +65,6 @@ import java.util.UUID
     var stockPerDose by rememberSaveable { mutableStateOf(StockPlan.format(stockStart.perDose)) }
     var stockThreshold by rememberSaveable { mutableStateOf(if (stockStart.threshold > 0) StockPlan.format(stockStart.threshold) else "") }
     var error by rememberSaveable { mutableStateOf<Int?>(null) }
-    // Advanced fields start open only when they already hold non-default values.
-    var advanced by rememberSaveable { mutableStateOf(schedule != null && (schedule.end != null || schedule.note.isNotBlank() || !schedule.active || schedule.start > LocalDate.now().toEpochDay() || stockStart.enabled)) }
     // B5: edits apply from today (effectiveFrom = today), so dates before today would silently have no
     // effect. The pickers therefore never offer past days; an existing past start stays as it is.
     val today = LocalDate.now().toEpochDay()
@@ -82,62 +82,37 @@ import java.util.UUID
         }, old?.div(60) ?: 8, old?.rem(60) ?: 0, true).show()
     }
     val focus = LocalFocusManager.current
-    FormScreen(stringResource(if (schedule == null) R.string.add_medication else R.string.edit_medication), dismiss) {
+    val title = stringResource(if (schedule == null) R.string.add_medication else R.string.edit_medication)
+    FormScreen(title, dismiss, header = { MedicationHeader(title, dismiss) }) {
         StatusChip(stringResource(R.string.for_person, person.name), icon = Icons.Default.Person)
-        OutlinedTextField(name, { name = it }, label = { Text(stringResource(R.string.medication_name)) }, singleLine = true, shape = MaterialTheme.shapes.medium,
+        OutlinedTextField(name, { name = it }, label = { Text(stringResource(R.string.medication_name)) }, isError = error == R.string.error_medication_name, shape = MaterialTheme.shapes.small,
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Next), modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(dose, { dose = it }, label = { Text(stringResource(R.string.dose)) }, supportingText = { Text(stringResource(R.string.dose_help)) }, shape = MaterialTheme.shapes.medium,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done), singleLine = true, modifier = Modifier.fillMaxWidth())
-        FieldLabel(stringResource(R.string.times), stringResource(R.string.times_help))
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(MediSpace.small), verticalArrangement = Arrangement.spacedBy(MediSpace.small)) {
-            if (times.isNotBlank()) Schedule.minutes(times).forEach { minute ->
-                val time = LocalTime.of(minute / 60, minute % 60).toString()
-                Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.secondaryContainer) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        TextButton(onClick = { pickTime(minute) }, modifier = Modifier.heightIn(min = MediSize.primaryAction)) {
-                            Icon(Icons.Default.Schedule, null); Spacer(Modifier.width(MediSpace.small)); Text(time, style = MaterialTheme.typography.titleMedium)
-                        }
-                        IconButton(onClick = { times = Schedule.minutes(times).filter { it != minute }.joinToString(", ") { LocalTime.of(it / 60, it % 60).toString() } }, modifier = Modifier.size(MediSize.primaryAction)) {
-                            Icon(Icons.Default.Close, stringResource(R.string.remove_time, time))
-                        }
-                    }
-                }
+        OutlinedTextField(dose, { dose = it }, label = { Text(stringResource(R.string.dose)) }, supportingText = { Text(stringResource(R.string.dose_help)) }, isError = error == R.string.error_dose, shape = MaterialTheme.shapes.small,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done), modifier = Modifier.fillMaxWidth())
+        MedicationScheduleSection(times, days, { days = it }, { pickTime(it) }) { minute ->
+            times = Schedule.minutes(times).filter { it != minute }.joinToString(", ") { LocalTime.of(it / 60, it % 60).toString() }
+        }
+        MedicationInfoGroup(stringResource(R.string.medication_period)) {
+            DateField(stringResource(R.string.start_date), TurkishFormat.date(LocalDate.ofEpochDay(start))) { pickDate(maxOf(start, today), today) { start = it } }
+            DateField(stringResource(R.string.end_date), end?.let { TurkishFormat.date(LocalDate.ofEpochDay(it)) } ?: stringResource(R.string.no_end_date)) { pickDate(maxOf(end ?: start, start, today), maxOf(start, today)) { end = it } }
+            if (end != null) QuietAction(stringResource(R.string.clear_end)) { end = null }
+        }
+        MedicationInfoGroup(stringResource(R.string.medication_stock)) {
+            // Optional stock tracking (D3.7): decimals allowed ("0,5"); an empty threshold means no warning.
+            SettingToggle(stringResource(R.string.stock_tracking), stockEnabled) { stockEnabled = it }
+            Text(stringResource(R.string.stock_tracking_help), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (stockEnabled) {
+                NumberField(stockQuantity, { stockQuantity = it }, stringResource(R.string.stock_quantity))
+                NumberField(stockPerDose, { stockPerDose = it }, stringResource(R.string.stock_per_dose))
+                NumberField(stockThreshold, { stockThreshold = it }, stringResource(R.string.stock_threshold))
             }
         }
-        OutlinedButton(onClick = { pickTime() }, shape = MaterialTheme.shapes.large, modifier = Modifier.fillMaxWidth().heightIn(min = MediSize.touch)) {
-            Icon(Icons.Default.Add, null); Spacer(Modifier.width(MediSpace.small)); Text(stringResource(R.string.add_time), style = MaterialTheme.typography.labelLarge)
-        }
-        FieldLabel(stringResource(R.string.weekdays))
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(MediSpace.small), verticalArrangement = Arrangement.spacedBy(MediSpace.small)) {
-            FilterChip(modifier = Modifier.heightIn(min = MediSize.touch), selected = days == 127, onClick = { days = 127 }, label = { Text(stringResource(R.string.every_day)) })
-            stringArrayResource(R.array.weekday_short).forEachIndexed { i, label ->
-                FilterChip(selected = days != 127 && days and (1 shl i) != 0, onClick = { days = if (days == 127) 1 shl i else days xor (1 shl i) }, label = { Text(label) }, modifier = Modifier.heightIn(min = MediSize.touch))
-            }
-        }
-        TextButton(onClick = { advanced = !advanced }, modifier = Modifier.fillMaxWidth().heightIn(min = MediSize.touch)) {
-            Text(stringResource(if (advanced) R.string.fewer_options else R.string.more_options), style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
-            Icon(if (advanced) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null)
-        }
-        AnimatedVisibility(advanced) {
-            Column(verticalArrangement = Arrangement.spacedBy(MediSpace.regular)) {
-                DateField(stringResource(R.string.start_date), TurkishFormat.date(LocalDate.ofEpochDay(start))) { pickDate(maxOf(start, today), today) { start = it } }
-                DateField(stringResource(R.string.end_date), end?.let { TurkishFormat.date(LocalDate.ofEpochDay(it)) } ?: stringResource(R.string.no_end_date)) { pickDate(maxOf(end ?: start, start, today), maxOf(start, today)) { end = it } }
-                if (end != null) QuietAction(stringResource(R.string.clear_end)) { end = null }
-                OutlinedTextField(note, { note = it }, label = { Text(stringResource(R.string.notes_optional)) }, shape = MaterialTheme.shapes.medium, minLines = 2, modifier = Modifier.fillMaxWidth())
-                SettingToggle(stringResource(R.string.active_toggle), active) { active = it }
-                Text(stringResource(R.string.active_toggle_help), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                // Optional stock tracking (D3.7): decimals allowed ("0,5"); an empty threshold means no warning.
-                SettingToggle(stringResource(R.string.stock_tracking), stockEnabled) { stockEnabled = it }
-                Text(stringResource(R.string.stock_tracking_help), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (stockEnabled) {
-                    NumberField(stockQuantity, { stockQuantity = it }, stringResource(R.string.stock_quantity))
-                    NumberField(stockPerDose, { stockPerDose = it }, stringResource(R.string.stock_per_dose))
-                    NumberField(stockThreshold, { stockThreshold = it }, stringResource(R.string.stock_threshold))
-                }
-            }
-        }
+        OutlinedTextField(note, { note = it }, label = { Text(stringResource(R.string.notes_optional)) }, shape = MaterialTheme.shapes.small, minLines = 2, modifier = Modifier.fillMaxWidth())
+        SettingToggle(stringResource(R.string.active_toggle), active) { active = it }
+        Text(stringResource(R.string.active_toggle_help), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (schedule != null) Text(stringResource(R.string.schedule_edit_note), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        error?.let { Text(stringResource(it), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.titleMedium) }
+        error?.let { Text(stringResource(it), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }) }
         // Kaydet lives at the end of the scrolled form; FormScreen keeps it clear of system bars and the keyboard.
         PrimaryAction(stringResource(R.string.save), Icons.Default.Check) {
             focus.clearFocus()
@@ -171,19 +146,11 @@ private fun stockSettings(quantity: String, perDose: String, threshold: String):
         shape = MaterialTheme.shapes.medium, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next), modifier = Modifier.fillMaxWidth())
 }
 
-@Composable private fun FieldLabel(title: String, help: String? = null) {
-    Column(Modifier.padding(top = MediSpace.small), verticalArrangement = Arrangement.spacedBy(MediSpace.tiny)) {
-        Text(title, style = MaterialTheme.typography.titleMedium)
-        help?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-    }
-}
-
 @Composable private fun DateField(label: String, value: String, pick: () -> Unit) {
-    Surface(onClick = pick, shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainerLow, modifier = Modifier.fillMaxWidth().heightIn(min = MediSize.primaryAction)) {
+    Surface(onClick = pick, shape = MaterialTheme.shapes.small, border = mediSurfaceBorder(), color = MaterialTheme.colorScheme.surface, modifier = Modifier.fillMaxWidth().heightIn(min = MediSize.primaryAction)) {
         Row(Modifier.padding(horizontal = MediSpace.page, vertical = MediSpace.medium), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MediSpace.regular)) {
-            Icon(Icons.Default.CalendarMonth, null, tint = MaterialTheme.colorScheme.primary)
             Box(Modifier.weight(1f)) { LabelValue(label, value) }
-            Icon(Icons.Default.Edit, null)
+            Icon(painterResource(R.drawable.ic_medication_calendar), null, tint = MaterialTheme.colorScheme.primary)
         }
     }
 }

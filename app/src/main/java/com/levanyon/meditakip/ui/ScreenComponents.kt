@@ -24,12 +24,13 @@ import com.levanyon.meditakip.R
  *   the scroll, so the last action can always be scrolled fully above the system UI or keyboard.
  */
 @Composable
-fun FormScreen(title: String, dismiss: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+fun FormScreen(title: String, dismiss: () -> Unit, header: (@Composable () -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
     BackHandler(onBack = dismiss)
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         MediContent(Modifier.fillMaxSize()) {
             Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))) {
-                Surface(color = MaterialTheme.colorScheme.surfaceContainerLow) {
+                if (header != null) Box(Modifier.fillMaxWidth().padding(horizontal = MediSpace.page, vertical = MediSpace.regular)) { header() }
+                else Surface(color = MaterialTheme.colorScheme.surfaceContainerLow) {
                     Box(Modifier.fillMaxWidth().padding(horizontal = MediSpace.small, vertical = MediSpace.small)) { BackHeader(title, dismiss) }
                 }
                 Column(

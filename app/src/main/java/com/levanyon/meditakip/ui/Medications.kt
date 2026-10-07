@@ -3,7 +3,6 @@ package com.levanyon.meditakip.ui
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -12,11 +11,16 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import com.levanyon.meditakip.R
 import com.levanyon.meditakip.data.*
 import com.levanyon.meditakip.domain.*
 import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
 
 /**
  * Most important first: name, person, dose, status, then the schedule (times and days) in one tonal
@@ -24,7 +28,7 @@ import java.time.LocalDate
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun MedicationDetail(snapshot: Snapshot, medicationId: String, today: LocalDate, back: () -> Unit, edit: (PersonEntity, MedicationScheduleEntity) -> Unit, archive: () -> Unit, corrections: DoseCorrections? = null, addStock: (Double) -> Unit = {}, restore: () -> Unit = {}) {
+fun MedicationDetail(snapshot: Snapshot, medicationId: String, today: LocalDate, back: () -> Unit, edit: (PersonEntity, MedicationScheduleEntity) -> Unit, archive: () -> Unit, corrections: DoseCorrections? = null, addStock: (Double) -> Unit = {}, now: LocalDateTime = today.atTime(LocalTime.now()), restore: () -> Unit = {}) {
     val medication = snapshot.medications.find { it.id == medicationId } ?: return
     val person = snapshot.people.find { it.id == medication.personId } ?: return
     val schedule = MedicationViews.latestRevision(snapshot, medicationId) ?: return
@@ -36,57 +40,31 @@ fun MedicationDetail(snapshot: Snapshot, medicationId: String, today: LocalDate,
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val available = maxWidth - MediSpace.page * 2
         LazyColumn(contentPadding = ScreenPadding, verticalArrangement = Arrangement.spacedBy(MediSpace.medium)) {
-            item { BackHeader(person.name, back) }
+            item { MedicationHeader(stringResource(R.string.medication_detail_title), back, if (editable) ({ edit(person, schedule) }) else null) }
             item {
-                Row(horizontalArrangement = Arrangement.spacedBy(MediSpace.regular), verticalAlignment = Alignment.CenterVertically) {
-                    Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.secondaryContainer) {
-                        Icon(Icons.Default.Medication, null, Modifier.padding(MediSpace.regular).size(32.dp), tint = MaterialTheme.colorScheme.onSecondaryContainer)
-                    }
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(schedule.name, style = MaterialTheme.typography.headlineMedium)
-                        Text("${person.name} • ${schedule.dose}", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
+                MedicationHero(person, medication, schedule, medicationNextDose(snapshot, medicationId, today), today, now)
             }
+            item { SectionHeader(stringResource(R.string.medication_usage)) }
             item {
-                when {
-                    medication.archived -> StatusChip(stringResource(R.string.archived), icon = Icons.Default.Archive)
-                    schedule.active -> StatusChip(stringResource(R.string.in_use), completed = true, icon = Icons.Default.CheckCircle)
-                    else -> StatusChip(stringResource(R.string.inactive), icon = Icons.Default.PauseCircle)
-                }
-            }
-            item {
-                Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainerLow) {
-                    Column(Modifier.fillMaxWidth().padding(MediSpace.page), verticalArrangement = Arrangement.spacedBy(MediSpace.medium)) {
-                        Text(stringResource(R.string.times), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(MediSpace.small), verticalArrangement = Arrangement.spacedBy(MediSpace.small)) {
-                            Schedule.minutes(schedule.times).forEach { minute ->
-                                Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer) {
-                                    Row(Modifier.padding(horizontal = MediSpace.regular, vertical = MediSpace.small), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MediSpace.small)) {
-                                        Icon(Icons.Default.Schedule, null, Modifier.size(18.dp))
-                                        Text("%02d:%02d".format(minute / 60, minute % 60), style = MaterialTheme.typography.titleMedium)
-                                    }
-                                }
-                            }
-                        }
-                        LabelValue(stringResource(R.string.weekdays), daysText(schedule.days))
+                MedicationInfoGroup {
+                    MedicationInfoRow(stringResource(R.string.times), "${timesText(schedule.times)} · ${schedule.dose}", R.drawable.ic_medication_clock, daysText(schedule.days))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    MedicationInfoRow(stringResource(R.string.medication_period), TurkishFormat.date(LocalDate.ofEpochDay(schedule.start)), R.drawable.ic_medication_calendar,
+                        schedule.end?.let { TurkishFormat.date(LocalDate.ofEpochDay(it)) } ?: stringResource(R.string.no_end_date))
+                    if (medication.stockEnabled) {
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        StockLine(medication, schedule, editable) { addingStock = true }
                     }
                 }
             }
-            if (medication.stockEnabled) item { StockLine(medication, schedule, editable) { addingStock = true } }
+            if (schedule.note.isNotBlank()) item {
+                MedicationInfoGroup { MedicationInfoRow(stringResource(R.string.notes), schedule.note, R.drawable.ic_medication_note) }
+            }
             if (editable) item { PrimaryAction(stringResource(R.string.edit_medication), Icons.Default.Edit) { edit(person, schedule) } }
             // Archived: restore is the only action, and only once the person is active again.
             if (medication.archived) item {
                 if (person.archived) Text(stringResource(R.string.restore_person_first), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 else PrimaryAction(stringResource(R.string.restore), Icons.Default.Unarchive, action = restore)
-            }
-            item { SectionHeader(stringResource(R.string.other_info)) }
-            item {
-                Column(Modifier.padding(horizontal = MediSpace.tiny), verticalArrangement = Arrangement.spacedBy(MediSpace.medium)) {
-                    LabelValue(stringResource(R.string.start_date), TurkishFormat.date(LocalDate.ofEpochDay(schedule.start)))
-                    LabelValue(stringResource(R.string.end_date), schedule.end?.let { TurkishFormat.date(LocalDate.ofEpochDay(it)) } ?: stringResource(R.string.no_end_date))
-                    if (schedule.note.isNotBlank()) LabelValue(stringResource(R.string.notes), schedule.note)
-                }
             }
             item { SectionHeader(stringResource(R.string.last_seven_days)) }
             if (matrix.rows.isEmpty()) item { Text(stringResource(R.string.empty_history_body), color = MaterialTheme.colorScheme.onSurfaceVariant) }
@@ -102,20 +80,21 @@ fun MedicationDetail(snapshot: Snapshot, medicationId: String, today: LocalDate,
 @Composable private fun StockLine(medication: MedicationEntity, schedule: MedicationScheduleEntity, editable: Boolean, add: () -> Unit) {
     val low = StockPlan.isLow(medication)
     val days = StockPlan.daysLeft(medication, schedule)
-    Surface(shape = MaterialTheme.shapes.large, color = if (low) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.surfaceContainerLow,
-        contentColor = if (low) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onSurface) {
-        Column(Modifier.fillMaxWidth().padding(MediSpace.page), verticalArrangement = Arrangement.spacedBy(MediSpace.small)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MediSpace.medium)) {
-                Icon(if (low) Icons.Default.Warning else Icons.Default.Inventory2, null)
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.stock_remaining, StockPlan.format(medication.stockQuantity)), style = MaterialTheme.typography.titleMedium)
-                    days?.let { Text(stringResource(R.string.stock_days, it), style = MaterialTheme.typography.bodyMedium) }
-                }
-                if (low) Text(stringResource(R.string.stock_low), style = MaterialTheme.typography.labelLarge)
+    val stockStatus = stringResource(if (low) R.string.stock_low else R.string.medication_stock)
+    Column(Modifier.fillMaxWidth().semantics { stateDescription = stockStatus }, verticalArrangement = Arrangement.spacedBy(MediSpace.small)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MediSpace.medium)) {
+            Surface(shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.primaryContainer) {
+                Icon(painterResource(R.drawable.ic_medication_stock), null, Modifier.padding(10.dp).size(20.dp), tint = MaterialTheme.colorScheme.primary)
             }
-            if (editable) FilledTonalButton(onClick = add, shape = MaterialTheme.shapes.large, modifier = Modifier.fillMaxWidth().heightIn(min = MediSize.touch)) {
-                Icon(Icons.Default.Add, null); Spacer(Modifier.width(MediSpace.small)); Text(stringResource(R.string.stock_add), style = MaterialTheme.typography.labelLarge)
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.stock_remaining, StockPlan.format(medication.stockQuantity)), style = MaterialTheme.typography.titleMedium)
+                days?.let { Text(stringResource(R.string.stock_days, it), style = MaterialTheme.typography.bodyMedium) }
             }
+        }
+        Text(stringResource(R.string.medication_threshold, StockPlan.format(medication.stockThreshold)), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (low) MedicationStatusChip(stringResource(R.string.stock_low), true)
+        if (editable) FilledTonalButton(onClick = add, shape = MaterialTheme.shapes.large, modifier = Modifier.fillMaxWidth().heightIn(min = MediSize.touch)) {
+            Icon(Icons.Default.Add, null); Spacer(Modifier.width(MediSpace.small)); Text(stringResource(R.string.stock_add), style = MaterialTheme.typography.labelLarge)
         }
     }
 }

@@ -123,9 +123,9 @@ class ScreenLayoutTest {
     @Test fun medicationDetailSectionsAndDeleteRemainReachable() {
         var deleted = false
         content(true) { MedicationDetail(fixture, "m", date, {}, { _, _ -> }, { deleted = true }) }
-        lazyScroll("Kullanımda")
+        lazyScroll("Aktif")
         lazyScroll("İlacı Düzenle")
-        lazyScroll("Başlangıç Tarihi")
+        lazyScroll("Tedavi dönemi")
         lazyScroll("Son 7 gün")
         lazyScroll("İlacı Arşivle")
         compose.onNodeWithText("İlacı Arşivle").performClick()
@@ -316,7 +316,6 @@ class ScreenLayoutTest {
     @Test fun stockTrackingIsOptionalAndValidated() {
         var saved: StockSettings? = null
         content(fontScale = 1f) { MedicationEditor(person, null, {}) { _, stock -> saved = stock } }
-        compose.onNodeWithText("Diğer seçenekler").performScrollTo().performClick()
         compose.onNodeWithText("Stok takibi").performScrollTo().performClick()
         compose.onNodeWithText("Elde kalan miktar").performScrollTo().performTextInput("30")
         compose.onNodeWithText("Her dozda kullanılan miktar").performScrollTo().performTextClearance()
@@ -345,17 +344,16 @@ class ScreenLayoutTest {
         compose.onNodeWithText("Uzun İlaç Adı azalıyor · ~1 gün").performClick()
         assertEquals("m", opened)
     }
-    @Test fun medicationFormHidesAdvancedFieldsUntilRequested() {
+    @Test fun medicationFormExposesPersistedPeriodInItsOwnSection() {
         content { MedicationEditor(person, null, {}) { _, _ -> } }
-        compose.onNodeWithText("Bitiş Tarihi").assertDoesNotExist()
-        compose.onNodeWithText("Diğer seçenekler").performScrollTo().performClick()
+        compose.onNodeWithText("Tedavi dönemi").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Başlangıç Tarihi").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Bitiş Tarihi").performScrollTo().assertIsDisplayed()
     }
     @Test fun dateFieldsNeverOfferPastDays() {
         // B5: an existing medication that started 10 days ago keeps showing that start, but the pickers begin today.
         val started = date.minusDays(10)
         content(fontScale = 1f) { MedicationEditor(person, schedule.copy(start = started.toEpochDay()), {}) { _, _ -> } }
-        compose.onNodeWithText("Diğer seçenekler").performScrollTo().performClick()
         compose.onNodeWithText(TurkishFormat.date(started)).performScrollTo().assertIsDisplayed().performClick()
         val todayMillis = date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
         val start = org.robolectric.shadows.ShadowDialog.getLatestDialog() as android.app.DatePickerDialog

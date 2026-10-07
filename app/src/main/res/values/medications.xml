@@ -1,0 +1,12 @@
+<resources>
+    <string name="medication_detail_title">İlaç Detayı</string>
+    <string name="medication_usage">Kullanım planı</string>
+    <string name="medication_schedule_title">Kullanım saatleri</string>
+    <string name="medication_period">Tedavi dönemi</string>
+    <string name="medication_stock">Stok</string>
+    <string name="medication_next">Sıradaki doz</string>
+    <string name="medication_no_next">Yaklaşan doz yok</string>
+    <string name="medication_due">Bekleyen doz</string>
+    <string name="medication_threshold">Uyarı eşiği: %1$s</string>
+    <string name="medication_edit_time">%1$s saatini düzenle</string>
+</resources>
