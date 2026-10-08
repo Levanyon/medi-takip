@@ -81,8 +81,23 @@ class AccessibilityTest(private val scale: Float) {
     @Test fun people() { show { PeopleScreen(snapshot, {}, {}) }; reachable("Ekle"); reachable("Kardeş") }
     @Test fun personDetail() { show { PersonDetail(snapshot, anne, {}, {}, {}, {}) }; reachable("Kişiyi düzenle"); reachable("İlaç ekle") }
     @Test fun medicationDetail() { show { MedicationDetail(snapshot, "m", date, {}, { _, _ -> }, {}) }; reachable("İlacı Düzenle"); reachable("İlacı Arşivle") }
-    @Test fun history() { show { HistoryScreen(snapshot, date, "p", {}, {}) }; reachable("Tarih"); reachable("08:05") }
-    @Test fun settings() { show { SettingsScreen(viewModel()) }; reachable("Hatırlatma Durumu"); reachable("Koyu") }
+    @Test fun history() {
+        show { HistoryScreen(snapshot, date, "p", {}, {}) }
+        reachable("Planlanan dozlar")
+        compose.onNodeWithText("Planlanan dozlar").performClick()
+        reachable("Tarih"); reachable("08:05")
+    }
+    @Test fun settings() {
+        show { SettingsScreen(viewModel()) }
+        reachable("Bildirimler")
+        compose.onNodeWithText("Bildirimler").performClick()
+        compose.onNodeWithText("Hatırlatma Durumu").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("İptal").performScrollTo().performClick()
+        reachable("Tema")
+        compose.onNodeWithText("Tema").performClick()
+        compose.onNodeWithText("Koyu").performScrollTo().assertIsDisplayed()
+        assertAccessibleTargets()
+    }
     @Test fun reminderStatus() { show { ReminderStatusScreen(viewModel(), access) {} }; reachable("Pil kısıtlaması"); reachable("Test bildirimi gönder") }
     @Test fun personForm() { show { PersonEditor(anne, {}, {}) {} }; reachable("Kaydet"); reachable("Kişiyi Arşivle") }
     @Test fun medicationForm() { show { MedicationEditor(anne, schedule, {}) { _, _ -> } }; reachable("Saat Ekle"); reachable("Kaydet") }

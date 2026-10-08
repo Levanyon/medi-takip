@@ -36,7 +36,7 @@
     <string-array name="weekday_short"><item>Pzt</item><item>Sal</item><item>Çar</item><item>Per</item><item>Cum</item><item>Cmt</item><item>Paz</item></string-array>
     <string name="completed_fraction">%1$d / %2$d tamamlandı</string>
     <string name="history_subtitle">Günlere göre hangi ilacın içildiğini tek tabloda görün.</string>
-    <string name="settings_subtitle">Hatırlatmalar ve görünüm.</string>
+    <string name="settings_subtitle">MediTakip deneyimini yönet</string>
     <string name="active_count">%1$d ilaç kullanımda</string>
     <string name="add_medication">İlaç Ekle</string>
     <string name="edit_medication">İlacı Düzenle</string>
@@ -68,7 +68,7 @@
     <string name="error_days">En az bir gün seçin.</string>
     <string name="error_dates">Bitiş tarihi başlangıç tarihinden önce olamaz.</string>
     <string name="error_times">En az bir geçerli saat seçin.</string>
-    <string name="reminder_settings">Bildirim ve Hatırlatmalar</string>
+    <string name="reminder_settings">Hatırlatmalar</string>
     <string name="permission_granted">İzin verildi</string>
     <string name="grant_permission">İzin Ver</string>
     <string name="open_settings">Ayarları Aç</string>
@@ -112,7 +112,7 @@
     <string name="person_done_description">%1$s, bekleyen ilaç yok</string>
     <string name="active_toggle">İlaç kullanımda</string>
     <string name="active_toggle_help">Kapatırsanız bu ilaç Bugün ekranında görünmez ve hatırlatma gönderilmez.</string>
-    <string name="about_section">Uygulama Hakkında</string>
+    <string name="about_section">MediTakip hakkında</string>
     <string name="fix">Düzelt</string>
     <string name="welcome_point_see">Kimin, hangi ilacı, ne zaman içeceğini tek ekranda görün.</string>
     <string name="welcome_point_remind">İlaç saati geldiğinde hatırlatma alın.</string>
@@ -240,16 +240,16 @@
     <string name="stock_low_notification_text_no_days">%1$s · kalan miktar: %2$s</string>
     <string name="error_stock">Stok miktarlarını kontrol edin. Her dozda kullanılan miktar 0\'dan büyük olmalı.</string>
     <!-- Phase 4: backup and restore -->
-    <string name="backup_section">Yedekleme</string>
+    <string name="backup_section">Veri ve yedekleme</string>
     <string name="backup_last">Son yedek: %1$s</string>
     <string name="backup_never">Henüz yedek alınmadı</string>
     <string name="backup_due">Son yedeğin üzerinden 30 günden fazla geçti. Telefon değişirse veya sıfırlanırsa kayıtlar kaybolmasın diye yeni bir yedek alın.</string>
     <string name="backup_help">Yedek, seçtiğiniz bir klasöre tek bir dosya olarak kaydedilir (örneğin İndirilenler). Bu dosyayı bilgisayara veya bir USB belleğe de kopyalayabilirsiniz.</string>
     <string name="backup_create">Yedek Oluştur</string>
-    <string name="backup_restore">Yedekten Geri Yükle</string>
+    <string name="backup_restore">Yedekten geri yükle</string>
     <string name="backup_saved">Yedek kaydedildi.</string>
     <string name="backup_save_failed">Yedek kaydedilemedi. Başka bir klasör seçip tekrar deneyin.</string>
-    <string name="backup_restore_title">Yedek geri yüklensin mi?</string>
+    <string name="backup_restore_title">Yedekten geri yüklensin mi?</string>
     <string name="backup_restore_date">Yedek tarihi: %1$s</string>
     <string name="backup_restore_counts">%1$d kişi · %2$d ilaç · %3$d kayıt</string>
     <string name="backup_restore_range">Kayıtlar: %1$s – %2$s</string>

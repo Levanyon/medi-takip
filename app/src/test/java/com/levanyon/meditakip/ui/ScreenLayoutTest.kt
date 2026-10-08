@@ -134,13 +134,15 @@ class ScreenLayoutTest {
     @Test fun settingsContainOnlySettingsAndLeadToReminderStatus() {
         var opened = false
         content { SettingsScreen(viewModel()) { opened = true } }
-        lazyScroll("Hatırlatma Durumu")
-        compose.onNodeWithText("Hatırlatma Durumu").performClick()
+        lazyScroll("Bildirimler")
+        compose.onNodeWithText("Bildirimler").performClick()
+        compose.onNodeWithText("İkinci Hatırlatma").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Hatırlatma Durumu").performScrollTo().performClick()
         assertTrue(opened)
-        lazyScroll("İkinci Hatırlatma")
         lazyScroll("Görünüm")
-        lazyScroll("Uygulama Hakkında")
-        lazyScroll("MediTakip 1.2")
+        lazyScroll("MediTakip hakkında")
+        compose.onNodeWithText("MediTakip hakkında").performClick()
+        compose.onNodeWithText("MediTakip 1.2-debug").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("İlaç ve Kişi Yönetimi").assertDoesNotExist()
     }
     @Test fun reminderStatusShowsEachRequirementWithFixAndTests() {
@@ -175,7 +177,7 @@ class ScreenLayoutTest {
     }
     @Test fun historySmallTableIsCenteredNotStretched() {
         val single = fixture.copy(schedules = listOf(schedule.copy(times = "08:00")))
-        content(fontScale = 1f) { HistoryScreen(single, date, "p", {}, {}) }
+        content(fontScale = 1f) { HistoryScheduleScreen(single, date, "p", {}, {}) }
         lazyScroll("Tarih")
         val header = compose.onNodeWithText("Tarih").fetchSemanticsNode().boundsInRoot
         // 320dp screen, 20dp page padding: a 1-column table (≈168dp) starts well inside the page, not at its edge.
@@ -183,7 +185,7 @@ class ScreenLayoutTest {
         compose.onNodeWithText("Diğer ilaçları görmek için tabloyu yana kaydırın.").assertDoesNotExist()
     }
     @Test fun historyWideTableScrollsWhileDateColumnStaysVisible() {
-        content { HistoryScreen(crowded, date, "p", {}, {}) }
+        content { HistoryScheduleScreen(crowded, date, "p", {}, {}) }
         lazyScroll("Diğer ilaçları görmek için tabloyu yana kaydırın.")
         lazyScroll("Tarih")
         val before = compose.onNodeWithText("Tarih").fetchSemanticsNode().boundsInRoot
@@ -193,7 +195,7 @@ class ScreenLayoutTest {
         compose.onNodeWithText("İlaç Numara 1").assertIsNotDisplayed()
     }
     @Test fun historyCellOpensDetailForUnmarkedAndTakenDoses() {
-        content(fontScale = 1f) { HistoryScreen(crowded, date, "p", {}, {}) }
+        content(fontScale = 1f) { HistoryScheduleScreen(crowded, date, "p", {}, {}) }
         lazyScroll("08:05")
         compose.onNodeWithText("08:05").performClick()
         compose.onNodeWithText("Planlanan").assertIsDisplayed()
@@ -208,7 +210,7 @@ class ScreenLayoutTest {
         val new = old.copy(id = "r2", name = "Parol 500", dose = "2 tablet", effectiveFrom = date.toEpochDay(), effectiveTo = null)
         val taken = LocalDate.ofEpochDay(from).atTime(8, 5).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
         val revised = fixture.copy(schedules = listOf(old, new), logs = listOf(MedicationLogEntity("r1:$from:480", "r1", from, 480, taken)))
-        content(fontScale = 1f) { HistoryScreen(revised, date, "p", {}, {}) }
+        content(fontScale = 1f) { HistoryScheduleScreen(revised, date, "p", {}, {}) }
         lazyScroll("08:05")
         compose.onNodeWithText("08:05").performClick()
         compose.onNodeWithText("1 tablet").assertIsDisplayed()
@@ -225,7 +227,7 @@ class ScreenLayoutTest {
         Snapshot(listOf(person, dede), listOf(MedicationEntity("m", "p"), MedicationEntity("md", "d", archived = true)), listOf(schedule, old), listOf(log))
     }
     @Test fun historyKeepsArchivedPeopleSelectableAndOpensAtTheirLastRecords() {
-        content(fontScale = 1f) { HistoryScreen(withArchive, date, "d", {}, {}) }
+        content(fontScale = 1f) { HistoryScheduleScreen(withArchive, date, "d", {}, {}) }
         compose.onNode(hasContentDescription("Dede, arşivde")).performScrollTo().assertIsDisplayed().assertIsSelected()
         lazyScroll("08:05")
         lazyScroll("Tansiyon")
@@ -280,7 +282,7 @@ class ScreenLayoutTest {
     }
     @Test fun historyWithoutPeopleOrRecordsShowsPolishedEmptyStates() {
         var people = false
-        content { HistoryScreen(Snapshot(), date, null, {}, goToPeople = { people = true }) }
+        content { HistoryScheduleScreen(Snapshot(), date, null, {}, goToPeople = { people = true }) }
         lazyScroll("Henüz kişi eklenmemiş")
         lazyScroll("Kişilere Git")
         compose.onNodeWithText("Kişilere Git").performClick()

@@ -42,7 +42,7 @@ import java.time.ZoneId
 private const val DAYS_PER_PAGE = 14
 
 /** Geçmiş: pick a person, then read many days at a glance in one date × medication matrix. */
-@Composable fun HistoryScreen(snapshot: Snapshot, today: LocalDate, selectedPersonId: String?, selectPerson: (String) -> Unit, goToPeople: () -> Unit, corrections: DoseCorrections? = null) {
+@Composable fun HistoryScheduleScreen(snapshot: Snapshot, today: LocalDate, selectedPersonId: String?, selectPerson: (String) -> Unit, goToPeople: () -> Unit, corrections: DoseCorrections? = null) {
     // Archived people stay selectable (after the active ones) so their history is never hidden.
     val people = snapshot.people.filter { !it.archived } + snapshot.people.filter { it.archived }
     val person = people.find { it.id == selectedPersonId } ?: people.firstOrNull()

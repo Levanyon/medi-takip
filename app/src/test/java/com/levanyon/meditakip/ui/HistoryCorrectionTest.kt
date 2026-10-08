@@ -47,7 +47,7 @@ class HistoryCorrectionTest {
         app.database.close()
     }
     private fun open(description: String) {
-        compose.setContent { MediTheme("Light") { HistoryScreen(snapshot, today, "p", {}, goToPeople = {}, corrections = recorder) } }
+        compose.setContent { MediTheme("Light") { HistoryScheduleScreen(snapshot, today, "p", {}, goToPeople = {}, corrections = recorder) } }
         compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasContentDescription(description, substring = true))
         compose.onNode(hasContentDescription(description, substring = true)).performClick()
     }
@@ -83,7 +83,7 @@ class HistoryCorrectionTest {
         assertEquals(listOf("undo ${today.minusDays(2)}"), recorder.calls)
     }
     @Test fun withoutCorrectionsTheDetailIsReadOnly() {
-        compose.setContent { MediTheme("Light") { HistoryScreen(snapshot, today, "p", {}, goToPeople = {}) } }
+        compose.setContent { MediTheme("Light") { HistoryScheduleScreen(snapshot, today, "p", {}, goToPeople = {}) } }
         val description = "${TurkishFormat.date(yesterday)}: Alındı olarak işaretlenmedi"
         compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasContentDescription(description, substring = true))
         compose.onNode(hasContentDescription(description, substring = true)).performClick()

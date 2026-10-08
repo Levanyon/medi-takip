@@ -34,7 +34,7 @@ class BackupUiTest {
         var confirmed = false
         var cancelled = false
         compose.setContent { MediTheme("Light") { BackupPreview(BackupSummary(1_800_000_000_000, 0, 0, 0, null, null), { cancelled = true }, { confirmed = true }) } }
-        compose.onNodeWithText("İptal").performScrollTo().performClick()
+        compose.onNodeWithText("Vazgeç").performScrollTo().performClick()
         assertTrue(cancelled); assertFalse(confirmed)
     }
 }

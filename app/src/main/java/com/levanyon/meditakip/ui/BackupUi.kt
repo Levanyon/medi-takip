@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -33,8 +34,12 @@ private class OpenLocalBackup : ActivityResultContracts.OpenDocument() {
     val context = LocalContext.current
     val create = rememberLauncherForActivityResult(CreateLocalBackup()) { uri -> uri?.let(vm::exportBackup) }
     val open = rememberLauncherForActivityResult(OpenLocalBackup()) { uri -> uri?.let(vm::inspectBackup) }
-    Column(verticalArrangement = Arrangement.spacedBy(MediSpace.regular)) {
-        SectionHeader(stringResource(R.string.backup_section))
+    var details by rememberSaveable { mutableStateOf(false) }
+    BackupRows(busy, { details = true }, {
+        try { open.launch(arrayOf("application/json", "application/octet-stream", "text/plain")) }
+        catch (_: Exception) { vm.fileMessage.value = context.getString(R.string.backup_damaged) }
+    })
+    if (details) MediDialog(stringResource(R.string.backup_section), { details = false }) {
         Text(stringResource(R.string.backup_last, if (last == 0L) stringResource(R.string.backup_never) else backupDate(last)))
         Text(stringResource(R.string.backup_help), style = MaterialTheme.typography.bodyMedium)
         Text(stringResource(R.string.backup_privacy), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -42,14 +47,20 @@ private class OpenLocalBackup : ActivityResultContracts.OpenDocument() {
             Text(stringResource(if (last == 0L) R.string.backup_first_due else R.string.backup_due), color = MaterialTheme.colorScheme.primary)
         }
         PrimaryAction(stringResource(R.string.backup_create), Icons.Default.Save, !busy) {
+            details = false
             try { create.launch("MediTakip-${LocalDate.now()}.json") }
             catch (_: Exception) { vm.fileMessage.value = context.getString(R.string.backup_save_failed) }
         }
-        SecondaryAction(stringResource(R.string.backup_restore), !busy) {
-            try { open.launch(arrayOf("application/json", "application/octet-stream", "text/plain")) }
-            catch (_: Exception) { vm.fileMessage.value = context.getString(R.string.backup_damaged) }
-        }
-        if (safety) SecondaryAction(stringResource(R.string.backup_safety), !busy, vm::inspectSafetyCopy)
+        if (safety) SecondaryAction(stringResource(R.string.backup_safety), !busy) { details = false; vm.inspectSafetyCopy() }
+        CancelAction { details = false }
+    }
+}
+
+@Composable internal fun BackupRows(busy: Boolean, create: () -> Unit, restore: () -> Unit) {
+    SettingsSection(stringResource(R.string.backup_section)) {
+        SettingsRow(stringResource(R.string.settings_backup_create), stringResource(R.string.settings_backup_create_help), R.drawable.ic_phase5_backup, enabled = !busy, onClick = create)
+        SettingsDivider()
+        SettingsRow(stringResource(R.string.backup_restore), stringResource(R.string.settings_backup_restore_help), R.drawable.ic_phase5_restore, enabled = !busy, onClick = restore)
     }
 }
 
@@ -58,14 +69,12 @@ private fun backupDate(at: Long): String = Instant.ofEpochMilli(at).atZone(ZoneI
 }
 
 @Composable fun BackupPreview(summary: BackupSummary, dismiss: () -> Unit, confirm: () -> Unit) {
-    MediDialog(stringResource(R.string.backup_restore_title), dismiss) {
+    RestoreConfirmationDialog(dismiss, confirm) {
         Text(stringResource(R.string.backup_restore_date, backupDate(summary.exportedAt)))
         Text(stringResource(R.string.backup_restore_counts, summary.people, summary.medications, summary.records))
         Text(if (summary.firstDate == null || summary.lastDate == null) stringResource(R.string.backup_no_records)
             else stringResource(R.string.backup_restore_range, TurkishFormat.date(summary.firstDate), TurkishFormat.date(summary.lastDate)))
         Text(stringResource(R.string.backup_restore_warning))
-        PrimaryAction(stringResource(R.string.backup_restore_confirm), Icons.Default.Restore, action = confirm)
-        CancelAction(dismiss)
     }
 }
 

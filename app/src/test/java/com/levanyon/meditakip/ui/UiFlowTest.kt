@@ -68,6 +68,8 @@ class UiFlowTest {
     @Test fun historyShowsPersonTableFromRealLogs() {
         compose.setContent { MediTheme("Light") { Home(fixture, viewModel()) } }
         compose.onNode(hasText("Geçmiş") and isSelectable()).performClick()
+        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Planlanan dozlar"))
+        compose.onNodeWithText("Planlanan dozlar").performClick()
         compose.onNodeWithText("Tarih").assertIsDisplayed()
         compose.onAllNodesWithText("Parol").onFirst().assertIsDisplayed()
         compose.onNodeWithText("08:04").assertIsDisplayed().performClick()

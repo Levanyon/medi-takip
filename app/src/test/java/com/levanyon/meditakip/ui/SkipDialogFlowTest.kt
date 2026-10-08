@@ -44,7 +44,7 @@ class SkipDialogFlowTest {
         app.database.close()
     }
     private fun openYesterday() {
-        compose.setContent { MediTheme("Light") { HistoryScreen(snapshot, today, "p", {}, goToPeople = {}, corrections = recorder) } }
+        compose.setContent { MediTheme("Light") { HistoryScheduleScreen(snapshot, today, "p", {}, goToPeople = {}, corrections = recorder) } }
         val description = "${TurkishFormat.date(yesterday)}: Alındı olarak işaretlenmedi"
         compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasContentDescription(description, substring = true))
         compose.onNode(hasContentDescription(description, substring = true)).performClick()
