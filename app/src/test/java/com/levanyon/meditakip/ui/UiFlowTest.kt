@@ -7,6 +7,7 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.Density
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.ViewModelProvider
 import com.levanyon.meditakip.MediApp
 import com.levanyon.meditakip.data.*
 import com.levanyon.meditakip.domain.*
@@ -80,7 +81,11 @@ class UiFlowTest {
             listOf(PersonEntity("p", "Anne", archived = true)),
             listOf(MedicationEntity("m", "p", archived = true), MedicationEntity("m2", "p", archived = true)),
             listOf(schedule.copy(effectiveTo = date.minusDays(1).toEpochDay()), schedule.copy(id = "s2", medicationId = "m2", name = "Vitamin", effectiveTo = date.minusDays(1).toEpochDay())))
-        compose.setContent { MediTheme("Light") { Home(archived, viewModel()) } }
+        // Robolectric replaces Application between cases; avoid a factory retaining a closed database.
+        val application = RuntimeEnvironment.getApplication() as MediApp
+        compose.setContent { MediTheme("Light") {
+            Home(archived, viewModel(factory = ViewModelProvider.AndroidViewModelFactory(application)))
+        } }
         compose.onNode(hasText("Kişiler") and isSelectable()).performClick()
         compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Arşivdekiler"))
         compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Anne"))
@@ -104,9 +109,12 @@ class UiFlowTest {
     }
     @Test fun onboardingSkipsPermissionStepsThatAreAlreadyGranted() {
         compose.setContent { MediTheme("Light") { Onboarding(viewModel()) } }
-        // Android 9 needs neither runtime notification nor exact-alarm access: one step only.
-        compose.onNodeWithText("MediTakip'e Hoş Geldiniz").assertIsDisplayed()
-        compose.onNodeWithText("Adım", substring = true).assertDoesNotExist()
+        // Android 9 skips permission screens, preserving Welcome -> Ready -> optional setup.
+        compose.onNodeWithText("İlaç takibini sade ve güvenli hale getir.").assertIsDisplayed()
+        compose.onNodeWithText("Başla").performScrollTo().performClick()
+        compose.onNodeWithText("Her şey hazır").assertIsDisplayed()
+        compose.onNodeWithText("Bildirimleri etkinleştir").assertDoesNotExist()
+        compose.onNodeWithText("Tam zamanında hatırlatmayı aç").assertDoesNotExist()
         compose.onNodeWithText("İlk kişiyi ekle").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Daha sonra").performScrollTo().performClick()
     }

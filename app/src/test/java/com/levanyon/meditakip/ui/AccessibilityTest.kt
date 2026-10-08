@@ -101,7 +101,11 @@ class AccessibilityTest(private val scale: Float) {
     @Test fun reminderStatus() { show { ReminderStatusScreen(viewModel(), access) {} }; reachable("Pil kısıtlaması"); reachable("Test bildirimi gönder") }
     @Test fun personForm() { show { PersonEditor(anne, {}, {}) {} }; reachable("Kaydet"); reachable("Kişiyi Arşivle") }
     @Test fun medicationForm() { show { MedicationEditor(anne, schedule, {}) { _, _ -> } }; reachable("Saat Ekle"); reachable("Kaydet") }
-    @Test fun onboarding() { show { Onboarding(viewModel()) }; reachable("İlk kişiyi ekle"); reachable("Daha sonra") }
+    @Test fun onboarding() {
+        show { Onboarding(viewModel()) }; reachable("Başla")
+        compose.onNodeWithText("Başla").performClick()
+        reachable("İlk kişiyi ekle"); reachable("Daha sonra")
+    }
 
     // Phase 3 screens and dialogs (the Phase 5 checks repeated, because Phase 5 ran first).
     private val takenMorning get() = Schedule.day(snapshot, date).first().withLog(MedicationLogEntity("x", "s", date.toEpochDay(), 480, date.atTime(8, 2).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()))

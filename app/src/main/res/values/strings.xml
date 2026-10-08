@@ -18,8 +18,6 @@
     <string name="archive">Arşivle</string>
     <string name="back">Geri</string>
     <string name="ok">Tamam</string>
-    <string name="continue_label">Devam Et</string>
-    <string name="later">Şimdilik Atla</string>
     <string name="name">Ad</string>
     <string name="dose">Doz</string>
     <string name="notes">Notlar</string>
@@ -69,11 +67,8 @@
     <string name="error_dates">Bitiş tarihi başlangıç tarihinden önce olamaz.</string>
     <string name="error_times">En az bir geçerli saat seçin.</string>
     <string name="reminder_settings">Hatırlatmalar</string>
-    <string name="permission_granted">İzin verildi</string>
-    <string name="grant_permission">İzin Ver</string>
     <string name="open_settings">Ayarları Aç</string>
     <string name="enable_notifications">Hatırlatmaları Etkinleştir</string>
-    <string name="notification_denied">Bildirimleri daha sonra Ayarlar bölümünden açabilirsiniz. Uygulamayı kullanmaya devam edebilirsiniz.</string>
     <string name="background_info">Telefon kapalıyken bildirim gönderilemez. Uygulamayı zorla durdurduysanız yeniden açın. Bazı telefonların pil ayarları hatırlatmaları geciktirebilir.</string>
     <string name="second_reminder">İkinci Hatırlatma</string>
     <string name="retry_enabled">Alındı olarak işaretlenmediyse tekrar hatırlat</string>
@@ -86,13 +81,6 @@
     <string name="theme_dark">Koyu</string>
     <string name="privacy_body">Bilgileriniz yalnızca bu telefonda saklanır. Hesap, internet bağlantısı, reklam, analiz veya bulut yedeklemesi kullanılmaz.</string>
     <string name="version_label">MediTakip 1.2</string>
-    <string name="welcome_title">MediTakip\'e Hoş Geldiniz</string>
-    <string name="welcome_body">Ailenizin ilaçlarını tek bir yerden, kolayca takip edin.</string>
-    <string name="get_started">Başlayalım</string>
-    <string name="notification_intro_title">Bildirimlere İzin Ver</string>
-    <string name="notification_intro_body">İlaç saati geldiğinde size haber verebilmemiz için bildirim izni gerekir.</string>
-    <string name="exact_intro_title">Tam Zamanında Hatırlatma</string>
-    <string name="exact_intro_body">Bu izin, hatırlatmaların tam ilaç saatinde gelmesini sağlar. İzin vermezseniz hatırlatmalar birkaç dakika gecikebilir.</string>
     <string name="step_count">Adım %1$d / %2$d</string>
     <string name="channel_name">İlaç hatırlatmaları</string>
     <string name="channel_description">Girdiğiniz ilaç programına ait hatırlatmalar</string>
@@ -114,9 +102,6 @@
     <string name="active_toggle_help">Kapatırsanız bu ilaç Bugün ekranında görünmez ve hatırlatma gönderilmez.</string>
     <string name="about_section">MediTakip hakkında</string>
     <string name="fix">Düzelt</string>
-    <string name="welcome_point_see">Kimin, hangi ilacı, ne zaman içeceğini tek ekranda görün.</string>
-    <string name="welcome_point_remind">İlaç saati geldiğinde hatırlatma alın.</string>
-    <string name="welcome_point_private">Bilgileriniz yalnızca bu telefonda kalır.</string>
     <string name="for_person">Kişi: %1$s</string>
     <string name="times_help">Her saat için ayrı hatırlatma gönderilir.</string>
     <!-- Person-based history table and management -->

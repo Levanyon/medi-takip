@@ -38,7 +38,9 @@ class MainActivity : ComponentActivity() {
                     bars.isAppearanceLightStatusBars = background.luminance() > 0.5f
                     bars.isAppearanceLightNavigationBars = background.luminance() > 0.5f
                 }
-                Surface(color = background) { if (onboardingCompleted) Home(snapshot, vm) else MediContent { Onboarding(vm) } }
+                Surface(color = background) {
+                    AppLaunch(onboardingCompleted, onboarding = { Onboarding(vm) }, home = { Home(snapshot, vm) })
+                }
                 error?.let { message ->
                     MediDialog(stringResource(R.string.error_title), { vm.error.value = null }) {
                         Text(message)

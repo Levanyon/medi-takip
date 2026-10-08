@@ -1,0 +1,24 @@
+<resources>
+    <string name="onboarding_welcome_title">İlaç takibini sade ve güvenli hale getir.</string>
+    <string name="onboarding_welcome_body">MediTakip; ilaç saatlerini, kişileri ve kullanım geçmişini tek yerde takip etmene yardımcı olur.</string>
+    <string name="onboarding_privacy">Verilerin cihazında tutulur.</string>
+    <string name="onboarding_start">Başla</string>
+    <string name="onboarding_notifications_title">İlaç saatlerini kaçırma</string>
+    <string name="onboarding_notifications_body">MediTakip, planladığın ilaç saatlerinde sana bildirim gönderebilir. Bildirim iznini yalnızca hatırlatmalar için kullanırız.</string>
+    <string name="onboarding_notifications_action">Bildirimleri etkinleştir</string>
+    <string name="onboarding_notifications_hint">İzni şimdi vermezsen Ayarlar’dan daha sonra açabilirsin.</string>
+    <string name="onboarding_exact_title">Hatırlatmalar tam zamanında gelsin</string>
+    <string name="onboarding_exact_body">Android’in tam zamanında hatırlatma izni, ilaç bildirimlerinin mümkün olduğunca planlanan saatte tetiklenmesini sağlar.</string>
+    <string name="onboarding_exact_action">Tam zamanında hatırlatmayı aç</string>
+    <string name="onboarding_exact_hint">Bu izin verilmezse Android bazı hatırlatmaları geciktirebilir.</string>
+    <string name="onboarding_skip">Şimdilik geç</string>
+    <string name="onboarding_ready_title">Her şey hazır</string>
+    <string name="onboarding_ready_body">İlk kişiyi ekleyerek MediTakip’i kullanmaya başlayabilirsin. İzinleri daha sonra Ayarlar’dan değiştirebilirsin.</string>
+    <string name="onboarding_notification_denied_title">Bildirim izni kapalı</string>
+    <string name="onboarding_notification_denied_body">İlaç hatırlatmalarını görebilmek için bildirim iznini Android ayarlarından açman gerekiyor. Uygulamayı kullanmaya yine devam edebilirsin.</string>
+    <string name="onboarding_exact_denied_title">Tam zamanında hatırlatma kapalı</string>
+    <string name="onboarding_exact_denied_body">Android bu izin olmadan bazı ilaç hatırlatmalarını geciktirebilir. İstersen şimdi Ayarlar’dan açabilirsin.</string>
+    <string name="onboarding_recovery_hint">Daha sonra da açabilirsin</string>
+    <string name="onboarding_recovery_path">Ayarlar &gt; Hatırlatmalar</string>
+    <string name="onboarding_settings">Ayarları aç</string>
+</resources>

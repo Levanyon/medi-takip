@@ -3,5 +3,8 @@
     <!-- Brand green (Theme.kt primary) and window backgrounds matching the Compose themes, so the
          window, splash screen and first frame never flash a different colour. -->
     <color name="brand_green">#FF20695D</color>
-    <color name="window_background">#FFF7F8F4</color>
+    <color name="window_background">#FFF5F7F3</color>
+    <color name="launch_container">#D6EEE6</color>
+    <color name="launch_primary">#0B5A4C</color>
+    <color name="launch_on_primary">#FFFFFF</color>
 </resources>
