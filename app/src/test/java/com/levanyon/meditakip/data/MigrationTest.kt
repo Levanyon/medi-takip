@@ -97,7 +97,7 @@ class MigrationTest {
             assertEquals(schedules.mapIndexed { i, s -> MedicationScheduleEntity(s.id, s.medicationId, s.personName, s.name, s.dose, s.note, s.times, s.days, s.start, s.end, s.active == 1, s.effectiveFrom, s.effectiveTo, sequence = i + 1L) },
                 migratedSchedules)
             assertEquals(logs.map { MedicationLogEntity(it.key, it.scheduleId, it.date, it.minute, it.takenAt, LogStatus.TAKEN, recordedAt = it.takenAt, note = null) }.toSet(), dao.logs().toSet())
-            assertEquals(2, room.openHelper.readableDatabase.version)
+            assertEquals(3, room.openHelper.readableDatabase.version)
         } finally { room.close() }
     }
 

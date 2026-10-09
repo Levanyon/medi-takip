@@ -46,7 +46,7 @@ object Schedule {
         if (s.name.isBlank()) throw ScheduleValidationException(ScheduleValidation.NAME)
         if (s.dose.isBlank()) throw ScheduleValidationException(ScheduleValidation.DOSE)
         if (s.days !in 1..127) throw ScheduleValidationException(ScheduleValidation.DAYS)
-        if (s.end != null && s.end < s.start) throw ScheduleValidationException(ScheduleValidation.DATES)
+        if (s.start !in Prescription.DATE_RANGE || (s.end != null && (s.end !in Prescription.DATE_RANGE || s.end < s.start))) throw ScheduleValidationException(ScheduleValidation.DATES)
         try { if (minutes(s.times).isEmpty()) throw ScheduleValidationException(ScheduleValidation.TIMES) }
         catch (_: java.time.format.DateTimeParseException) { throw ScheduleValidationException(ScheduleValidation.TIMES) }
     }

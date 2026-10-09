@@ -50,11 +50,17 @@ fun MedicationDetail(snapshot: Snapshot, medicationId: String, today: LocalDate,
                     MedicationInfoRow(stringResource(R.string.times), "${timesText(schedule.times)} · ${schedule.dose}", R.drawable.ic_medication_clock, daysText(schedule.days))
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     MedicationInfoRow(stringResource(R.string.medication_period), TurkishFormat.date(LocalDate.ofEpochDay(schedule.start)), R.drawable.ic_medication_calendar,
-                        schedule.end?.let { TurkishFormat.date(LocalDate.ofEpochDay(it)) } ?: stringResource(R.string.no_end_date))
+                        schedule.end?.let { TurkishFormat.date(LocalDate.ofEpochDay(it)) } ?: stringResource(R.string.treatment_indefinite))
                     if (medication.stockEnabled) {
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                         StockLine(medication, schedule, editable) { addingStock = true }
                     }
+                }
+            }
+            if (medication.prescriptionDate != null || medication.renewalDate != null) item {
+                MedicationInfoGroup(stringResource(R.string.prescription_section)) {
+                    medication.prescriptionDate?.let { MedicationInfoRow(stringResource(R.string.prescription_date), TurkishFormat.date(LocalDate.ofEpochDay(it)), R.drawable.ic_medication_calendar) }
+                    medication.renewalDate?.let { MedicationInfoRow(stringResource(R.string.renewal_date), TurkishFormat.date(LocalDate.ofEpochDay(it)), R.drawable.ic_medication_calendar) }
                 }
             }
             if (schedule.note.isNotBlank()) item {

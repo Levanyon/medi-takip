@@ -36,10 +36,17 @@ private const val SETTINGS = 3
  * Add/edit forms are drawn over the scaffold in the same activity window so window insets
  * (navigation bar, IME) are always delivered; the scaffold is hidden from accessibility meanwhile.
  */
-@Composable fun Home(snapshot: Snapshot, vm: AppViewModel) {
+@Composable fun Home(snapshot: Snapshot, vm: AppViewModel, renewalMedicationId: String? = null, consumeRenewal: () -> Unit = {}) {
     var section by rememberSaveable { mutableIntStateOf(TODAY) }
     var personId by rememberSaveable { mutableStateOf<String?>(null) }
     var medicationId by rememberSaveable { mutableStateOf<String?>(null) }
+    LaunchedEffect(renewalMedicationId, snapshot.medications) {
+        val target = snapshot.medications.find { it.id == renewalMedicationId }
+        if (target != null) {
+            section = PEOPLE; personId = target.personId; medicationId = target.id
+            consumeRenewal()
+        }
+    }
     var reminderStatus by rememberSaveable { mutableStateOf(false) }
     var editPersonId by rememberSaveable { mutableStateOf<String?>(null) }
     var personEditor by rememberSaveable { mutableStateOf(false) }
@@ -175,8 +182,8 @@ private const val SETTINGS = 3
         val editing = snapshot.schedules.find { it.id == editScheduleId }
         val medication = editing?.let { e -> snapshot.medications.find { it.id == e.medicationId } }
         val stock = medication?.let { StockSettings(it.stockEnabled, it.stockQuantity, it.stockPerDose, it.stockThreshold) }
-        key(id, editScheduleId) { MedicationEditor(person, editing, { medicationPersonId = null; if (setupPending) vm.finishSetup() }, initialStock = stock) { schedule, stockSettings ->
-            vm.medication(person, editing?.medicationId, schedule, stockSettings) { medicationPersonId = null; if (setupPending) finishFirstSetup() }
+        key(id, editScheduleId) { MedicationEditor(person, editing, { medicationPersonId = null; if (setupPending) vm.finishSetup() }, initialStock = stock, initialPrescription = medication?.let(Prescription::from) ?: Prescription()) { schedule, stockSettings, prescription ->
+            vm.medication(person, editing?.medicationId, schedule, stockSettings, prescription) { medicationPersonId = null; if (setupPending) finishFirstSetup() }
         } }
     } }
     skipping?.let { item -> SkipDialog(item, { skipping = null }) { note -> skipping = null; skipDose(item, note) } }

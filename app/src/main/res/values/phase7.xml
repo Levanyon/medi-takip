@@ -1,0 +1,15 @@
+<resources>
+    <string name="treatment_indefinite">Sürekli</string>
+    <string name="prescription_section">Reçete bilgileri</string>
+    <string name="prescription_date">Reçete yazılma tarihi</string>
+    <string name="renewal_date">Reçete yenileme tarihi</string>
+    <string name="optional_date">İsteğe bağlı</string>
+    <string name="clear_prescription_date">Reçete tarihini kaldır</string>
+    <string name="clear_renewal_date">Yenileme tarihini kaldır</string>
+    <string name="renewal_reminder">Reçete yenilemesini hatırlat</string>
+    <string name="renewal_lead_days">Kaç gün önce?</string>
+    <string name="renewal_time_hint">0: aynı gün. Seçilen gün saat 09:00’da hatırlatılır. Geçmiş hatırlatmalar tekrarlanmaz.</string>
+    <string name="error_prescription">Geçerli tarihler ve sıfır veya daha büyük bir gün sayısı girin. Yenileme tarihi reçete tarihinden önce olamaz.</string>
+    <string name="renewal_notification_title">Reçete yenileme hatırlatması</string>
+    <string name="renewal_notification_text">%1$s için reçete yenileme zamanı yaklaşıyor.</string>
+</resources>

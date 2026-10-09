@@ -1,5 +1,6 @@
 package com.levanyon.meditakip.data
 
+import com.levanyon.meditakip.domain.Prescription
 import com.levanyon.meditakip.domain.Schedule
 import com.levanyon.meditakip.domain.Snapshot
 import android.util.AtomicFile
@@ -36,7 +37,7 @@ class BackupException(val problem: BackupProblem, val detail: String) : Exceptio
 object BackupCodec {
     const val FORMAT = "meditakip-backup"
     const val FORMAT_VERSION = 1
-    const val SCHEMA_VERSION = 2
+    const val SCHEMA_VERSION = 3
     const val MAX_BYTES = 10 * 1024 * 1024
 
     fun encode(snapshot: Snapshot, settings: AppSettings, exportedAt: Long, appVersion: String): String = JSONObject().apply {
@@ -46,6 +47,8 @@ object BackupCodec {
         put("medications", JSONArray(snapshot.medications.map { m ->
             JSONObject().put("id", m.id).put("personId", m.personId).put("archived", m.archived).put("stockEnabled", m.stockEnabled)
                 .put("stockQuantity", m.stockQuantity).put("stockPerDose", m.stockPerDose).put("stockThreshold", m.stockThreshold)
+                .put("prescriptionDate", m.prescriptionDate ?: JSONObject.NULL).put("renewalDate", m.renewalDate ?: JSONObject.NULL)
+                .put("renewalReminderEnabled", m.renewalReminderEnabled).put("renewalLeadDays", m.renewalLeadDays)
         }))
         put("schedules", JSONArray(snapshot.schedules.map { s ->
             JSONObject().put("id", s.id).put("medicationId", s.medicationId).put("personName", s.personName).put("name", s.name).put("dose", s.dose).put("note", s.note)
@@ -106,11 +109,17 @@ object BackupCodec {
         check(root, strings = "format appVersion", integers = "formatVersion schemaVersion exportedAt")
         require(root.getLong("formatVersion") == FORMAT_VERSION.toLong())
         if (root.getLong("schemaVersion") > SCHEMA_VERSION) throw BackupException(BackupProblem.TOO_NEW, "schemaVersion")
-        require(root.getLong("schemaVersion") == SCHEMA_VERSION.toLong())
+        require(root.getLong("schemaVersion") in 2L..SCHEMA_VERSION.toLong())
         require(root.getLong("exportedAt") in 1..7_258_118_400_000L)
         fun each(key: String, block: (JSONObject) -> Unit) { val a = root.getJSONArray(key); for (i in 0 until a.length()) block(a.getJSONObject(i)) }
         each("people") { check(it, "id name note", "color", "archived"); require(it.getLong("color") in Int.MIN_VALUE..Int.MAX_VALUE) }
-        each("medications") { check(it, "id personId", booleans = "archived stockEnabled", numbers = "stockQuantity stockPerDose stockThreshold") }
+        each("medications") {
+            check(it, "id personId", booleans = "archived stockEnabled", numbers = "stockQuantity stockPerDose stockThreshold")
+            if (root.getLong("schemaVersion") >= 3) {
+                check(it, integers = "renewalLeadDays", booleans = "renewalReminderEnabled", nullableIntegers = "prescriptionDate renewalDate")
+                require(it.getLong("renewalLeadDays") in 0..Int.MAX_VALUE.toLong())
+            }
+        }
         each("schedules") { check(it, "id medicationId personName name dose note times", "days start effectiveFrom sequence", "active", nullableIntegers = "end effectiveTo"); require(it.getLong("days") in 1..127); require(it.getLong("sequence") in 0 until Long.MAX_VALUE) }
         each("logs") {
             check(it, "key scheduleId status", "date minute takenAt recordedAt", nullableStrings = "note")
@@ -133,7 +142,11 @@ object BackupCodec {
         val people = array("people").mapObjects { PersonEntity(it.text("id"), it.text("name"), it.optString("note"), it.optInt("color"), it.getBoolean("archived")) }
         val medications = array("medications").mapObjects {
             MedicationEntity(it.text("id"), it.text("personId"), it.getBoolean("archived"), it.optBoolean("stockEnabled", false),
-                it.optDouble("stockQuantity", 0.0), it.optDouble("stockPerDose", 1.0), it.optDouble("stockThreshold", 0.0))
+                it.optDouble("stockQuantity", 0.0), it.optDouble("stockPerDose", 1.0), it.optDouble("stockThreshold", 0.0),
+                if (root.getLong("schemaVersion") >= 3) it.nullableLong("prescriptionDate") else null,
+                if (root.getLong("schemaVersion") >= 3) it.nullableLong("renewalDate") else null,
+                if (root.getLong("schemaVersion") >= 3) it.getBoolean("renewalReminderEnabled") else false,
+                if (root.getLong("schemaVersion") >= 3) it.getInt("renewalLeadDays") else 0)
         }
         val schedules = array("schedules").mapObjects {
             MedicationScheduleEntity(it.text("id"), it.text("medicationId"), it.optString("personName"), it.text("name"), it.text("dose"), it.optString("note"),
@@ -171,6 +184,7 @@ object BackupCodec {
         schedules.groupBy { it.medicationId }.forEach { (id, list) -> if (list.count { it.effectiveTo == null } > 1) damaged("multiple open revisions"); if (list.map { it.sequence }.toSet().size != list.size) damaged("medication $id: revision order is not unique") }
         logs.forEach { l -> if (l.date !in validDays || l.minute !in 0..1439) damaged("record ${l.key}: date or minute") }
         medications.forEach { m ->
+            if (!Prescription.from(m).valid) damaged("medication ${m.id}: invalid prescription")
             if (!m.stockQuantity.isFinite() || !m.stockPerDose.isFinite() || !m.stockThreshold.isFinite()) damaged("medication ${m.id}: stock is not a number")
             if (m.stockEnabled && (m.stockPerDose <= 0 || m.stockThreshold < 0)) damaged("medication ${m.id}: stock settings")
         }

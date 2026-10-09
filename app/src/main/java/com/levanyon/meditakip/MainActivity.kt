@@ -2,6 +2,8 @@ package com.levanyon.meditakip
 
 import android.os.Bundle
 import android.content.Context
+import android.content.Intent
+import com.levanyon.meditakip.reminders.Reminders
 import android.content.res.Configuration
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -17,6 +19,12 @@ import androidx.activity.enableEdgeToEdge
 import androidx.core.view.WindowCompat
 
 class MainActivity : ComponentActivity() {
+    private var renewalMedicationId by mutableStateOf<String?>(null)
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        renewalMedicationId = intent.getStringExtra(Reminders.EXTRA_MEDICATION_ID)
+    }
     override fun attachBaseContext(newBase: Context) {
         val configuration = Configuration(newBase.resources.configuration).apply { setLocale(TurkishFormat.locale) }
         super.attachBaseContext(newBase.createConfigurationContext(configuration))
@@ -24,6 +32,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() { super.onResume(); (application as MediApp).reminders.refresh() }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        renewalMedicationId = intent.getStringExtra(Reminders.EXTRA_MEDICATION_ID)
         enableEdgeToEdge()
         setContent {
             val vm: AppViewModel = viewModel()
@@ -39,7 +48,12 @@ class MainActivity : ComponentActivity() {
                     bars.isAppearanceLightNavigationBars = background.luminance() > 0.5f
                 }
                 Surface(color = background) {
-                    AppLaunch(onboardingCompleted, onboarding = { Onboarding(vm) }, home = { Home(snapshot, vm) })
+                    AppLaunch(onboardingCompleted, onboarding = { Onboarding(vm) }, home = {
+                        Home(snapshot, vm, renewalMedicationId) {
+                            renewalMedicationId = null
+                            intent.removeExtra(Reminders.EXTRA_MEDICATION_ID)
+                        }
+                    })
                 }
                 error?.let { message ->
                     MediDialog(stringResource(R.string.error_title), { vm.error.value = null }) {

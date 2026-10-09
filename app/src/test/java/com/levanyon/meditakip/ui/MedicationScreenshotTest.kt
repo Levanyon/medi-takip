@@ -59,7 +59,7 @@ class MedicationScreenshotTest(private val screen: String, private val dark: Boo
                         MediContent(Modifier.fillMaxSize()) {
                             if (screen.startsWith("detail")) MedicationDetail(snapshot, "m", data.date, {}, { _, _ -> }, {}, now = data.date.atTime(7, 0))
                             else MedicationEditor(data.person, if (screen.startsWith("edit")) schedule else null, {},
-                                if (screen.startsWith("edit")) data.stock else null) { _, _ -> }
+                                if (screen.startsWith("edit")) data.stock else null) { _, _, _ -> }
                         }
                     }
                 }

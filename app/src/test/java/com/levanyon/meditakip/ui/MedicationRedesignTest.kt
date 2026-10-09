@@ -81,7 +81,7 @@ class MedicationRedesignTest {
     }
     @Test fun emptyFormKeepsActualDefaultsAndAnnouncesValidation() {
         var saved = false
-        show { MedicationEditor(data.person, null, {}) { _, _ -> saved = true } }
+        show { MedicationEditor(data.person, null, {}) { _, _, _ -> saved = true } }
         reach("08:00"); reach("Kaydet"); compose.onNodeWithText("Kaydet").performClick()
         assertFalse(saved)
         compose.onNode(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Assertive)).assertExists()
@@ -93,7 +93,7 @@ class MedicationRedesignTest {
     @Test fun editPopulatesAndRetainsScheduleStockAndNotes() {
         var saved: MedicationScheduleEntity? = null
         var stock: StockSettings? = null
-        show(true) { MedicationEditor(data.person, data.schedule, {}, data.stock) { s, st -> saved = s; stock = st } }
+        show(true) { MedicationEditor(data.person, data.schedule, {}, data.stock) { s, st, _ -> saved = s; stock = st } }
         compose.onNodeWithText("Test ilacı").assertExists()
         reach("20:00"); reach("Yemekten sonra")
         compose.onNodeWithText("Kaydet").performScrollTo().performClick()
@@ -109,7 +109,7 @@ class MedicationRedesignTest {
     }
     @Test fun editRetainsSingleTimeAndCanAddAnotherUsingPicker() {
         var saved: MedicationScheduleEntity? = null
-        show { MedicationEditor(data.person, data.schedule.copy(times = "09:30"), {}) { s, _ -> saved = s } }
+        show { MedicationEditor(data.person, data.schedule.copy(times = "09:30"), {}) { s, _, _ -> saved = s } }
         reach("09:30")
         compose.onNodeWithText("Saat Ekle").performScrollTo().performClick()
         compose.runOnIdle {
@@ -123,7 +123,7 @@ class MedicationRedesignTest {
     }
     @Test fun removingEveryTimePreventsSave() {
         var saved = false
-        show { MedicationEditor(data.person, data.schedule.copy(times = "08:00"), {}) { _, _ -> saved = true } }
+        show { MedicationEditor(data.person, data.schedule.copy(times = "08:00"), {}) { _, _, _ -> saved = true } }
         compose.onNodeWithContentDescription("08:00 saatini kaldır").performScrollTo().performClick()
         compose.onNodeWithText("Kaydet").performScrollTo().performClick()
         assertFalse(saved)
@@ -131,7 +131,7 @@ class MedicationRedesignTest {
     }
     @Test fun weekdaySelectionRetainsTheExistingBitmaskRules() {
         var saved: MedicationScheduleEntity? = null
-        show { MedicationEditor(data.person, data.schedule, {}) { s, _ -> saved = s } }
+        show { MedicationEditor(data.person, data.schedule, {}) { s, _, _ -> saved = s } }
         compose.onNodeWithText("Günler").performScrollTo().performClick()
         compose.onNodeWithText("Pzt").performScrollTo().performClick()
         compose.onNodeWithText("Çar").performScrollTo().performClick()
@@ -141,14 +141,14 @@ class MedicationRedesignTest {
     @Test fun endDateAndInactiveStateSurviveAnEdit() {
         var saved: MedicationScheduleEntity? = null
         val schedule = data.schedule.copy(end = LocalDate.now().plusDays(10).toEpochDay(), active = false)
-        show { MedicationEditor(data.person, schedule, {}) { s, _ -> saved = s } }
+        show { MedicationEditor(data.person, schedule, {}) { s, _, _ -> saved = s } }
         compose.onNodeWithText("Kaydet").performScrollTo().performClick()
         assertEquals(schedule.end, saved?.end)
         assertEquals(false, saved?.active)
     }
     @Test fun disablingStockRetainsItsStoredAmounts() {
         var stock: StockSettings? = null
-        show { MedicationEditor(data.person, data.schedule, {}, data.stock) { _, st -> stock = st } }
+        show { MedicationEditor(data.person, data.schedule, {}, data.stock) { _, st, _ -> stock = st } }
         compose.onNodeWithText("Stok takibi").performScrollTo().performClick()
         compose.onNodeWithText("Kaydet").performScrollTo().performClick()
         assertEquals(data.stock.copy(enabled = false), stock)
@@ -156,7 +156,7 @@ class MedicationRedesignTest {
     @Test @Config(qualifiers = "w320dp-h800dp-mdpi")
     fun emptyAddAtLargeFontKeepsBackAndSaveAccessible() {
         var back = false
-        show(false, 2f) { MedicationEditor(data.person, null, { back = true }) { _, _ -> } }
+        show(false, 2f) { MedicationEditor(data.person, null, { back = true }) { _, _, _ -> } }
         compose.onNodeWithText("Kaydet").performScrollTo().assertIsDisplayed().assertHeightIsAtLeast(48.dp)
         compose.onNodeWithContentDescription("Geri").assertIsDisplayed().assertHeightIsAtLeast(48.dp).performClick()
         assertTrue(back)
@@ -165,7 +165,7 @@ class MedicationRedesignTest {
     fun narrowDarkLargeFontFormRetainsLongTextAndSave() {
         var saved: MedicationScheduleEntity? = null
         val schedule = data.schedule.copy(name = data.longName, note = data.longNote)
-        show(true, 2f) { MedicationEditor(data.person, schedule, {}, data.stock) { s, _ -> saved = s } }
+        show(true, 2f) { MedicationEditor(data.person, schedule, {}, data.stock) { s, _, _ -> saved = s } }
         compose.onNodeWithText(data.longName).assertExists()
         reach("20:00"); reach("Bu miktara inince haber ver")
         compose.onNodeWithText("Kaydet").performScrollTo().assertIsDisplayed().assertHeightIsAtLeast(48.dp).performClick()

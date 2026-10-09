@@ -49,7 +49,7 @@ import java.util.UUID
 }
 
 @OptIn(ExperimentalLayoutApi::class)
-@Composable fun MedicationEditor(person: PersonEntity, schedule: MedicationScheduleEntity?, dismiss: () -> Unit, initialStock: StockSettings? = null, save: (MedicationScheduleEntity, StockSettings) -> Unit) {
+@Composable fun MedicationEditor(person: PersonEntity, schedule: MedicationScheduleEntity?, dismiss: () -> Unit, initialStock: StockSettings? = null, initialPrescription: Prescription = Prescription(), save: (MedicationScheduleEntity, StockSettings, Prescription) -> Unit) {
     val context = rememberPickerContext()
     var name by rememberSaveable { mutableStateOf(schedule?.name ?: "") }
     var dose by rememberSaveable { mutableStateOf(schedule?.dose ?: "") }
@@ -59,6 +59,10 @@ import java.util.UUID
     var start by rememberSaveable { mutableLongStateOf(schedule?.start ?: LocalDate.now().toEpochDay()) }
     var end by rememberSaveable { mutableStateOf(schedule?.end) }
     var active by rememberSaveable { mutableStateOf(schedule?.active ?: true) }
+    var written by rememberSaveable { mutableStateOf(initialPrescription.written) }
+    var renewal by rememberSaveable { mutableStateOf(initialPrescription.renewal) }
+    var renewalEnabled by rememberSaveable { mutableStateOf(initialPrescription.enabled) }
+    var leadDays by rememberSaveable { mutableStateOf(initialPrescription.leadDays.toString()) }
     val stockStart = initialStock ?: StockSettings(false, 0.0, 1.0, 0.0)
     var stockEnabled by rememberSaveable { mutableStateOf(stockStart.enabled) }
     var stockQuantity by rememberSaveable { mutableStateOf(if (stockStart.enabled) StockPlan.format(stockStart.quantity) else "") }
@@ -97,6 +101,31 @@ import java.util.UUID
             DateField(stringResource(R.string.end_date), end?.let { TurkishFormat.date(LocalDate.ofEpochDay(it)) } ?: stringResource(R.string.no_end_date)) { pickDate(maxOf(end ?: start, start, today), maxOf(start, today)) { end = it } }
             if (end != null) QuietAction(stringResource(R.string.clear_end)) { end = null }
         }
+        MedicationInfoGroup(stringResource(R.string.prescription_section)) {
+            DateField(stringResource(R.string.prescription_date), written?.let { TurkishFormat.date(LocalDate.ofEpochDay(it)) } ?: stringResource(R.string.optional_date)) {
+                pickDate(written ?: today, Prescription.DATE_RANGE.first) { written = it }
+            }
+            if (written != null) QuietAction(stringResource(R.string.clear_prescription_date)) { written = null }
+            DateField(stringResource(R.string.renewal_date), renewal?.let { TurkishFormat.date(LocalDate.ofEpochDay(it)) } ?: stringResource(R.string.optional_date)) {
+                pickDate(renewal ?: today, Prescription.DATE_RANGE.first) { renewal = it }
+            }
+            if (renewal != null) QuietAction(stringResource(R.string.clear_renewal_date)) {
+                renewal = null; renewalEnabled = false
+                leadDays = (leadDays.toIntOrNull()?.takeIf { it >= 0 } ?: 0).toString()
+            }
+            if (renewal != null) {
+                SettingToggle(stringResource(R.string.renewal_reminder), renewalEnabled) {
+                    renewalEnabled = it
+                    if (!it) leadDays = (leadDays.toIntOrNull()?.takeIf { days -> days >= 0 } ?: 0).toString()
+                }
+                if (renewalEnabled) {
+                    OutlinedTextField(leadDays, { leadDays = it }, label = { Text(stringResource(R.string.renewal_lead_days)) },
+                        singleLine = true, shape = MaterialTheme.shapes.small,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+                    Text(stringResource(R.string.renewal_time_hint), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
         MedicationInfoGroup(stringResource(R.string.medication_stock)) {
             // Optional stock tracking (D3.7): decimals allowed ("0,5"); an empty threshold means no warning.
             SettingToggle(stringResource(R.string.stock_tracking), stockEnabled) { stockEnabled = it }
@@ -123,9 +152,10 @@ import java.util.UUID
                 days == 0 -> R.string.error_days
                 end != null && end!! < start -> R.string.error_dates
                 times.isBlank() -> R.string.error_times
+                !Prescription(written, renewal, renewalEnabled, leadDays.toIntOrNull() ?: -1).valid -> R.string.error_prescription
                 else -> null
             }
-            if (error == null) save(MedicationScheduleEntity("", "", person.name, name.trim(), dose.trim(), note, times, days, start, end, active, LocalDate.now().toEpochDay()), if (stockEnabled) stockSettings(stockQuantity, stockPerDose, stockThreshold)!! else stockStart.copy(enabled = false))
+            if (error == null) save(MedicationScheduleEntity("", "", person.name, name.trim(), dose.trim(), note, times, days, start, end, active, LocalDate.now().toEpochDay()), if (stockEnabled) stockSettings(stockQuantity, stockPerDose, stockThreshold)!! else stockStart.copy(enabled = false), Prescription(written, renewal, renewalEnabled, leadDays.toInt()))
         }
     }
 }

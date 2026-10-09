@@ -19,6 +19,10 @@ data class MedicationEntity(
     @ColumnInfo(defaultValue = "0") val stockQuantity: Double = 0.0,
     @ColumnInfo(defaultValue = "1") val stockPerDose: Double = 1.0,
     @ColumnInfo(defaultValue = "0") val stockThreshold: Double = 0.0,
+    val prescriptionDate: Long? = null,
+    val renewalDate: Long? = null,
+    @ColumnInfo(defaultValue = "0") val renewalReminderEnabled: Boolean = false,
+    @ColumnInfo(defaultValue = "0") val renewalLeadDays: Int = 0,
 )
 
 /** A schedule revision. [sequence] orders revisions of the database permanently (v2, AUDIT R12). */
@@ -85,7 +89,7 @@ interface AppDao {
     @Insert suspend fun insertLogs(values: List<MedicationLogEntity>)
 }
 
-@Database(entities = [PersonEntity::class, MedicationEntity::class, MedicationScheduleEntity::class, MedicationLogEntity::class, DispatchEntity::class], version = 2, exportSchema = true)
+@Database(entities = [PersonEntity::class, MedicationEntity::class, MedicationScheduleEntity::class, MedicationLogEntity::class, DispatchEntity::class], version = 3, exportSchema = true)
 abstract class MediDatabase : RoomDatabase() { abstract fun dao(): AppDao }
 
 /**
@@ -108,4 +112,13 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
 }
 
 /** Every migration, in order. The database builder must never fall back to a destructive reset. */
-val ALL_MIGRATIONS = arrayOf(MIGRATION_1_2)
+val MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `medications` ADD COLUMN `prescriptionDate` INTEGER")
+        db.execSQL("ALTER TABLE `medications` ADD COLUMN `renewalDate` INTEGER")
+        db.execSQL("ALTER TABLE `medications` ADD COLUMN `renewalReminderEnabled` INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE `medications` ADD COLUMN `renewalLeadDays` INTEGER NOT NULL DEFAULT 0")
+    }
+}
+
+val ALL_MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3)

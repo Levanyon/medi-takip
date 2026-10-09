@@ -100,7 +100,7 @@ class AccessibilityTest(private val scale: Float) {
     }
     @Test fun reminderStatus() { show { ReminderStatusScreen(viewModel(), access) {} }; reachable("Pil kısıtlaması"); reachable("Test bildirimi gönder") }
     @Test fun personForm() { show { PersonEditor(anne, {}, {}) {} }; reachable("Kaydet"); reachable("Kişiyi Arşivle") }
-    @Test fun medicationForm() { show { MedicationEditor(anne, schedule, {}) { _, _ -> } }; reachable("Saat Ekle"); reachable("Kaydet") }
+    @Test fun medicationForm() { show { MedicationEditor(anne, schedule, {}) { _, _, _ -> } }; reachable("Saat Ekle"); reachable("Kaydet") }
     @Test fun onboarding() {
         show { Onboarding(viewModel()) }; reachable("Başla")
         compose.onNodeWithText("Başla").performClick()
@@ -130,7 +130,7 @@ class AccessibilityTest(private val scale: Float) {
     @Test fun stockBannerOnToday() { show { TodayScreen(stocked, date.atTime(7, 0), "p", {}, viewModel(), {}, {}, {}, {}) }; reachable("Uzun İsimli Tansiyon İlacı azalıyor · ~1 gün") }
     @Test fun addStockDialog() { show { AddStockDialog({}) {} }; reachable("Eklenecek miktar"); reachable("İptal") }
     @Test fun medicationFormWithStock() {
-        show { MedicationEditor(anne, schedule, {}, initialStock = StockSettings(true, 30.0, 1.0, 5.0)) { _, _ -> } }
+        show { MedicationEditor(anne, schedule, {}, initialStock = StockSettings(true, 30.0, 1.0, 5.0)) { _, _, _ -> } }
         reachable("Stok takibi"); reachable("Bu miktara inince haber ver"); reachable("Kaydet")
     }
 }

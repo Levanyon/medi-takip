@@ -35,7 +35,7 @@ data class ReminderHealth(
  * inexact safety alarm), notifications with İçildi / 10 dk ertele actions, and cleanup.
  * See docs/DECISIONS.md D2.1–D2.9.
  */
-class Reminders(private val app: MediApp) {
+class Reminders(private val app: MediApp, private val clock: Clock = Clock.systemUTC()) {
     private val lock = Mutex()
     private val alarms = app.getSystemService(AlarmManager::class.java)
     private val notifications = app.getSystemService(NotificationManager::class.java)
@@ -56,27 +56,33 @@ class Reminders(private val app: MediApp) {
 
     suspend fun rebuild(deliver: Boolean) = lock.withLock {
         channel()
-        val now = Instant.now()
+        val now = clock.instant()
         val dao = app.database.dao()
         dao.pruneDispatches(now.minus(Duration.ofDays(DISPATCH_RETENTION_DAYS)).toEpochMilli())
         val snapshot = app.repository.snapshot()
         val settings = app.preferences.state.value
         val events = ReminderPlan.events(snapshot, settings, now, ZoneId.systemDefault(), app.preferences.snoozes)
+        val renewals = RenewalPlan.events(snapshot, settings, now, ZoneId.systemDefault())
         val outstanding = events.map { it.occurrence.key }.toSet()
         app.preferences.snoozes = ReminderPlan.liveSnoozes(app.preferences.snoozes, outstanding, now)
         val dispatched = dao.dispatches().map { it.key }.toSet()
         if (deliver && notificationAllowed()) {
             val due = ReminderPlan.due(events, dispatched, app.preferences.nextAlarm, now)
             due.forEach { event -> show(event, now); dao.dispatched(DispatchEntity(event.key, now.toEpochMilli())) }
+            RenewalPlan.due(renewals, dispatched, app.preferences.nextAlarm, now).forEach { event ->
+                showRenewal(event); dao.dispatched(DispatchEntity(event.key, now.toEpochMilli()))
+            }
         }
+        val renewalKeys = renewals.map { it.key }.toSet()
+        notifications.activeNotifications.filter { it.id == RENEWAL_ID && it.tag !in renewalKeys }.forEach { notifications.cancel(it.tag, RENEWAL_ID) }
         // A dose that was marked, skipped, edited or archived loses its visible notification.
         notifications.activeNotifications.filter { it.id == DOSE_ID && it.tag != null && it.tag !in outstanding }.forEach { notifications.cancel(it.tag, DOSE_ID) }
         updateSummaries()
         notifyLowStock(snapshot)
         alarms.cancel(alarmIntent(1)); alarms.cancel(alarmIntent(2))
-        val next = ReminderPlan.next(events, dispatched, now)
+        val next = listOfNotNull(ReminderPlan.next(events, dispatched, now)?.at, RenewalPlan.next(renewals, dispatched, now)?.at).minOrNull()
         if (!settings.notifications || !notificationAllowed() || next == null) { app.preferences.nextAlarm = 0; return@withLock }
-        val timestamp = next.at.toEpochMilli()
+        val timestamp = next.toEpochMilli()
         app.preferences.nextAlarm = timestamp
         schedule(timestamp, alarmIntent(1))
         // Independent inexact safety alarm in case the alarm-clock alarm is ever dropped.
@@ -110,6 +116,21 @@ class Reminders(private val app: MediApp) {
             .addAction(Notification.Action.Builder(Icon.createWithResource(app, R.drawable.ic_medication), app.getString(R.string.action_snooze), action(ACTION_SNOOZE, o.key)).build())
         if (event.kind == ReminderKind.SNOOZE) builder.setSubText(app.getString(R.string.notification_snoozed))
         notifications.notify(o.key, DOSE_ID, builder.build())
+    }
+
+    private fun showRenewal(event: RenewalEvent) {
+        val intent = Intent(app, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            .setData(Uri.parse("meditakip://renewal/${Uri.encode(event.medicationId)}"))
+            .putExtra(EXTRA_MEDICATION_ID, event.medicationId)
+        val open = PendingIntent.getActivity(app, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val public = Notification.Builder(app, CHANNEL).setSmallIcon(R.drawable.ic_medication)
+            .setContentTitle(app.getString(R.string.app_name)).build()
+        val notification = Notification.Builder(app, CHANNEL).setSmallIcon(R.drawable.ic_medication)
+            .setContentTitle(app.getString(R.string.renewal_notification_title))
+            .setContentText(app.getString(R.string.renewal_notification_text, event.name))
+            .setContentIntent(open).setAutoCancel(true).setVisibility(Notification.VISIBILITY_PRIVATE).setPublicVersion(public)
+            .setCategory(Notification.CATEGORY_REMINDER).setWhen(event.at.toEpochMilli()).build()
+        notifications.notify(event.key, RENEWAL_ID, notification)
     }
 
     /**
@@ -219,6 +240,8 @@ class Reminders(private val app: MediApp) {
         const val SUMMARY_ID = 2
         const val TEST_ID = 3
         const val LOW_STOCK_ID = 4
+        const val RENEWAL_ID = 5
+        const val EXTRA_MEDICATION_ID = "renewalMedicationId"
         const val TEST_TAG = "test"
         const val DISPATCH_RETENTION_DAYS = 7L
         const val SAFETY_DELAY_MILLIS = 15 * 60_000L

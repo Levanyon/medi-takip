@@ -307,7 +307,7 @@ class ScreenLayoutTest {
     @Test @Config(qualifiers = "w640dp-h320dp")
     fun medicationFormKeepsExistingScheduleWhenSavedInLandscape() {
         var saved: MedicationScheduleEntity? = null
-        content(true) { MedicationEditor(person, schedule, {}) { s, _ -> saved = s } }
+        content(true) { MedicationEditor(person, schedule, {}) { s, _, _ -> saved = s } }
         compose.onNodeWithText("Kaydet").performScrollTo().assertIsDisplayed().performClick()
         assertEquals(schedule.name, saved?.name)
         assertEquals(schedule.times, saved?.times)
@@ -318,7 +318,7 @@ class ScreenLayoutTest {
     }
     @Test fun stockTrackingIsOptionalAndValidated() {
         var saved: StockSettings? = null
-        content(fontScale = 1f) { MedicationEditor(person, null, {}) { _, stock -> saved = stock } }
+        content(fontScale = 1f) { MedicationEditor(person, null, {}) { _, stock, _ -> saved = stock } }
         compose.onNodeWithText("Stok takibi").performScrollTo().performClick()
         compose.onNodeWithText("Elde kalan miktar").performScrollTo().performTextInput("30")
         compose.onNodeWithText("Her dozda kullanılan miktar").performScrollTo().performTextClearance()
@@ -348,7 +348,7 @@ class ScreenLayoutTest {
         assertEquals("m", opened)
     }
     @Test fun medicationFormExposesPersistedPeriodInItsOwnSection() {
-        content { MedicationEditor(person, null, {}) { _, _ -> } }
+        content { MedicationEditor(person, null, {}) { _, _, _ -> } }
         compose.onNodeWithText("Tedavi dönemi").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Başlangıç Tarihi").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Bitiş Tarihi").performScrollTo().assertIsDisplayed()
@@ -356,7 +356,7 @@ class ScreenLayoutTest {
     @Test fun dateFieldsNeverOfferPastDays() {
         // B5: an existing medication that started 10 days ago keeps showing that start, but the pickers begin today.
         val started = date.minusDays(10)
-        content(fontScale = 1f) { MedicationEditor(person, schedule.copy(start = started.toEpochDay()), {}) { _, _ -> } }
+        content(fontScale = 1f) { MedicationEditor(person, schedule.copy(start = started.toEpochDay()), {}) { _, _, _ -> } }
         compose.onNodeWithText(TurkishFormat.date(started)).performScrollTo().assertIsDisplayed().performClick()
         val todayMillis = date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
         val start = org.robolectric.shadows.ShadowDialog.getLatestDialog() as android.app.DatePickerDialog
