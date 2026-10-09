@@ -1,6 +1,8 @@
 package com.levanyon.meditakip.data
 
 import com.levanyon.meditakip.domain.Prescription
+import com.levanyon.meditakip.domain.Gtin
+import com.levanyon.meditakip.domain.PackageExpiry
 import com.levanyon.meditakip.domain.Schedule
 import com.levanyon.meditakip.domain.Snapshot
 import android.util.AtomicFile
@@ -37,7 +39,7 @@ class BackupException(val problem: BackupProblem, val detail: String) : Exceptio
 object BackupCodec {
     const val FORMAT = "meditakip-backup"
     const val FORMAT_VERSION = 1
-    const val SCHEMA_VERSION = 3
+    const val SCHEMA_VERSION = 4
     const val MAX_BYTES = 10 * 1024 * 1024
 
     fun encode(snapshot: Snapshot, settings: AppSettings, exportedAt: Long, appVersion: String): String = JSONObject().apply {
@@ -49,6 +51,12 @@ object BackupCodec {
                 .put("stockQuantity", m.stockQuantity).put("stockPerDose", m.stockPerDose).put("stockThreshold", m.stockThreshold)
                 .put("prescriptionDate", m.prescriptionDate ?: JSONObject.NULL).put("renewalDate", m.renewalDate ?: JSONObject.NULL)
                 .put("renewalReminderEnabled", m.renewalReminderEnabled).put("renewalLeadDays", m.renewalLeadDays)
+                .put("gtin", m.gtin ?: JSONObject.NULL)
+        }))
+        put("packages", JSONArray(snapshot.packages.map { p -> JSONObject()
+            .put("id", p.id).put("medicationId", p.medicationId).put("gtin", p.gtin)
+            .put("serial", p.serial ?: JSONObject.NULL).put("batch", p.batch ?: JSONObject.NULL)
+            .put("expiry", p.expiry ?: JSONObject.NULL).put("addedAt", p.addedAt).put("quantityAdded", p.quantityAdded)
         }))
         put("schedules", JSONArray(snapshot.schedules.map { s ->
             JSONObject().put("id", s.id).put("medicationId", s.medicationId).put("personName", s.personName).put("name", s.name).put("dose", s.dose).put("note", s.note)
@@ -114,11 +122,16 @@ object BackupCodec {
         fun each(key: String, block: (JSONObject) -> Unit) { val a = root.getJSONArray(key); for (i in 0 until a.length()) block(a.getJSONObject(i)) }
         each("people") { check(it, "id name note", "color", "archived"); require(it.getLong("color") in Int.MIN_VALUE..Int.MAX_VALUE) }
         each("medications") {
+            if (root.getLong("schemaVersion") >= 4) check(it, nullableStrings = "gtin")
             check(it, "id personId", booleans = "archived stockEnabled", numbers = "stockQuantity stockPerDose stockThreshold")
             if (root.getLong("schemaVersion") >= 3) {
                 check(it, integers = "renewalLeadDays", booleans = "renewalReminderEnabled", nullableIntegers = "prescriptionDate renewalDate")
                 require(it.getLong("renewalLeadDays") in 0..Int.MAX_VALUE.toLong())
             }
+        }
+        if (root.getLong("schemaVersion") >= 4) each("packages") {
+            check(it, strings = "id medicationId gtin", integers = "addedAt", numbers = "quantityAdded", nullableStrings = "serial batch expiry")
+            require(it.getLong("addedAt") in 1..7_258_118_400_000L)
         }
         each("schedules") { check(it, "id medicationId personName name dose note times", "days start effectiveFrom sequence", "active", nullableIntegers = "end effectiveTo"); require(it.getLong("days") in 1..127); require(it.getLong("sequence") in 0 until Long.MAX_VALUE) }
         each("logs") {
@@ -146,7 +159,12 @@ object BackupCodec {
                 if (root.getLong("schemaVersion") >= 3) it.nullableLong("prescriptionDate") else null,
                 if (root.getLong("schemaVersion") >= 3) it.nullableLong("renewalDate") else null,
                 if (root.getLong("schemaVersion") >= 3) it.getBoolean("renewalReminderEnabled") else false,
-                if (root.getLong("schemaVersion") >= 3) it.getInt("renewalLeadDays") else 0)
+                if (root.getLong("schemaVersion") >= 3) it.getInt("renewalLeadDays") else 0,
+                if (root.getLong("schemaVersion") >= 4) it.nullableText("gtin") else null)
+        }
+        val packages = if (root.getLong("schemaVersion") < 4) emptyList() else array("packages").mapObjects {
+            MedicationPackageEntity(it.text("id"), it.text("medicationId"), it.text("gtin"), it.nullableText("serial"),
+                it.nullableText("batch"), it.nullableText("expiry"), it.getLong("addedAt"), it.getDouble("quantityAdded"))
         }
         val schedules = array("schedules").mapObjects {
             MedicationScheduleEntity(it.text("id"), it.text("medicationId"), it.optString("personName"), it.text("name"), it.text("dose"), it.optString("note"),
@@ -184,11 +202,21 @@ object BackupCodec {
         schedules.groupBy { it.medicationId }.forEach { (id, list) -> if (list.count { it.effectiveTo == null } > 1) damaged("multiple open revisions"); if (list.map { it.sequence }.toSet().size != list.size) damaged("medication $id: revision order is not unique") }
         logs.forEach { l -> if (l.date !in validDays || l.minute !in 0..1439) damaged("record ${l.key}: date or minute") }
         medications.forEach { m ->
+            if (m.gtin != null && Gtin.normalize(m.gtin) != m.gtin) damaged("invalid medication GTIN")
             if (!Prescription.from(m).valid) damaged("medication ${m.id}: invalid prescription")
             if (!m.stockQuantity.isFinite() || !m.stockPerDose.isFinite() || !m.stockThreshold.isFinite()) damaged("medication ${m.id}: stock is not a number")
             if (m.stockEnabled && (m.stockPerDose <= 0 || m.stockThreshold < 0)) damaged("medication ${m.id}: stock settings")
         }
-        return BackupContent(root.optLong("exportedAt", 0), Snapshot(people, medications, schedules, logs), settings)
+        unique("packages", packages.map { it.id })
+        val serialKeys = packages.filter { it.serial != null }.map { it.gtin to it.serial }
+        if (serialKeys.toSet().size != serialKeys.size) damaged("duplicate physical package")
+        packages.forEach { p ->
+            if (Gtin.normalize(p.gtin) != p.gtin || medications.none { it.id == p.medicationId && it.gtin == p.gtin }) damaged("invalid package link")
+            if (listOfNotNull(p.serial, p.batch).any { it.length !in 1..20 || it.any { c -> c !in '!'..'~' } }) damaged("invalid package identifier")
+            if (p.expiry != null && PackageExpiry.parseStored(p.expiry) == null) damaged("invalid package expiry")
+            if (!p.quantityAdded.isFinite() || p.quantityAdded < 0) damaged("invalid package quantity")
+        }
+        return BackupContent(root.optLong("exportedAt", 0), Snapshot(people, medications, schedules, logs, packages), settings)
     }
 }
 

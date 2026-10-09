@@ -23,6 +23,15 @@ data class MedicationEntity(
     val renewalDate: Long? = null,
     @ColumnInfo(defaultValue = "0") val renewalReminderEnabled: Boolean = false,
     @ColumnInfo(defaultValue = "0") val renewalLeadDays: Int = 0,
+    val gtin: String? = null,
+)
+
+/** Receipt of a scanned package; stock remains on MedicationEntity, never inferred from this row. */
+@Entity(tableName = "packages", foreignKeys = [ForeignKey(entity = MedicationEntity::class, parentColumns = ["id"], childColumns = ["medicationId"])],
+    indices = [Index("medicationId"), Index(value = ["gtin", "serial"], unique = true)])
+data class MedicationPackageEntity(
+    @PrimaryKey val id: String, val medicationId: String, val gtin: String, val serial: String?,
+    val batch: String?, val expiry: String?, val addedAt: Long, val quantityAdded: Double,
 )
 
 /** A schedule revision. [sequence] orders revisions of the database permanently (v2, AUDIT R12). */
@@ -54,6 +63,11 @@ data class DispatchEntity(@PrimaryKey val key: String, val sentAt: Long)
 
 @Dao
 interface AppDao {
+    @Query("SELECT * FROM packages") fun observePackages(): Flow<List<MedicationPackageEntity>>
+    @Query("SELECT * FROM packages") suspend fun packages(): List<MedicationPackageEntity>
+    @Insert suspend fun insertPackage(value: MedicationPackageEntity)
+    @Insert suspend fun insertPackages(values: List<MedicationPackageEntity>)
+    @Query("DELETE FROM packages") suspend fun clearPackages()
     @Query("SELECT * FROM people") fun observePeople(): Flow<List<PersonEntity>>
     @Query("SELECT * FROM medications") fun observeMedications(): Flow<List<MedicationEntity>>
     // Revision order is data (sequence, v2); rowid only breaks ties for rows written before v2 existed.
@@ -89,7 +103,7 @@ interface AppDao {
     @Insert suspend fun insertLogs(values: List<MedicationLogEntity>)
 }
 
-@Database(entities = [PersonEntity::class, MedicationEntity::class, MedicationScheduleEntity::class, MedicationLogEntity::class, DispatchEntity::class], version = 3, exportSchema = true)
+@Database(entities = [PersonEntity::class, MedicationEntity::class, MedicationScheduleEntity::class, MedicationLogEntity::class, DispatchEntity::class, MedicationPackageEntity::class], version = 4, exportSchema = true)
 abstract class MediDatabase : RoomDatabase() { abstract fun dao(): AppDao }
 
 /**
@@ -121,4 +135,13 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
     }
 }
 
-val ALL_MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3)
+val MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `medications` ADD COLUMN `gtin` TEXT")
+        db.execSQL("CREATE TABLE IF NOT EXISTS `packages` (`id` TEXT NOT NULL, `medicationId` TEXT NOT NULL, `gtin` TEXT NOT NULL, `serial` TEXT, `batch` TEXT, `expiry` TEXT, `addedAt` INTEGER NOT NULL, `quantityAdded` REAL NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`medicationId`) REFERENCES `medications`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_packages_medicationId` ON `packages` (`medicationId`)")
+        db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_packages_gtin_serial` ON `packages` (`gtin`, `serial`)")
+    }
+}
+
+val ALL_MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)

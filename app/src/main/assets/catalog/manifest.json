@@ -1,0 +1,13 @@
+{
+  "source": "https://github.com/Tip-Atlasi-Projesi/ilaclardb",
+  "commit": "6211e27aeb1c48f77a7d2c3c0858ecec60a8505b",
+  "sourcePath": "data/json/ilac.json.zip",
+  "license": "CC0-1.0",
+  "snapshotDate": "2026-10-09",
+  "archiveSha256": "47f13231578fb938e1c10286802d721f9899690ea6635f108055653a408a0ec8",
+  "snapshotSha256": "dd8535ec8327a78568fff8973f410cebdca5307912ed5406b32c95ce347a5e9f",
+  "sourceRows": 22087,
+  "products": 21848,
+  "invalidRowsExcluded": 149,
+  "conflictingGtinsExcluded": 0
+}

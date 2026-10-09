@@ -121,6 +121,14 @@ class AppViewModel(application: Application) : AndroidViewModel(application), Do
     fun archivePerson(person: PersonEntity, onSuccess: () -> Unit = {}) = perform(onSuccess) { repository.archivePerson(person) }
     fun medication(person: PersonEntity, id: String?, schedule: MedicationScheduleEntity, stock: StockSettings? = null, prescription: Prescription? = null, onSuccess: () -> Unit = {}) = perform(onSuccess) { repository.saveMedication(person, id, schedule, stock, prescription) }
     fun addStock(medicationId: String, amount: Double, onSuccess: () -> Unit = {}) = perform(onSuccess) { repository.addStock(medicationId, amount) }
+    val catalog: MedicationCatalog get() = app.catalog
+    fun scannedMedication(person: PersonEntity, schedule: MedicationScheduleEntity, stock: StockSettings, prescription: Prescription,
+        scan: ScannedProduct, receiptId: String, acknowledged: Boolean, success: () -> Unit) = perform(success) {
+        repository.saveScannedMedication(person, schedule, stock, prescription, scan, receiptId, acknowledged)
+    }
+    fun scannedPackage(id: String, scan: ScannedProduct, amount: Double, receiptId: String, acknowledged: Boolean, success: () -> Unit) = perform(success) {
+        repository.addPackage(id, scan, amount, receiptId, acknowledged)
+    }
     fun archiveMedication(id: String, onSuccess: () -> Unit = {}) = perform(onSuccess) { repository.archiveMedication(id) }
     fun restorePerson(id: String, onSuccess: () -> Unit = {}) = perform(onSuccess) { repository.restorePerson(id) }
     fun restoreMedication(id: String, onSuccess: () -> Unit = {}) = perform(onSuccess) { repository.restoreMedication(id) }

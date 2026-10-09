@@ -49,7 +49,7 @@ class PrescriptionMigrationTest {
         val room = Room.databaseBuilder(context, MediDatabase::class.java, name).addMigrations(*ALL_MIGRATIONS).allowMainThreadQueries().build()
         try {
             val db = room.openHelper.readableDatabase
-            assertEquals(3, db.version)
+            assertEquals(4, db.version)
             before.forEach { (table, expected) ->
                 val after = db.query("SELECT * FROM $table ORDER BY rowid").use { c -> buildList {
                     while(c.moveToNext()) add((0 until expected.first().size).map { if(c.isNull(it)) null else c.getString(it) })

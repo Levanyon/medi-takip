@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
@@ -49,9 +50,10 @@ import java.util.UUID
 }
 
 @OptIn(ExperimentalLayoutApi::class)
-@Composable fun MedicationEditor(person: PersonEntity, schedule: MedicationScheduleEntity?, dismiss: () -> Unit, initialStock: StockSettings? = null, initialPrescription: Prescription = Prescription(), save: (MedicationScheduleEntity, StockSettings, Prescription) -> Unit) {
+@Composable fun MedicationEditor(person: PersonEntity, schedule: MedicationScheduleEntity?, dismiss: () -> Unit, initialStock: StockSettings? = null, initialPrescription: Prescription = Prescription(), scannedName: String? = null, scannedGtin: String? = null, save: (MedicationScheduleEntity, StockSettings, Prescription) -> Unit) {
     val context = rememberPickerContext()
-    var name by rememberSaveable { mutableStateOf(schedule?.name ?: "") }
+    var name by rememberSaveable { mutableStateOf(schedule?.name ?: scannedName ?: "") }
+    var scanReviewed by rememberSaveable { mutableStateOf(false) }
     var dose by rememberSaveable { mutableStateOf(schedule?.dose ?: "") }
     var note by rememberSaveable { mutableStateOf(schedule?.note ?: "") }
     var times by rememberSaveable { mutableStateOf(schedule?.times ?: "08:00") }
@@ -88,6 +90,18 @@ import java.util.UUID
     val focus = LocalFocusManager.current
     val title = stringResource(if (schedule == null) R.string.add_medication else R.string.edit_medication)
     FormScreen(title, dismiss, header = { MedicationHeader(title, dismiss) }) {
+        if (scannedGtin != null) {
+            Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.medium) {
+                Row(Modifier.fillMaxWidth().padding(MediSpace.regular), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MediSpace.medium)) {
+                    Icon(painterResource(R.drawable.ic_scan_prefill), null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.primary)
+                    Column {
+                        Text(stringResource(if (scannedName != null) R.string.scan_prefill else R.string.scan_read))
+                        if (scannedName != null) Text(stringResource(R.string.scan_prefill_body), style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.scan_gtin, scannedGtin), style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
+        }
         StatusChip(stringResource(R.string.for_person, person.name), icon = Icons.Default.Person)
         OutlinedTextField(name, { name = it }, label = { Text(stringResource(R.string.medication_name)) }, isError = error == R.string.error_medication_name, shape = MaterialTheme.shapes.small,
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Next), modifier = Modifier.fillMaxWidth())
@@ -136,14 +150,16 @@ import java.util.UUID
                 NumberField(stockThreshold, { stockThreshold = it }, stringResource(R.string.stock_threshold))
             }
         }
+        if (scannedGtin != null) ScanSafety()
         OutlinedTextField(note, { note = it }, label = { Text(stringResource(R.string.notes_optional)) }, shape = MaterialTheme.shapes.small, minLines = 2, modifier = Modifier.fillMaxWidth())
         SettingToggle(stringResource(R.string.active_toggle), active) { active = it }
         Text(stringResource(R.string.active_toggle_help), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (schedule != null) Text(stringResource(R.string.schedule_edit_note), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (scannedGtin != null) SettingToggle(stringResource(R.string.scan_review_confirm), scanReviewed) { scanReviewed = it }
         error?.let { Text(stringResource(it), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }) }
         // Kaydet lives at the end of the scrolled form; FormScreen keeps it clear of system bars and the keyboard.
-        PrimaryAction(stringResource(R.string.save), Icons.Default.Check) {
+        PrimaryAction(stringResource(R.string.save), Icons.Default.Check, enabled = scannedGtin == null || scanReviewed) {
             focus.clearFocus()
             error = when {
                 name.isBlank() -> R.string.error_medication_name

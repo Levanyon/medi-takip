@@ -49,7 +49,7 @@ fun PeopleScreen(snapshot: Snapshot, open: (String) -> Unit, today: LocalDate, a
 fun PersonDetail(
     snapshot: Snapshot, person: PersonEntity, back: () -> Unit, edit: () -> Unit,
     addMedication: () -> Unit, openMedication: (String) -> Unit, report: (() -> Unit)? = null,
-    today: LocalDate = LocalDate.now(), restore: () -> Unit = {}
+    today: LocalDate = LocalDate.now(), scan: (() -> Unit)? = null, restore: () -> Unit = {}
 ) {
     val owned = snapshot.medications.filter { it.personId == person.id }
     val ownedIds = owned.filter { !it.archived }.map { it.id }.toSet()
@@ -76,7 +76,7 @@ fun PersonDetail(
         } else {
             // No fake 0/0 progress: an empty person follows the approved empty composition.
             if (progress.total > 0 || medications.isNotEmpty()) item { PersonTodaySummary(progress) }
-            item { PersonAddMedication(addMedication) }
+            item { PersonMedicationActions(addMedication, scan) }
             if (medications.isEmpty()) item { PersonMedicationsEmptyState() }
             if (active.isNotEmpty()) item { PersonMedicationGroup(active, lowStock, openMedication) }
             // Existing stopped medications remain reachable, without calling them active.

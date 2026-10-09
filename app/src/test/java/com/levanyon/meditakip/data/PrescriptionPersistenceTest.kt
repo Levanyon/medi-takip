@@ -54,7 +54,7 @@ class PrescriptionPersistenceTest {
         repo.saveMedication(p,null,s,prescription=Prescription(d,d+20,true,5))
         val before=repo.snapshot()
         val text=BackupCodec.encode(before,AppSettings(),System.currentTimeMillis(),"test")
-        assertEquals(3,JSONObject(text).getInt("schemaVersion"))
+        assertEquals(4,JSONObject(text).getInt("schemaVersion"))
         val backups=Backups(repo,Preferences(context),context.filesDir,"test")
         repo.replaceAll(Snapshot())
         backups.restore(BackupCodec.decode(text))

@@ -66,6 +66,20 @@ fun MedicationDetail(snapshot: Snapshot, medicationId: String, today: LocalDate,
             if (schedule.note.isNotBlank()) item {
                 MedicationInfoGroup { MedicationInfoRow(stringResource(R.string.notes), schedule.note, R.drawable.ic_medication_note) }
             }
+            if (medication.gtin != null) item {
+                MedicationInfoGroup(stringResource(R.string.scan_packages)) {
+                    Text(stringResource(R.string.scan_gtin, medication.gtin))
+                    snapshot.packages.filter { it.medicationId == medicationId }.forEach { p ->
+                        HorizontalDivider()
+                        p.serial?.let { Text(stringResource(R.string.scan_serial, it)) }
+                        p.batch?.let { Text(stringResource(R.string.scan_batch, it)) }
+                        val expiry = p.expiry?.let(PackageExpiry::parseStored)
+                        ExpiryLabel(expiry)
+                        if (expiry?.expired(today) == true) Text(stringResource(R.string.scan_expired), color = MaterialTheme.colorScheme.error)
+                        Text(stringResource(R.string.scan_package_record, StockPlan.format(p.quantityAdded), TurkishFormat.date(java.time.Instant.ofEpochMilli(p.addedAt).atZone(java.time.ZoneId.systemDefault()).toLocalDate())))
+                    }
+                }
+            }
             if (editable) item { PrimaryAction(stringResource(R.string.edit_medication), Icons.Default.Edit) { edit(person, schedule) } }
             // Archived: restore is the only action, and only once the person is active again.
             if (medication.archived) item {

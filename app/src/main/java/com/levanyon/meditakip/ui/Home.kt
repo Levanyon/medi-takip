@@ -40,6 +40,7 @@ private const val SETTINGS = 3
     var section by rememberSaveable { mutableIntStateOf(TODAY) }
     var personId by rememberSaveable { mutableStateOf<String?>(null) }
     var medicationId by rememberSaveable { mutableStateOf<String?>(null) }
+    var scanPersonId by rememberSaveable { mutableStateOf<String?>(null) }
     LaunchedEffect(renewalMedicationId, snapshot.medications) {
         val target = snapshot.medications.find { it.id == renewalMedicationId }
         if (target != null) {
@@ -68,7 +69,7 @@ private const val SETTINGS = 3
     LaunchedEffect(Unit) { while (true) { now = LocalDateTime.now().truncatedTo(ChronoUnit.MINUTES); delay(1000) } }
 
     val today = now.toLocalDate()
-    val formOpen = personEditor || medicationPersonId != null
+    val formOpen = personEditor || medicationPersonId != null || scanPersonId != null
     fun back() { when { medicationId != null -> medicationId = null; personId != null -> personId = null; reminderStatus -> reminderStatus = false; else -> section = TODAY } }
     BackHandler(!formOpen && (medicationId != null || personId != null || reminderStatus || section != TODAY)) { back() }
     val health = rememberReminderHealth(settings.notifications)
@@ -152,7 +153,7 @@ private const val SETTINGS = 3
             when {
                 medicationId != null -> MedicationDetail(snapshot, medicationId!!, today, ::back, { p, s -> medicationPersonId = p.id; editScheduleId = s.id }, { archiveMedication = true }, vm, addStock = { amount -> vm.addStock(medicationId!!, amount) }, now = now, restore = { restoreMedication(medicationId!!) })
                 section == PEOPLE && personId != null -> snapshot.people.find { it.id == personId }?.let { person ->
-                    PersonDetail(snapshot, person, ::back, { editPersonId = person.id; personEditor = true }, { addMedication(person.id) }, { medicationId = it }, today = today, restore = { restorePerson(person) }, report = { vm.createReport(person.id) })
+                    PersonDetail(snapshot, person, ::back, { editPersonId = person.id; personEditor = true }, { addMedication(person.id) }, { medicationId = it }, today = today, restore = { restorePerson(person) }, report = { vm.createReport(person.id) }, scan = { scanPersonId = person.id })
                 } ?: LaunchedEffect(personId) { personId = null }
                 section == PEOPLE -> PeopleScreen(snapshot, { personId = it }, today) { addPerson(false) }
                 section == HISTORY -> HistoryScreen(snapshot, today, selectedPerson, vm::selectPerson, goToPeople = { section = PEOPLE }, corrections = vm)
@@ -168,6 +169,14 @@ private const val SETTINGS = 3
         }
     }
     BackupFileDialogs(vm)
+    scanPersonId?.let { id -> snapshot.people.find { it.id == id && !it.archived }?.let { person ->
+        ScannerFlow(snapshot, person, vm.catalog, rememberCameraPermission(), { scanPersonId = null },
+            create = { schedule, stock, rx, scan, receipt, acknowledged ->
+                vm.scannedMedication(person, schedule, stock, rx, scan, receipt, acknowledged) { scanPersonId = null }
+            }, add = { medication, scan, amount, receipt, acknowledged ->
+                vm.scannedPackage(medication, scan, amount, receipt, acknowledged) { scanPersonId = null; medicationId = medication }
+            })
+    } }
     if (personEditor) {
         val editing = snapshot.people.find { it.id == editPersonId }
         PersonEditor(editing, { personEditor = false; continueToMedication = false; if (setupPending) vm.finishSetup() }, archive = editing?.let { { archivePerson = true } }) { person ->

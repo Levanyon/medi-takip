@@ -3,7 +3,7 @@ package com.levanyon.meditakip.domain
 import com.levanyon.meditakip.data.*
 import java.time.*
 
-data class Snapshot(val people: List<PersonEntity> = emptyList(), val medications: List<MedicationEntity> = emptyList(), val schedules: List<MedicationScheduleEntity> = emptyList(), val logs: List<MedicationLogEntity> = emptyList())
+data class Snapshot(val people: List<PersonEntity> = emptyList(), val medications: List<MedicationEntity> = emptyList(), val schedules: List<MedicationScheduleEntity> = emptyList(), val logs: List<MedicationLogEntity> = emptyList(), val packages: List<MedicationPackageEntity> = emptyList())
 /**
  * One expected (or recorded) dose. [personName] is resolved from the people table at computation
  * time; never read `schedule.personName`, which is a stale copy written when the revision was created.

@@ -25,10 +25,12 @@ class StockRepositoryTest {
     private suspend fun medication() = db.dao().medications().single()
     private suspend fun dose(minute: Int) = Schedule.day(repo.snapshot(), day).first { it.minute == minute }
 
-    @Before fun setup() = runBlocking {
-        db = Room.inMemoryDatabaseBuilder(RuntimeEnvironment.getApplication(), MediDatabase::class.java).allowMainThreadQueries().build()
-        repo = Repository(db, Clock.fixed(day.atTime(9, 0).atZone(ZoneId.systemDefault()).toInstant(), ZoneId.systemDefault()))
-        repo.savePerson(person); repo.saveMedication(person, null, schedule, tracked)
+    @Before fun setup() {
+        runBlocking {
+            db = Room.inMemoryDatabaseBuilder(RuntimeEnvironment.getApplication(), MediDatabase::class.java).allowMainThreadQueries().build()
+            repo = Repository(db, Clock.fixed(day.atTime(9, 0).atZone(ZoneId.systemDefault()).toInstant(), ZoneId.systemDefault()))
+            repo.savePerson(person); repo.saveMedication(person, null, schedule, tracked)
+        }
     }
     @After fun close() { db.close() }
 

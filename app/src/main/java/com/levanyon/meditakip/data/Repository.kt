@@ -11,7 +11,7 @@ const val NOTE_LIMIT = 80
 
 class Repository(private val db: MediDatabase, private val clock: Clock = Clock.systemDefaultZone()) {
     private val dao = db.dao()
-    val snapshots = combine(dao.observePeople(), dao.observeMedications(), dao.observeSchedules(), dao.observeLogs(), ::Snapshot)
+    val snapshots = combine(dao.observePeople(), dao.observeMedications(), dao.observeSchedules(), dao.observeLogs(), dao.observePackages(), ::Snapshot)
     val completions = Completions()
 
     /**
@@ -50,7 +50,7 @@ class Repository(private val db: MediDatabase, private val clock: Clock = Clock.
             if (medication.stockEnabled) dao.adjustStock(medication.id, direction * medication.stockPerDose)
         }
     }
-    suspend fun snapshot() = db.withTransaction { Snapshot(dao.people(), dao.medications(), dao.schedules(), dao.logs()) }
+    suspend fun snapshot() = db.withTransaction { Snapshot(dao.people(), dao.medications(), dao.schedules(), dao.logs(), dao.packages()) }
     suspend fun savePerson(person: PersonEntity) { require(person.name.isNotBlank()); dao.savePerson(person.copy(name = person.name.trim())) }
     /**
      * Creates a medication or edits one. An edit never changes an existing revision: it closes the open
@@ -72,6 +72,34 @@ class Repository(private val db: MediDatabase, private val clock: Clock = Clock.
         // Stock settings change only when the form sent them (the quantity is then what the user typed).
         dao.saveMedication(if (stock == null) row else row.copy(stockEnabled = stock.enabled, stockQuantity = stock.quantity, stockPerDose = stock.perDose, stockThreshold = stock.threshold))
         dao.saveSchedule(schedule.copy(id = UUID.randomUUID().toString(), medicationId = id, personName = person.name, effectiveFrom = today, effectiveTo = null, sequence = dao.maxSequence() + 1))
+        id
+    }
+    /** Creation + package receipt is atomic. Initial stock is the explicitly entered package quantity. */
+    suspend fun saveScannedMedication(person: PersonEntity, schedule: MedicationScheduleEntity, stock: StockSettings,
+        prescription: Prescription, scan: ScannedProduct, receiptId: String, expiredAcknowledged: Boolean) = db.withTransaction {
+        require(stock.valid && stock.quantity.isFinite() && stock.perDose.isFinite() && stock.threshold.isFinite())
+        require(dao.medications().none { it.personId == person.id && it.gtin == scan.gtin }) { "Choose existing medication" }
+        val id = saveMedication(person, null, schedule, stock.copy(quantity = 0.0), prescription)
+        addPackage(id, scan, if (stock.enabled) stock.quantity else 0.0, receiptId, expiredAcknowledged)
+        id
+    }
+    /** Receipt UUID prevents repeated submission even for EAN-only scans. Serial uniqueness is global. */
+    suspend fun addPackage(medicationId: String, scan: ScannedProduct, amount: Double, receiptId: String,
+        expiredAcknowledged: Boolean = false) = db.withTransaction {
+        require(Gtin.normalize(scan.gtin) == scan.gtin && receiptId.isNotBlank())
+        require(amount.isFinite() && amount >= 0)
+        require(scan.serial == null || (scan.serial.length in 1..20 && scan.serial.all { it in '!'..'~' }))
+        require(scan.batch == null || (scan.batch.length in 1..20 && scan.batch.all { it in '!'..'~' }))
+        require(scan.expiry?.expired(LocalDate.now(clock)) != true || expiredAcknowledged) { "Expired package needs acknowledgement" }
+        val m = dao.medications().single { it.id == medicationId }
+        require(!m.archived && dao.people().single { it.id == m.personId }.archived.not())
+        require(m.gtin == null || m.gtin == scan.gtin)
+        require(amount == 0.0 || m.stockEnabled) { "Enable stock tracking first" }
+        require((m.stockQuantity + amount).isFinite())
+        require(dao.packages().none { it.id == receiptId || (scan.serial != null && it.gtin == scan.gtin && it.serial == scan.serial) }) { "Package already recorded" }
+        dao.insertPackage(MedicationPackageEntity(receiptId, m.id, scan.gtin, scan.serial, scan.batch, scan.expiry?.toString(), clock.millis(), amount))
+        dao.saveMedication(m.copy(gtin = scan.gtin))
+        if (amount > 0) dao.adjustStock(m.id, amount)
     }
     /** Stok ekle: adds [amount] to a tracked medication (no effect when tracking is off). */
     suspend fun addStock(medicationId: String, amount: Double) { require(amount > 0) { "Amount must be positive" }; dao.adjustStock(medicationId, amount) }
@@ -89,9 +117,10 @@ class Repository(private val db: MediDatabase, private val clock: Clock = Clock.
      * nothing changes (DECISIONS D4.3). Insert order follows the foreign keys.
      */
     suspend fun replaceAll(content: Snapshot, beforeReplace: suspend (Snapshot) -> Unit = {}) = db.withTransaction {
-        beforeReplace(Snapshot(dao.people(), dao.medications(), dao.schedules(), dao.logs()))
-        dao.clearLogs(); dao.clearSchedules(); dao.clearMedications(); dao.clearPeople(); dao.clearDispatches()
+        beforeReplace(Snapshot(dao.people(), dao.medications(), dao.schedules(), dao.logs(), dao.packages()))
+        dao.clearPackages(); dao.clearLogs(); dao.clearSchedules(); dao.clearMedications(); dao.clearPeople(); dao.clearDispatches()
         dao.insertPeople(content.people); dao.insertMedications(content.medications); dao.insertSchedules(content.schedules); dao.insertLogs(content.logs)
+        dao.insertPackages(content.packages)
     }
     /** Restores only the person. Their archived medications stay archived and are restored one by one. */
     suspend fun restorePerson(personId: String) = db.withTransaction {

@@ -25,10 +25,12 @@ class CompletionTest {
     private suspend fun doses() = Schedule.day(repo.snapshot(), day)
     private suspend fun morning() = doses().first { it.minute == 480 }
 
-    @Before fun setup() = runBlocking {
-        db = Room.inMemoryDatabaseBuilder(RuntimeEnvironment.getApplication(), MediDatabase::class.java).allowMainThreadQueries().build()
-        repo = Repository(db, Clock.fixed(now, ZoneId.systemDefault()))
-        repo.savePerson(person); repo.saveMedication(person, null, schedule)
+    @Before fun setup() {
+        runBlocking {
+            db = Room.inMemoryDatabaseBuilder(RuntimeEnvironment.getApplication(), MediDatabase::class.java).allowMainThreadQueries().build()
+            repo = Repository(db, Clock.fixed(now, ZoneId.systemDefault()))
+            repo.savePerson(person); repo.saveMedication(person, null, schedule)
+        }
     }
     @After fun close() { db.close() }
 

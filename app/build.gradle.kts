@@ -25,7 +25,7 @@ fun signingValue(key: String): String = releaseSigning.getProperty(key)?.takeIf 
 
 android {
     namespace = "com.levanyon.meditakip"
-    compileSdk = 35
+    compileSdk = 36
     defaultConfig {
         applicationId = "com.levanyon.meditakip"; minSdk = 26; targetSdk = 35; versionCode = 3; versionName = "1.2"
         testInstrumentationRunner = "com.levanyon.meditakip.data.ReportPdfDeviceTest"
@@ -79,6 +79,10 @@ val verifyReleaseSigning by tasks.registering {
 }
 tasks.matching { it.name == "preReleaseBuild" }.configureEach { dependsOn(verifyReleaseSigning) }
 dependencies {
+    implementation("androidx.camera:camera-camera2:1.6.2")
+    implementation("androidx.camera:camera-lifecycle:1.6.2")
+    implementation("androidx.camera:camera-view:1.6.2")
+    implementation("com.google.mlkit:barcode-scanning:17.3.0")
     implementation(platform("androidx.compose:compose-bom:2024.12.01"))
     implementation("androidx.activity:activity-compose:1.10.1")
     implementation("androidx.compose.material3:material3")
