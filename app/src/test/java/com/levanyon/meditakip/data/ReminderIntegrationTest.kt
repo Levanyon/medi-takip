@@ -30,6 +30,8 @@ class ReminderIntegrationTest {
         app = RuntimeEnvironment.getApplication() as MediApp
         runBlocking(kotlinx.coroutines.Dispatchers.IO) { app.database.clearAllTables() }
         app.preferences.save(AppSettings()); app.preferences.snoozes = emptyMap(); app.reminderLog.clear()
+        // These tests isolate actual reminder delivery; Phase9NotificationTest covers ongoing defaults.
+        app.preferences.saveLockScreen(LockScreenSettings(detailed = true, ongoing = false, takenAction = true))
     }
     @After fun close() { app.database.close() }
     private suspend fun add(time: LocalDateTime, person: PersonEntity = PersonEntity("p", "Mother"), name: String = "A") {
@@ -107,19 +109,18 @@ class ReminderIntegrationTest {
         fire(time)
         assertEquals("Annem · A", doseNotifications().single().notification.extras.getString(Notification.EXTRA_TITLE))
     }
-    @Test fun takenActionFromNotificationRecordsTheDoseWithoutOpeningTheApp() = runBlocking {
+    @Test fun legacyTakenActionCannotRecordDoseWithoutOpeningTheApp() = runBlocking {
         val time = now()
         add(time)
         fire(time)
         val key = doseNotifications().single().tag
         val intent = Intent(app, ReminderActionReceiver::class.java).setAction(Reminders.ACTION_TAKEN).putExtra(Reminders.EXTRA_KEY, key)
-        app.reminders.markTakenFromNotification(intent.getStringExtra(Reminders.EXTRA_KEY)!!)
-        val log = app.repository.snapshot().logs.single()
-        assertEquals(key, log.key)
-        assertEquals(0, doseNotifications().size)
-        // Repeating the action (e.g. double tap) never creates a second record.
-        app.reminders.markTakenFromNotification(key)
-        assertEquals(1, app.repository.snapshot().logs.size)
+        ReminderActionReceiver().onReceive(app, intent)
+        assertTrue(app.repository.snapshot().logs.isEmpty())
+        assertEquals(1, doseNotifications().size)
+        // Repeated legacy calls remain inert; only the in-app flow may record a dose.
+        ReminderActionReceiver().onReceive(app, intent)
+        assertTrue(app.repository.snapshot().logs.isEmpty())
     }
     @Test fun snoozeHidesTheNotificationAndSchedulesItTenMinutesLater() = runBlocking {
         val time = now()

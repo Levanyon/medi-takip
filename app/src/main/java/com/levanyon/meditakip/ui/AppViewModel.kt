@@ -25,6 +25,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application), Do
     private val app = application as MediApp
     private val repository = app.repository
     val settings = app.preferences.state
+    val lockScreenSettings = app.preferences.lockScreen
+    fun lockScreenSettings(value: LockScreenSettings) = perform { app.preferences.saveLockScreen(value) }
     val onboardingCompleted = app.preferences.onboardingCompleted
     fun completeOnboarding(startSetup: Boolean = false) = app.preferences.completeOnboarding(startSetup)
     val setupPending = app.preferences.setupPending

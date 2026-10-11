@@ -5,8 +5,16 @@ import kotlinx.coroutines.flow.MutableStateFlow
 
 /** retry defaults to on (30 min follow-up), see docs/DECISIONS.md D2.6. */
 data class AppSettings(val notifications: Boolean = true, val retry: Boolean = true, val delayMinutes: Int = 30, val theme: String = "System")
+/** Device-local privacy choices; deliberately independent of the medical backup format. */
+data class LockScreenSettings(val visible: Boolean = true, val detailed: Boolean = false, val ongoing: Boolean = true, val takenAction: Boolean = false)
 class Preferences(context: Context) {
     private val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+    val lockScreen = MutableStateFlow(LockScreenSettings(prefs.getBoolean("lockVisible", true), prefs.getBoolean("lockDetailed", false), prefs.getBoolean("lockOngoing", true), prefs.getBoolean("lockTakenAction", false)))
+    fun saveLockScreen(value: LockScreenSettings) {
+        prefs.edit().putBoolean("lockVisible", value.visible).putBoolean("lockDetailed", value.detailed)
+            .putBoolean("lockOngoing", value.ongoing).putBoolean("lockTakenAction", value.takenAction).apply()
+        lockScreen.value = value
+    }
     val onboardingCompleted = MutableStateFlow(prefs.getBoolean("onboardingCompleted", false))
     /** [startSetup]: the user chose "İlk kişiyi ekle"; Home then walks them through person → medication. */
     fun completeOnboarding(startSetup: Boolean = false) {
@@ -30,6 +38,10 @@ class Preferences(context: Context) {
     var nextAlarm: Long
         get() = prefs.getLong("nextAlarm", 0)
         set(value) { prefs.edit().putLong("nextAlarm", value).apply() }
+    /** User-facing reminder time excludes a silent date-rollover wakeup. */
+    var nextReminderEvent: Long
+        get() = prefs.getLong("nextReminderEvent", nextAlarm)
+        set(value) { prefs.edit().putLong("nextReminderEvent", value).apply() }
     /** Time of the last successful backup (epoch millis), 0 = never (DECISIONS D4.4). */
     var lastBackupAt: Long
         get() = prefs.getLong("lastBackupAt", 0)

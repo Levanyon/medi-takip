@@ -20,15 +20,22 @@ import com.levanyon.meditakip.data.AppSettings
 
 @Composable fun SettingsScreen(vm: AppViewModel, hasPeople: Boolean = false, openReminderStatus: () -> Unit = {}) {
     val value by vm.settings.collectAsStateWithLifecycle()
+    val privacy by vm.lockScreenSettings.collectAsStateWithLifecycle()
+    var lockScreen by rememberSaveable { mutableStateOf(false) }
+    androidx.activity.compose.BackHandler(lockScreen) { lockScreen = false }
     val access = rememberPermissionAccess(vm)
     val context = LocalContext.current
     val version = remember(context) { context.packageManager.getPackageInfo(context.packageName, 0).versionName.orEmpty() }
-    SettingsContent(value, access, version, vm::settings, openReminderStatus) { BackupSettings(vm, hasPeople) }
+    if (lockScreen) {
+        val snapshot by vm.snapshot.collectAsStateWithLifecycle()
+        LockScreenSettingsContent(privacy, snapshot, vm::lockScreenSettings) { lockScreen = false }
+    }
+    else SettingsContent(value, access, version, vm::settings, openReminderStatus, { lockScreen = true }) { BackupSettings(vm, hasPeople) }
 }
 
 /** Existing preferences and permission flows remain the only sources of truth. */
 @Composable internal fun SettingsContent(value: AppSettings, access: PermissionAccess, version: String,
-    change: (AppSettings) -> Unit, openReminderStatus: () -> Unit, backup: @Composable () -> Unit) {
+    change: (AppSettings) -> Unit, openReminderStatus: () -> Unit, openLockScreen: () -> Unit = {}, backup: @Composable () -> Unit) {
     var dialog by rememberSaveable { mutableStateOf<String?>(null) }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = Phase5Padding, verticalArrangement = Arrangement.spacedBy(MediSpace.medium)) {
         item { Phase5Heading(stringResource(R.string.settings), stringResource(R.string.settings_subtitle)) }
@@ -46,6 +53,9 @@ import com.levanyon.meditakip.data.AppSettings
         item { SettingsSection(stringResource(R.string.appearance)) {
             SettingsRow(stringResource(R.string.settings_theme), stringResource(R.string.settings_theme_help), R.drawable.ic_phase5_moon,
                 stringResource(when (value.theme) { "Light" -> R.string.theme_light; "Dark" -> R.string.theme_dark; else -> R.string.theme_system })) { dialog = "theme" }
+        } }
+        item { SettingsSection("Kilit ekranı") {
+            SettingsRow("Kilit ekranında göster", "Sıradaki dozu görünür tut, ayrıntıyı sen seç.", R.drawable.ic_phase5_lock, onClick = openLockScreen)
         } }
         item { backup() }
         item { SettingsSection(stringResource(R.string.settings_privacy)) {

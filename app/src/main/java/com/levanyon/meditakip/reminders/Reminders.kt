@@ -46,7 +46,7 @@ class Reminders(private val app: MediApp, private val clock: Clock = Clock.syste
     fun notificationAllowed(): Boolean = notifications.areNotificationsEnabled() && (Build.VERSION.SDK_INT < 33 || app.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) && notifications.getNotificationChannel(CHANNEL)?.importance != NotificationManager.IMPORTANCE_NONE
     fun batteryUnrestricted(): Boolean = app.getSystemService(PowerManager::class.java)?.isIgnoringBatteryOptimizations(app.packageName) ?: true
     fun health() = ReminderHealth(app.preferences.state.value.notifications, notificationAllowed(), exactAllowed(), batteryUnrestricted(),
-        Build.MANUFACTURER.equals("samsung", ignoreCase = true), app.preferences.nextAlarm.takeIf { it > 0 }, app.reminderLog.latest())
+        Build.MANUFACTURER.equals("samsung", ignoreCase = true), app.preferences.nextReminderEvent.takeIf { it > 0 }, app.reminderLog.latest())
 
     private fun alarmIntent(code: Int, action: String = ACTION_ALARM) = PendingIntent.getBroadcast(app, code, Intent(app, ReminderReceiver::class.java).setAction(action), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     private fun openApp() = PendingIntent.getActivity(app, 0, Intent(app, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
@@ -77,11 +77,20 @@ class Reminders(private val app: MediApp, private val clock: Clock = Clock.syste
         notifications.activeNotifications.filter { it.id == RENEWAL_ID && it.tag !in renewalKeys }.forEach { notifications.cancel(it.tag, RENEWAL_ID) }
         // A dose that was marked, skipped, edited or archived loses its visible notification.
         notifications.activeNotifications.filter { it.id == DOSE_ID && it.tag != null && it.tag !in outstanding }.forEach { notifications.cancel(it.tag, DOSE_ID) }
-        updateSummaries()
         notifyLowStock(snapshot)
+        updatePrivacy(snapshot)
+        updateSummaries()
+        LockScreenNotifications.refresh(app, snapshot, now)
         alarms.cancel(alarmIntent(1)); alarms.cancel(alarmIntent(2))
-        val next = listOfNotNull(ReminderPlan.next(events, dispatched, now)?.at, RenewalPlan.next(renewals, dispatched, now)?.at).minOrNull()
-        if (!settings.notifications || !notificationAllowed() || next == null) { app.preferences.nextAlarm = 0; return@withLock }
+        // Reuse the one existing alarm path for the daily status rollover, never a second scheduler.
+        val today = now.atZone(ZoneId.systemDefault()).toLocalDate()
+        val rollover = if (app.preferences.lockScreen.value.ongoing && NextDose.next(snapshot, today)?.date == today)
+            now.atZone(ZoneId.systemDefault()).toLocalDate().plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant() else null
+        val reminderNext = if (notificationAllowed()) listOfNotNull(ReminderPlan.next(events, dispatched, now)?.at, RenewalPlan.next(renewals, dispatched, now)?.at).minOrNull() else null
+        app.preferences.nextReminderEvent = if (settings.notifications) reminderNext?.toEpochMilli() ?: 0 else 0
+        val statusRollover = rollover?.takeIf { notifications.activeNotifications.any { active -> active.id == LockScreenNotifications.ID } }
+        val next = listOfNotNull(reminderNext, statusRollover).minOrNull()
+        if (!settings.notifications || next == null) { app.preferences.nextAlarm = 0; return@withLock }
         val timestamp = next.toEpochMilli()
         app.preferences.nextAlarm = timestamp
         schedule(timestamp, alarmIntent(1))
@@ -102,18 +111,19 @@ class Reminders(private val app: MediApp, private val clock: Clock = Clock.syste
         val o = event.occurrence
         val today = now.atZone(ZoneId.systemDefault()).toLocalDate()
         val time = o.time.toString() + if (o.date != today) " (${TurkishFormat.shortDate(o.date)})" else ""
-        val title = app.getString(if (event.kind == ReminderKind.RETRY) R.string.notification_followup_title else R.string.notification_dose_title, o.personName, o.schedule.name)
-        val text = app.getString(if (event.kind == ReminderKind.RETRY) R.string.notification_followup_text else R.string.notification_dose_text, o.schedule.dose, time)
+        val detailed = app.preferences.lockScreen.value.detailed
+        val title = if (detailed) app.getString(if (event.kind == ReminderKind.RETRY) R.string.notification_followup_title else R.string.notification_dose_title, o.personName, o.schedule.name) else "İlaç zamanı"
+        val text = if (detailed) app.getString(if (event.kind == ReminderKind.RETRY) R.string.notification_followup_text else R.string.notification_dose_text, o.schedule.dose, time) else "Doz saati ${LockScreenNotifications.timing(o)}"
         val public = Notification.Builder(app, CHANNEL).setSmallIcon(R.drawable.ic_medication)
             .setContentTitle(app.getString(R.string.app_name)).setContentText(app.getString(R.string.notification_public_text)).build()
         val builder = Notification.Builder(app, CHANNEL).setSmallIcon(R.drawable.ic_medication)
             .setContentTitle(title).setContentText(text).setStyle(Notification.BigTextStyle().bigText(text))
-            .setContentIntent(openApp()).setAutoCancel(true)
-            .setVisibility(Notification.VISIBILITY_PRIVATE).setPublicVersion(public)
+            .setContentIntent(LockScreenNotifications.open(app, o.key)).setAutoCancel(true)
+            .setVisibility(LockScreenNotifications.visibility(app.preferences.lockScreen.value)).setPublicVersion(public)
             .setCategory(Notification.CATEGORY_REMINDER).setWhen(event.at.toEpochMilli()).setShowWhen(true)
-            .setGroup(ReminderPlan.groupKey(event)).setSortKey("${o.personName}\u0000${o.schedule.name}")
-            .addAction(Notification.Action.Builder(Icon.createWithResource(app, R.drawable.ic_medication), app.getString(R.string.action_taken), action(ACTION_TAKEN, o.key)).build())
-            .addAction(Notification.Action.Builder(Icon.createWithResource(app, R.drawable.ic_medication), app.getString(R.string.action_snooze), action(ACTION_SNOOZE, o.key)).build())
+            .setGroup(ReminderPlan.groupKey(event)).setSortKey(if (detailed) "${o.personName}\u0000${o.schedule.name}" else o.key)
+        if (app.preferences.lockScreen.value.takenAction) builder.addAction(LockScreenNotifications.takenAction(app, o.key))
+        builder.addAction(Notification.Action.Builder(Icon.createWithResource(app, R.drawable.ic_medication), app.getString(R.string.action_snooze), action(ACTION_SNOOZE, o.key)).build())
         if (event.kind == ReminderKind.SNOOZE) builder.setSubText(app.getString(R.string.notification_snoozed))
         notifications.notify(o.key, DOSE_ID, builder.build())
     }
@@ -126,9 +136,8 @@ class Reminders(private val app: MediApp, private val clock: Clock = Clock.syste
         val public = Notification.Builder(app, CHANNEL).setSmallIcon(R.drawable.ic_medication)
             .setContentTitle(app.getString(R.string.app_name)).build()
         val notification = Notification.Builder(app, CHANNEL).setSmallIcon(R.drawable.ic_medication)
-            .setContentTitle(app.getString(R.string.renewal_notification_title))
-            .setContentText(app.getString(R.string.renewal_notification_text, event.name))
-            .setContentIntent(open).setAutoCancel(true).setVisibility(Notification.VISIBILITY_PRIVATE).setPublicVersion(public)
+            .renewalContent(event)
+            .setContentIntent(open).setAutoCancel(true).setVisibility(LockScreenNotifications.visibility(app.preferences.lockScreen.value)).setPublicVersion(public)
             .setCategory(Notification.CATEGORY_REMINDER).setWhen(event.at.toEpochMilli()).build()
         notifications.notify(event.key, RENEWAL_ID, notification)
     }
@@ -143,17 +152,30 @@ class Reminders(private val app: MediApp, private val clock: Clock = Clock.syste
         val already = app.preferences.lowStockNotified intersect lowIds
         val canShow = app.preferences.state.value.notifications && notificationAllowed()
         val shown = if (!canShow) emptySet() else low.filter { it.medicationId !in already }.onEach { item ->
-            val text = item.daysLeft?.let { app.getString(R.string.stock_low_notification_text, item.personName, it) }
-                ?: app.getString(R.string.stock_low_notification_text_no_days, item.personName, StockPlan.format(item.quantity))
             val notification = Notification.Builder(app, CHANNEL).setSmallIcon(R.drawable.ic_medication)
-                .setContentTitle(app.getString(R.string.stock_low_notification_title, item.name)).setContentText(text)
-                .setContentIntent(openApp()).setAutoCancel(true).setVisibility(Notification.VISIBILITY_PRIVATE)
+                .lowStockContent(item)
+                .setContentIntent(openApp()).setAutoCancel(true).setVisibility(LockScreenNotifications.visibility(app.preferences.lockScreen.value))
                 .setPublicVersion(Notification.Builder(app, CHANNEL).setSmallIcon(R.drawable.ic_medication).setContentTitle(app.getString(R.string.app_name)).build())
                 .setCategory(Notification.CATEGORY_REMINDER).build()
             notifications.notify(item.medicationId, LOW_STOCK_ID, notification)
         }.map { it.medicationId }.toSet()
         app.preferences.lowStockNotified = already + shown
         notifications.activeNotifications.filter { it.id == LOW_STOCK_ID && it.tag !in lowIds }.forEach { notifications.cancel(it.tag, LOW_STOCK_ID) }
+    }
+
+    private fun Notification.Builder.renewalContent(event: RenewalEvent): Notification.Builder {
+        val detailed = app.preferences.lockScreen.value.detailed
+        return setContentTitle(if (detailed) app.getString(R.string.renewal_notification_title) else "Reçete hatırlatması")
+            .setContentText(if (detailed) app.getString(R.string.renewal_notification_text, event.name) else "Yaklaşan bir reçete yenileme hatırlatman var.")
+    }
+
+    private fun Notification.Builder.lowStockContent(item: LowStock): Notification.Builder {
+        val detailed = app.preferences.lockScreen.value.detailed
+        val text = if (!detailed) "Bir ilaç için stok uyarısı var." else item.daysLeft?.let {
+            app.getString(R.string.stock_low_notification_text, item.personName, it)
+        } ?: app.getString(R.string.stock_low_notification_text_no_days, item.personName, StockPlan.format(item.quantity))
+        return setContentTitle(if (detailed) app.getString(R.string.stock_low_notification_title, item.name) else "Stok azalıyor")
+            .setContentText(text)
     }
 
     /** One summary per group of two or more visible doses (DECISIONS D2.3); removed when the group shrinks. */
@@ -168,7 +190,8 @@ class Reminders(private val app: MediApp, private val clock: Clock = Clock.syste
             val style = Notification.InboxStyle().setBigContentTitle(title).also { s -> lines.forEach { s.addLine(it) } }
             val summary = Notification.Builder(app, CHANNEL).setSmallIcon(R.drawable.ic_medication).setContentTitle(title)
                 .setContentText(lines.joinToString(", ")).setStyle(style).setGroup(group).setGroupSummary(true)
-                .setContentIntent(openApp()).setAutoCancel(true).setVisibility(Notification.VISIBILITY_PRIVATE)
+                .setContentIntent(openApp()).setAutoCancel(true).setVisibility(LockScreenNotifications.visibility(app.preferences.lockScreen.value))
+                .setPublicVersion(Notification.Builder(app, CHANNEL).setSmallIcon(R.drawable.ic_medication).setContentTitle(app.getString(R.string.app_name)).setContentText(app.getString(R.string.notification_public_text)).build())
                 .setCategory(Notification.CATEGORY_REMINDER).setGroupAlertBehavior(Notification.GROUP_ALERT_CHILDREN).build()
             notifications.notify(group, SUMMARY_ID, summary)
         }
@@ -180,15 +203,45 @@ class Reminders(private val app: MediApp, private val clock: Clock = Clock.syste
         return PendingIntent.getBroadcast(app, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     }
 
-    /** "İçildi" from the notification: records the dose exactly like the button in the app. */
-    suspend fun markTakenFromNotification(key: String) {
-        lock.withLock {
-            val date = occurrenceDate(key) ?: return@withLock
-            val item = Schedule.day(app.repository.snapshot(), date).find { it.key == key }
-            if (item != null && !item.handled) app.repository.completions.taken(item)
-            notifications.cancel(key, DOSE_ID)
+    /** Apply a privacy change to already-visible reminders without another sound or delivery record. */
+    private fun updatePrivacy(snapshot: Snapshot) {
+        val privacy = app.preferences.lockScreen.value
+        val renewals = RenewalPlan.events(snapshot, app.preferences.state.value, clock.instant(), ZoneId.systemDefault()).associateBy { it.key }
+        val lowStock = StockPlan.low(snapshot).associateBy { it.medicationId }
+        notifications.activeNotifications.filter { it.notification.channelId == CHANNEL }.forEach { active ->
+            val builder = Notification.Builder.recoverBuilder(app, active.notification)
+                .setVisibility(LockScreenNotifications.visibility(privacy)).setOnlyAlertOnce(true)
+                .setPublicVersion(Notification.Builder(app, CHANNEL).setSmallIcon(R.drawable.ic_medication)
+                    .setContentTitle(app.getString(R.string.app_name)).setContentText(app.getString(R.string.notification_public_text)).build())
+            if (active.id == DOSE_ID && active.tag != null) {
+                NextDose.resolve(snapshot, active.tag)?.let { item ->
+                    val retry = active.notification.`when` > item.instant(ZoneId.systemDefault()).toEpochMilli() &&
+                        active.notification.extras.getCharSequence(Notification.EXTRA_SUB_TEXT) == null
+                    val time = item.time.toString() + if (item.date != clock.instant().atZone(ZoneId.systemDefault()).toLocalDate()) " (${TurkishFormat.shortDate(item.date)})" else ""
+                    val title = if (privacy.detailed) app.getString(if (retry) R.string.notification_followup_title else R.string.notification_dose_title, item.personName, item.schedule.name) else "İlaç zamanı"
+                    val text = if (privacy.detailed) app.getString(if (retry) R.string.notification_followup_text else R.string.notification_dose_text, item.schedule.dose, time) else "Doz saati ${LockScreenNotifications.timing(item)}"
+                    builder.setContentTitle(title).setContentText(text).setStyle(Notification.BigTextStyle().bigText(text))
+                        .setSortKey(if (privacy.detailed) "${item.personName}\u0000${item.schedule.name}" else item.key)
+                }
+                builder.setActions()
+                if (privacy.takenAction) builder.addAction(LockScreenNotifications.takenAction(app, active.tag))
+                builder.addAction(Notification.Action.Builder(Icon.createWithResource(app, R.drawable.ic_medication), app.getString(R.string.action_snooze), action(ACTION_SNOOZE, active.tag)).build())
+            }
+            if (active.id == RENEWAL_ID) {
+                val event = renewals[active.tag]
+                if (event == null) { notifications.cancel(active.tag, active.id); return@forEach }
+                builder.renewalContent(event)
+            }
+            if (active.id == LOW_STOCK_ID) {
+                val item = lowStock[active.tag]
+                if (item == null) { notifications.cancel(active.tag, active.id); return@forEach }
+                builder.lowStockContent(item)
+            }
+            if (!privacy.detailed && active.id == SUMMARY_ID) {
+                builder.setContentText(app.getString(R.string.notification_public_text)).setStyle(Notification.BigTextStyle().bigText(app.getString(R.string.notification_public_text)))
+            }
+            notifications.notify(active.tag, active.id, builder.build())
         }
-        rebuild(false)
     }
 
     /** "10 dk ertele": hides the notification and shows it again after [ReminderPlan.SNOOZE_MINUTES]. */
@@ -217,7 +270,7 @@ class Reminders(private val app: MediApp, private val clock: Clock = Clock.syste
         val notification = Notification.Builder(app, CHANNEL).setSmallIcon(R.drawable.ic_medication)
             .setContentTitle(app.getString(if (scheduled) R.string.test_scheduled_title else R.string.test_notification_title))
             .setContentText(app.getString(if (scheduled) R.string.test_scheduled_text else R.string.test_notification_text))
-            .setContentIntent(openApp()).setAutoCancel(true).setCategory(Notification.CATEGORY_REMINDER).build()
+            .setContentIntent(openApp()).setAutoCancel(true).setVisibility(LockScreenNotifications.visibility(app.preferences.lockScreen.value)).setCategory(Notification.CATEGORY_REMINDER).build()
         notifications.notify(TEST_TAG, TEST_ID, notification)
         return true
     }
@@ -267,16 +320,16 @@ class ReminderReceiver : BroadcastReceiver() {
     }
 }
 
-/** Notification buttons: İçildi and 10 dk ertele. Works from the lock screen without opening the app. */
+/** Only snooze survives as a broadcast action; legacy TAKEN intents never mutate data. */
 class ReminderActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action != Reminders.ACTION_SNOOZE) return
         val key = intent.getStringExtra(Reminders.EXTRA_KEY) ?: return
         val app = context.applicationContext as MediApp
         val result = goAsync()
         app.reminders.scope.launch {
             try {
                 when (intent.action) {
-                    Reminders.ACTION_TAKEN -> app.reminders.markTakenFromNotification(key)
                     Reminders.ACTION_SNOOZE -> app.reminders.snooze(key)
                 }
             } catch (e: Exception) { app.reminderLog.record("action:${intent.action?.substringAfterLast('.')}", e) }

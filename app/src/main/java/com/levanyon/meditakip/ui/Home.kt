@@ -36,7 +36,8 @@ private const val SETTINGS = 3
  * Add/edit forms are drawn over the scaffold in the same activity window so window insets
  * (navigation bar, IME) are always delivered; the scaffold is hidden from accessibility meanwhile.
  */
-@Composable fun Home(snapshot: Snapshot, vm: AppViewModel, renewalMedicationId: String? = null, consumeRenewal: () -> Unit = {}) {
+@Composable fun Home(snapshot: Snapshot, vm: AppViewModel, renewalMedicationId: String? = null,
+    occurrenceKey: String? = null, consumeOccurrence: () -> Unit = {}, consumeRenewal: () -> Unit = {}) {
     var section by rememberSaveable { mutableIntStateOf(TODAY) }
     var personId by rememberSaveable { mutableStateOf<String?>(null) }
     var medicationId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -169,6 +170,9 @@ private const val SETTINGS = 3
         }
     }
     BackupFileDialogs(vm)
+    occurrenceKey?.let { key ->
+        NotificationDoseConfirmation(snapshot, key, consumeOccurrence, ::markTaken)
+    }
     scanPersonId?.let { id -> snapshot.people.find { it.id == id && !it.archived }?.let { person ->
         ScannerFlow(snapshot, person, vm.catalog, rememberCameraPermission(), { scanPersonId = null },
             create = { schedule, stock, rx, scan, receipt, acknowledged ->

@@ -19,11 +19,13 @@ import androidx.activity.enableEdgeToEdge
 import androidx.core.view.WindowCompat
 
 class MainActivity : ComponentActivity() {
+    private var occurrenceKey by mutableStateOf<String?>(null)
     private var renewalMedicationId by mutableStateOf<String?>(null)
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         renewalMedicationId = intent.getStringExtra(Reminders.EXTRA_MEDICATION_ID)
+        occurrenceKey = intent.getStringExtra(Reminders.EXTRA_KEY)
     }
     override fun attachBaseContext(newBase: Context) {
         val configuration = Configuration(newBase.resources.configuration).apply { setLocale(TurkishFormat.locale) }
@@ -33,6 +35,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         renewalMedicationId = intent.getStringExtra(Reminders.EXTRA_MEDICATION_ID)
+        occurrenceKey = intent.getStringExtra(Reminders.EXTRA_KEY)
         enableEdgeToEdge()
         setContent {
             val vm: AppViewModel = viewModel()
@@ -49,7 +52,10 @@ class MainActivity : ComponentActivity() {
                 }
                 Surface(color = background) {
                     AppLaunch(onboardingCompleted, onboarding = { Onboarding(vm) }, home = {
-                        Home(snapshot, vm, renewalMedicationId) {
+                        Home(snapshot, vm, renewalMedicationId, occurrenceKey = occurrenceKey, consumeOccurrence = {
+                            occurrenceKey = null
+                            intent.removeExtra(Reminders.EXTRA_KEY)
+                        }) {
                             renewalMedicationId = null
                             intent.removeExtra(Reminders.EXTRA_MEDICATION_ID)
                         }

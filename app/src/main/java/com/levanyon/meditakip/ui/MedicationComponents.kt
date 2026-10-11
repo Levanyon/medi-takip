@@ -25,15 +25,7 @@ import java.time.LocalTime
 
 /** Selection only: occurrence generation and completion/revision rules belong to Schedule.day. */
 internal fun medicationNextDose(snapshot: Snapshot, medicationId: String, today: LocalDate): Occurrence? {
-    val medication = snapshot.medications.find { it.id == medicationId && !it.archived } ?: return null
-    if (snapshot.people.none { it.id == medication.personId && !it.archived }) return null
-    val current = MedicationViews.latestRevision(snapshot, medicationId) ?: return null
-    if (!current.active || current.effectiveTo != null) return null
-    val first = maxOf(today.toEpochDay(), current.start, current.effectiveFrom)
-    // Every supported recurrence is weekly. Include the next matching weekday after a completed day.
-    return (0L..7L).asSequence().map { LocalDate.ofEpochDay(first + it) }
-        .flatMap { Schedule.day(snapshot, it).asSequence() }
-        .firstOrNull { it.schedule.id == current.id && !it.handled }
+    return NextDose.forMedication(snapshot, medicationId, today)
 }
 
 @Composable
