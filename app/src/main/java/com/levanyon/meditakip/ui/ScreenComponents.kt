@@ -60,11 +60,21 @@ fun MediDialog(title: String, dismiss: () -> Unit, content: @Composable ColumnSc
 
 @Composable
 fun SecondaryAction(label: String, enabled: Boolean = true, action: () -> Unit) {
-    FilledTonalButton(onClick = action, enabled = enabled, shape = MaterialTheme.shapes.small,
-        modifier = Modifier.fillMaxWidth().heightIn(min = MediSize.primaryAction), contentPadding = PaddingValues(MediSpace.regular)) { Text(label, style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center) }
+    OutlinedButton(onClick = action, enabled = enabled, shape = MaterialTheme.shapes.small,
+        modifier = Modifier.fillMaxWidth().heightIn(min = MediSize.primaryAction), contentPadding = PaddingValues(MediSpace.regular)) { Text(label, modifier = Modifier.fillMaxWidth(), style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center) }
 }
 
 @Composable
 fun CancelAction(dismiss: () -> Unit) {
     QuietAction(stringResource(R.string.cancel), action = dismiss)
+}
+
+@Composable
+fun DangerAction(label: String, action: () -> Unit) {
+    Button(onClick = action, shape = MaterialTheme.shapes.small,
+        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.errorContainer,
+            contentColor = MaterialTheme.colorScheme.onErrorContainer),
+        modifier = Modifier.fillMaxWidth().heightIn(min = MediSize.primaryAction)) {
+        Text(label, textAlign = TextAlign.Center)
+    }
 }

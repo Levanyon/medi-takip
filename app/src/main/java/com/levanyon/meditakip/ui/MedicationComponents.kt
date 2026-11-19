@@ -47,9 +47,9 @@ internal fun MedicationInfoRow(label: String, value: String, @DrawableRes icon: 
             Icon(painterResource(icon), null, Modifier.padding(10.dp).size(20.dp), tint = MaterialTheme.colorScheme.primary)
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(label, style = MaterialTheme.typography.labelMedium.copy(fontSize = 13.sp, lineHeight = 18.sp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(label, style = MaterialTheme.typography.labelMedium.copy(fontSize = 13.sp, lineHeight = 18.sp), color = careColors.secondaryInk)
             Text(value, style = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp, lineHeight = 22.sp))
-            supporting?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            supporting?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = careColors.secondaryInk) }
         }
     }
 }
@@ -67,7 +67,7 @@ internal fun MedicationHero(person: PersonEntity, medication: MedicationEntity, 
                 AdaptivePair(leading = {
                     Column(verticalArrangement = Arrangement.spacedBy(MediSpace.tiny)) {
                         Text(schedule.name, style = MaterialTheme.typography.titleMedium)
-                        Text(person.name, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(person.name, style = MaterialTheme.typography.labelMedium, color = careColors.secondaryInk)
                     }
                 }, trailing = {
                     MedicationStatusChip(stringResource(when {
@@ -78,16 +78,16 @@ internal fun MedicationHero(person: PersonEntity, medication: MedicationEntity, 
                 })
             }
         }
-        Surface(shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.primaryContainer,
+        Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary,
             modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}) {
             Row(Modifier.padding(MediSpace.medium), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(MediSpace.medium)) {
-                Icon(painterResource(R.drawable.ic_medication_clock), null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+                Icon(painterResource(R.drawable.ic_medication_clock), null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onPrimary)
                 Column(Modifier.weight(1f)) {
                     Text(stringResource(if (next != null && next.date.atTime(next.time) < now) R.string.medication_due else R.string.medication_next), style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        color = MaterialTheme.colorScheme.onPrimary)
                     Text(next?.let { "${if (it.date != today) TurkishFormat.date(it.date) + " · " else ""}${it.time} · ${it.schedule.dose}" }
-                        ?: stringResource(R.string.medication_no_next), style = MaterialTheme.typography.bodyLarge)
+                        ?: stringResource(R.string.medication_no_next), style = MaterialTheme.typography.headlineLarge)
                 }
             }
         }
@@ -126,7 +126,7 @@ internal fun MedicationHeader(title: String, back: () -> Unit, edit: (() -> Unit
 private fun MedicationIconButton(@DrawableRes icon: Int, label: String, size: Int, action: () -> Unit) {
     FilledTonalIconButton(onClick = action, modifier = Modifier.size(MediSize.touch), shape = MaterialTheme.shapes.small,
         colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-            contentColor = MaterialTheme.colorScheme.onSurfaceVariant)) {
+            contentColor = careColors.secondaryInk)) {
         Icon(painterResource(icon), label, Modifier.size(size.dp))
     }
 }
@@ -141,7 +141,7 @@ internal fun MedicationScheduleSection(times: String, days: Int, changeDays: (In
             modifier = Modifier.fillMaxWidth().heightIn(min = MediSize.touch)) {
             Row(Modifier.padding(MediSpace.medium), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.weekdays), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.weekdays), style = MaterialTheme.typography.labelMedium, color = careColors.secondaryInk)
                     Text(daysText(days), style = MaterialTheme.typography.bodyLarge)
                 }
                 Icon(if (choosingDays) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null)
@@ -167,6 +167,6 @@ internal fun MedicationScheduleSection(times: String, days: Int, changeDays: (In
                 Text(stringResource(R.string.add_time), style = MaterialTheme.typography.labelMedium)
             }
         }
-        Text(stringResource(R.string.times_help), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(stringResource(R.string.times_help), style = MaterialTheme.typography.bodySmall, color = careColors.secondaryInk)
     }
 }

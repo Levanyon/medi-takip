@@ -15,3 +15,55 @@ dist/
 
 # Release signing material must never enter the repository (see docs/RELEASE.md).
 AndroidKeys/
+
+# Android/Windows local development state
+.cxx/
+.externalNativeBuild/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Credentials and signing material
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.mobileprovision
+google-services.json
+service-account*.json
+service_account*.json
+credentials.json
+secrets.properties
+
+# Generated packages, diagnostics and local databases
+*.apk
+*.aab
+*.apks
+*.idsig
+*.hprof
+*.log
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
+*.sqlite
+*.sqlite3
+*.sqlite-shm
+*.sqlite-wal
+*.sqlite3-shm
+*.sqlite3-wal
+
+# Private exports and backups (Room schemas and catalog JSON stay tracked)
+/private/
+/exports/
+/backups/
+*.medibackup
+MediTakip-*.json
+MediTakip-*.pdf
+meditakip-backup*.json
+meditakip_backup*.json
+meditakip-backup*.json.enc
+meditakip_backup*.json.enc

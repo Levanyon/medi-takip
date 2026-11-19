@@ -18,15 +18,15 @@ import com.levanyon.meditakip.R
 
 internal val Phase5Padding = PaddingValues(start = MediSpace.page, end = MediSpace.page, top = 28.dp, bottom = MediSpace.extraLarge)
 // Scoped Figma type roles inherit Phase 1 fonts and colors, as in People/Medication.
-internal val phase5Body @Composable get() = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp, lineHeight = 22.sp)
-internal val phase5Label @Composable get() = MaterialTheme.typography.labelMedium.copy(fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.Medium)
-internal val phase5Caption @Composable get() = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp, lineHeight = 14.sp)
+internal val phase5Body @Composable get() = MaterialTheme.typography.bodyLarge
+internal val phase5Label @Composable get() = MaterialTheme.typography.labelMedium
+internal val phase5Caption @Composable get() = MaterialTheme.typography.labelSmall
 
 @Composable internal fun Phase5Heading(title: String, subtitle: String, action: (@Composable () -> Unit)? = null) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MediSpace.medium)) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(MediSpace.tiny)) {
-            Text(title, style = MaterialTheme.typography.headlineLarge, modifier = Modifier.semantics { heading() })
-            Text(subtitle, style = phase5Body, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(title, style = MaterialTheme.typography.headlineMedium, modifier = Modifier.semantics { heading() })
+            Text(subtitle, style = phase5Body, color = careColors.secondaryInk)
         }
         action?.invoke()
     }
@@ -59,13 +59,13 @@ internal val phase5Caption @Composable get() = MaterialTheme.typography.labelSma
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MediSpace.small)) {
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(title, style = phase5Body)
-                        Text(subtitle, style = phase5Caption, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        if (stacked && value != null) Text(value, style = phase5Label, color = if (warning) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(subtitle, style = phase5Caption, color = careColors.secondaryInk)
+                        if (stacked && value != null) Text(value, style = phase5Label, color = if (warning) MaterialTheme.colorScheme.onTertiaryContainer else careColors.secondaryInk)
                     }
-                    if (!stacked && value != null) Text(value, style = phase5Label, color = if (warning) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (!stacked && value != null) Text(value, style = phase5Label, color = if (warning) MaterialTheme.colorScheme.onTertiaryContainer else careColors.secondaryInk)
                 }
             }
-            Icon(painterResource(R.drawable.ic_phase5_chevron), null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(painterResource(R.drawable.ic_phase5_chevron), null, Modifier.size(18.dp), tint = careColors.secondaryInk)
         }
     }
 }

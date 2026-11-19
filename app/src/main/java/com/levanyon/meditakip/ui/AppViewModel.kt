@@ -46,42 +46,75 @@ class AppViewModel(application: Application) : AndroidViewModel(application), Do
     val fileMessage = MutableStateFlow<String?>(null)
     val reportToShare = MutableStateFlow<Uri?>(null)
     val safetyCopyAvailable = MutableStateFlow(app.backups.safetyCopy.exists())
+    val exportDestination = MutableStateFlow<Uri?>(null)
+    val encryptedImport = MutableStateFlow<EncryptedBackup.Envelope?>(null)
 
-    private fun fileOperation(failure: Int, operation: suspend () -> Unit) {
+    private fun fileOperation(failure: Int, onFinish: () -> Unit = {}, operation: suspend () -> Unit) {
         if (fileBusy.value || saving.value || pending.value.isNotEmpty()) {
-            fileMessage.value = app.getString(R.string.backup_busy); return
+            onFinish(); fileMessage.value = app.getString(R.string.backup_busy); return
         }
         fileBusy.value = true
         viewModelScope.launch {
             try { operation() }
             catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
-                val message = if (e is BackupException) when (e.problem) {
+                val message = if (e is EncryptedBackupException) R.string.backup_unlock_failed else if (e is BackupException) when (e.problem) {
                     BackupProblem.NOT_A_BACKUP -> R.string.backup_not_a_backup
                     BackupProblem.TOO_NEW -> R.string.backup_too_new
                     BackupProblem.TOO_LARGE -> R.string.backup_too_large
                     BackupProblem.DAMAGED -> R.string.backup_damaged
                 } else failure
                 fileMessage.value = app.getString(message)
-            } finally { fileBusy.value = false; safetyCopyAvailable.value = app.backups.safetyCopy.exists() }
+            } finally { onFinish(); fileBusy.value = false; safetyCopyAvailable.value = app.backups.safetyCopy.exists() }
         }
     }
-    fun exportBackup(uri: Uri) = fileOperation(R.string.backup_save_failed) {
-        withContext(Dispatchers.IO) { requireNotNull(app.contentResolver.openOutputStream(uri, "wt")).use { app.backups.export(it) } }
-        fileMessage.value = app.getString(R.string.backup_saved)
+    fun exportBackup(uri: Uri) { exportDestination.value = uri }
+    private fun removeFailedExport(uri: Uri) {
+        // Only the newly created destination, never the imported source document.
+        val deleted = runCatching { android.provider.DocumentsContract.deleteDocument(app.contentResolver, uri) }.getOrDefault(false)
+        if (!deleted) runCatching { app.contentResolver.openOutputStream(uri, "wt")?.close() }
+    }
+    fun cancelExport() {
+        val uri = exportDestination.value ?: return
+        exportDestination.value = null
+        viewModelScope.launch(Dispatchers.IO) { removeFailedExport(uri) }
+    }
+    /** Takes ownership of this short-lived password array. No password survives the operation. */
+    fun encryptAndExport(password: CharArray) {
+        val uri = exportDestination.value ?: run { password.fill('\u0000'); return }
+        fileOperation(R.string.backup_save_failed, onFinish = { password.fill('\u0000'); exportDestination.value = null }) {
+            withContext(Dispatchers.IO) {
+                try {
+                    val encrypted = app.backups.encryptedExport(password)
+                    requireNotNull(app.contentResolver.openOutputStream(uri, "wt")).use { it.write(encrypted); it.flush() }
+                    app.preferences.lastBackupAt = System.currentTimeMillis()
+                } catch (e: Exception) { removeFailedExport(uri); throw e }
+            }
+            fileMessage.value = app.getString(R.string.backup_saved)
+        }
     }
     fun inspectBackup(uri: Uri) {
         backupPreview.value = null
+        encryptedImport.value = null
         fileOperation(R.string.backup_damaged) {
-            backupPreview.value = withContext(Dispatchers.IO) { app.backups.inspect(requireNotNull(app.contentResolver.openInputStream(uri))) }
+            when (val file = withContext(Dispatchers.IO) { app.backups.open(requireNotNull(app.contentResolver.openInputStream(uri))) }) {
+                is BackupImport.Legacy -> backupPreview.value = file.content
+                is BackupImport.Encrypted -> encryptedImport.value = file.envelope
+            }
+        }
+    }
+    fun unlockBackup(password: CharArray) {
+        val envelope = encryptedImport.value ?: run { password.fill('\u0000'); return }
+        fileOperation(R.string.backup_unlock_failed, onFinish = { password.fill('\u0000'); encryptedImport.value = null }) {
+            backupPreview.value = withContext(Dispatchers.IO) { envelope.open(password) }
         }
     }
     fun inspectSafetyCopy() = fileOperation(R.string.backup_damaged) {
-        backupPreview.value = withContext(Dispatchers.IO) { app.backups.inspect(android.util.AtomicFile(app.backups.safetyCopy).openRead()) }
+        backupPreview.value = withContext(Dispatchers.IO) { app.backups.inspectSafetyCopy() }
     }
     fun confirmRestore() {
         val content = backupPreview.value ?: return
-        fileOperation(R.string.backup_restore_failed) {
+        fileOperation(R.string.backup_restore_failed, onFinish = { backupPreview.value = null }) {
             withContext(Dispatchers.IO + kotlinx.coroutines.NonCancellable) {
                 app.reminders.restoreData { app.backups.restore(content) }
             }

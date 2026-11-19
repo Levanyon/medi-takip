@@ -27,7 +27,7 @@ android {
     namespace = "com.levanyon.meditakip"
     compileSdk = 36
     defaultConfig {
-        applicationId = "com.levanyon.meditakip"; minSdk = 26; targetSdk = 35; versionCode = 3; versionName = "1.2"
+        applicationId = "com.levanyon.meditakip"; minSdk = 26; targetSdk = 36; versionCode = 3; versionName = "1.2"
         testInstrumentationRunner = "com.levanyon.meditakip.data.ReportPdfDeviceTest"
         manifestPlaceholders["appLabel"] = "MediTakip"
     }

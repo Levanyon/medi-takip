@@ -27,7 +27,7 @@ import java.time.LocalDate
 @Composable internal fun HistoryFilterAction(open: () -> Unit) {
     FilledTonalIconButton(onClick = open, modifier = Modifier.size(MediSize.touch), shape = MaterialTheme.shapes.small,
         colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
-        Icon(painterResource(R.drawable.ic_phase5_filter), stringResource(R.string.history_filter), Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Icon(painterResource(R.drawable.ic_phase5_filter), stringResource(R.string.history_filter), Modifier.size(20.dp), tint = careColors.secondaryInk)
     }
 }
 
@@ -44,7 +44,7 @@ import java.time.LocalDate
 @Composable private fun HistoryChoice(label: String, selected: Boolean, choose: () -> Unit, compact: Boolean = false) {
     Surface(selected = selected, onClick = choose, shape = MaterialTheme.shapes.small,
         color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLow,
-        contentColor = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+        contentColor = if (selected) MaterialTheme.colorScheme.primary else careColors.secondaryInk,
         modifier = Modifier.widthIn(min = MediSize.touch, max = 240.dp).heightIn(min = MediSize.touch).semantics { contentDescription = label; role = Role.RadioButton }) {
         Box(Modifier.padding(horizontal = MediSpace.medium, vertical = MediSpace.small), contentAlignment = Alignment.Center) {
             Text(label, style = phase5Label, maxLines = if (compact) 2 else Int.MAX_VALUE, overflow = TextOverflow.Ellipsis)
@@ -57,12 +57,12 @@ import java.time.LocalDate
         Column(Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             AdaptivePair(leading = {
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(stringResource(R.string.history_seven), style = phase5Label, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.history_seven), style = phase5Label, color = careColors.secondaryInk)
                     Text(stringResource(R.string.history_summary, progress.completed, progress.total), style = MaterialTheme.typography.titleMedium)
                 }
             }, trailing = { StatusChip("${progress.percent}%", completed = true, showIcon = false) })
             LinearProgressIndicator(progress = { progress.fraction }, modifier = Modifier.fillMaxWidth().height(6.dp),
-                color = MaterialTheme.colorScheme.primary, trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                color = careColors.success, trackColor = careColors.progressTrack,
                 gapSize = 0.dp, drawStopIndicator = {})
         }
     }
@@ -91,7 +91,7 @@ import java.time.LocalDate
                     Text(dose.time.toString(), style = MaterialTheme.typography.titleMedium)
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(dose.schedule.name, style = phase5Body)
-                        Text(dose.personName, style = phase5Caption, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(dose.personName, style = phase5Caption, color = careColors.secondaryInk)
                     }
                     if (!stacked) HistoryState(state, dose.skipped)
                 }
@@ -103,8 +103,8 @@ import java.time.LocalDate
 
 @Composable private fun HistoryState(label: String, skipped: Boolean) {
     Surface(shape = MaterialTheme.shapes.extraSmall,
-        color = if (skipped) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.primaryContainer,
-        contentColor = if (skipped) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.primary) {
+        color = if (skipped) MaterialTheme.colorScheme.tertiaryContainer else careColors.successContainer,
+        contentColor = if (skipped) MaterialTheme.colorScheme.onTertiaryContainer else careColors.successInk) {
         Text(label, style = phase5Caption, modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp))
     }
 }
@@ -119,7 +119,7 @@ import java.time.LocalDate
                 }
                 Text(stringResource(if (filtered) R.string.history_filtered_empty else R.string.history_v2_empty), style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
                 Text(stringResource(if (filtered) R.string.history_filtered_body else R.string.history_v2_empty_body), style = phase5Body,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+                    color = careColors.secondaryInk, textAlign = TextAlign.Center)
             }
         }
     }
@@ -150,7 +150,7 @@ import java.time.LocalDate
                     }
                 }
             }
-            Text(stringResource(R.string.history_person_hint), style = phase5Caption, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.history_person_hint), style = phase5Caption, color = careColors.secondaryInk)
             Button(onClick = { apply(HistoryFilter(days, status)) }, shape = MaterialTheme.shapes.small, modifier = Modifier.fillMaxWidth().heightIn(min = MediSize.touch)) {
                 Text(stringResource(R.string.history_apply), style = phase5Label)
             }

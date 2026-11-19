@@ -51,22 +51,23 @@ class BackupTest {
         db = Room.inMemoryDatabaseBuilder(context, MediDatabase::class.java).allowMainThreadQueries().build()
         repo = Repository(db, clock)
         preferences = Preferences(context)
-        backups = Backups(repo, preferences, context.filesDir, "test", clock)
+        backups = Backups(repo, preferences, context.filesDir, "test", clock, safetyCipher = testSafetyCipher())
         repo.replaceAll(realistic)
         preferences.save(settings)
     }
     @After fun close() { db.close() }
-    private fun exportText() = ByteArrayOutputStream().also { runBlocking { backups.export(it) } }.toString(Charsets.UTF_8.name())
+    // Existing plaintext codec validation remains legacy compatibility coverage.
+    private fun exportText() = BackupCodec.encode(realistic, settings, clock.millis(), "test")
     private fun corrupt(change: (JSONObject) -> Unit): String = JSONObject(exportText()).also(change).toString()
     private fun problem(text: String): BackupProblem = try { BackupCodec.decode(text); fail("should be rejected"); throw AssertionError() } catch (e: BackupException) { e.problem }
 
     @Test fun roundTripRestoresIdenticalData() = runBlocking {
-        val text = exportText()
+        val text = ByteArrayOutputStream().also { backups.export(it, "portable test password".toCharArray()) }.toString(Charsets.UTF_8.name())
         assertEquals(clock.millis(), preferences.lastBackupAt)
         // Wipe, then restore into a different state.
         repo.replaceAll(Snapshot(listOf(PersonEntity("x", "Başka")), emptyList(), emptyList(), emptyList()))
         preferences.save(AppSettings())
-        val content = backups.inspect(ByteArrayInputStream(text.toByteArray(Charsets.UTF_8)))
+        val content = backups.inspect(ByteArrayInputStream(text.toByteArray(Charsets.UTF_8)), "portable test password".toCharArray())
         backups.restore(content)
         val after = repo.snapshot()
         assertEquals(realistic.people.toSet(), after.people.toSet())
@@ -89,7 +90,9 @@ class BackupTest {
         backups.safetyCopy.delete()
         backups.restore(BackupCodec.decode(text))
         assertTrue(backups.safetyCopy.exists())
-        assertEquals(3, BackupCodec.decode(backups.safetyCopy.readText()).snapshot.people.size)
+        assertEquals(3, backups.inspectSafetyCopy().snapshot.people.size)
+        assertFalse(backups.safetyCopy.readText().contains("Anne"))
+        assertFalse(backups.inspectSafetyCopy().legacyUnencrypted)
         assertTrue(preferences.snoozes.isEmpty()); assertTrue(preferences.lowStockNotified.isEmpty()); assertNull(preferences.lastPerson.value)
     }
     @Test fun rejectsFilesThatAreNotBackups() {
@@ -97,6 +100,13 @@ class BackupTest {
         assertEquals(BackupProblem.NOT_A_BACKUP, problem("""{"format":"other"}"""))
         assertEquals(BackupProblem.TOO_NEW, problem(corrupt { it.put("formatVersion", 99) }))
         assertEquals(BackupProblem.TOO_LARGE, problem(" ".repeat(BackupCodec.MAX_BYTES + 1)))
+    }
+
+    @Test fun existingPlaintextSafetyCopyMigratesWithoutLosingRecoveryData() {
+        backups.safetyCopy.writeText(exportText())
+        backups.migrateSafetyCopy()
+        assertFalse(backups.safetyCopy.readText().contains("Anne"))
+        assertEquals(realistic, backups.inspectSafetyCopy().snapshot)
     }
     @Test fun rejectsBrokenReferencesAndValues() {
         fun first(json: JSONObject, table: String) = json.getJSONArray(table).getJSONObject(0)
@@ -145,7 +155,7 @@ class BackupTest {
 
     @Test fun failedSafetyCopyLeavesDatabaseAndPreferencesUntouched() = runBlocking {
         val blocked = File(context.filesDir, "not-a-directory").apply { writeText("block") }
-        val unsafe = Backups(repo, preferences, blocked, "test", clock)
+        val unsafe = Backups(repo, preferences, blocked, "test", clock, safetyCipher = testSafetyCipher())
         val replacement = BackupContent(clock.millis(), Snapshot(), AppSettings())
         assertThrows(Exception::class.java) { runBlocking { unsafe.restore(replacement) } }
         assertEquals(realistic, repo.snapshot())
@@ -161,7 +171,7 @@ class BackupTest {
     @Test fun failedExportDoesNotAdvanceLastBackup() {
         preferences.lastBackupAt = 123L
         val output = object : java.io.OutputStream() { override fun write(b: Int) { throw java.io.IOException("full") } }
-        assertThrows(java.io.IOException::class.java) { runBlocking { backups.export(output) } }
+        assertThrows(java.io.IOException::class.java) { runBlocking { backups.export(output, "portable test password".toCharArray()) } }
         assertEquals(123L, preferences.lastBackupAt)
     }
 

@@ -39,16 +39,21 @@ object LockScreenNotifications {
         Icon.createWithResource(app, R.drawable.ic_medication), app.getString(R.string.action_taken), open(app, key))
         .apply { if (Build.VERSION.SDK_INT >= 31) setAuthenticationRequired(true) }.build()
 
-    fun publicVersion(app: MediApp, channel: String, text: String) = Notification.Builder(app, channel)
+    fun publicVersion(app: MediApp, channel: String, text: String, at: Instant? = null, now: Instant = Instant.now()) = Notification.Builder(app, channel)
         .setSmallIcon(R.drawable.ic_medication).setContentTitle("Sıradaki ilaç").setContentText(text)
+        .apply { at?.let { setWhen(it.toEpochMilli()); setShowWhen(true); setUsesChronometer(it > now); setChronometerCountDown(true) } }
         .setVisibility(Notification.VISIBILITY_PRIVATE).build()
 
-    fun refresh(app: MediApp, snapshot: Snapshot, now: Instant) {
+    fun refresh(app: MediApp, snapshot: Snapshot, now: Instant,
+        events: List<ReminderEvent> = ReminderPlan.events(snapshot, app.preferences.state.value, now, ZoneId.systemDefault(), app.preferences.snoozes)) {
         val manager = app.getSystemService(NotificationManager::class.java)
         val settings = app.preferences.lockScreen.value
-        val item = NextDose.next(snapshot, now.atZone(ZoneId.systemDefault()).toLocalDate())
+        val today = now.atZone(ZoneId.systemDefault()).toLocalDate()
+        // Project the existing plan; this status owns no scheduler or independent occurrence rules.
+        val item = events.asSequence().filter { it.kind == ReminderKind.FIRST && it.occurrence.date >= today }
+            .map { it.occurrence }.firstOrNull { NextDose.resolve(snapshot, it.key) != null }
         val permitted = Build.VERSION.SDK_INT < 33 || app.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
-        if (!settings.ongoing || !app.preferences.state.value.notifications || !manager.areNotificationsEnabled() || !permitted || item == null) {
+        if (!settings.visible || !app.preferences.state.value.notifications || !manager.areNotificationsEnabled() || !permitted || item == null) {
             manager.cancel(ID); return
         }
         manager.createNotificationChannel(NotificationChannel(CHANNEL, "Sıradaki doz", NotificationManager.IMPORTANCE_LOW).apply {
@@ -57,15 +62,20 @@ object LockScreenNotifications {
         })
         if (manager.getNotificationChannel(CHANNEL).importance == NotificationManager.IMPORTANCE_NONE) { manager.cancel(ID); return }
         val text = body(item, settings)
+        val scheduled = app.preferences.snoozes[item.key]?.let(Instant::ofEpochMilli)?.takeIf { it > now }
+            ?: item.instant(ZoneId.systemDefault())
         val notification = Notification.Builder(app, CHANNEL).setSmallIcon(R.drawable.ic_medication)
             .setContentTitle(title(item, settings)).setContentText(text).setStyle(Notification.BigTextStyle().bigText(text))
             .setContentIntent(open(app, item.key)).setVisibility(visibility(settings))
-            .setPublicVersion(publicVersion(app, CHANNEL, body(item, LockScreenSettings())))
-            .setOngoing(true).setOnlyAlertOnce(true).setShowWhen(false).setCategory(Notification.CATEGORY_REMINDER)
+            .setPublicVersion(publicVersion(app, CHANNEL, body(item, LockScreenSettings()), scheduled, now))
+            .setOngoing(settings.ongoing).setOnlyAlertOnce(true).setCategory(Notification.CATEGORY_REMINDER)
+            .setWhen(scheduled.toEpochMilli()).setShowWhen(true)
+            .setUsesChronometer(scheduled > now).setChronometerCountDown(true)
             // If Android delays the midnight refresh, yesterday's status must still disappear.
             .setTimeoutAfter(Duration.between(now, item.date.plusDays(1)
                 .atStartOfDay(ZoneId.systemDefault()).toInstant()).toMillis().coerceAtLeast(1))
-        if (settings.takenAction) notification.addAction(takenAction(app, item.key))
-        manager.notify(ID, notification.build())
+        if (settings.takenAction && item.date <= today) notification.addAction(takenAction(app, item.key))
+        // Permission can be revoked between the check and notify.
+        try { manager.notify(ID, notification.build()) } catch (_: SecurityException) { manager.cancel(ID) }
     }
 }

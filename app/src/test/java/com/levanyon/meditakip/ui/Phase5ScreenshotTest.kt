@@ -35,7 +35,9 @@ class Phase5ScreenshotTest(private val screen: String, private val dark: Boolean
         @JvmStatic @ParameterizedRobolectricTestRunner.Parameters(name = "{0}-dark={1}")
         fun cases() = listOf("history", "historyEmpty", "historyLongNames", "historyNarrow", "historyLargeFont", "filter", "filterLargeFont",
             "settings", "settingsAttention", "settingsNarrow", "settingsLargeFont", "restore", "restoreLargeFont",
-            "history360", "history412", "historyTablet", "settings360", "settings412", "settingsTablet")
+            "history360", "history412", "historyTablet", "settings360", "settings412", "settingsTablet",
+            "passwordExport", "passwordExportLargeFont", "passwordRestore", "passwordRestoreLargeFont",
+            "restoreLegacy", "restoreLegacyLargeFont")
             .flatMap { listOf(arrayOf<Any>(it, false), arrayOf<Any>(it, true)) }
     }
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
@@ -62,11 +64,11 @@ class Phase5ScreenshotTest(private val screen: String, private val dark: Boolean
                     Scaffold(containerColor = MaterialTheme.colorScheme.background, bottomBar = {
                         MediNavigationBar(listOf("Bugün", "Kişiler", "Geçmiş", "Ayarlar"),
                             listOf(Icons.Default.Today, Icons.Default.People, Icons.Default.CalendarMonth, Icons.Default.Settings),
-                            if (screen.startsWith("settings") || screen.startsWith("restore")) 3 else 2) {}
+                            if (screen.startsWith("settings") || screen.startsWith("restore") || screen.startsWith("password")) 3 else 2) {}
                     }) { padding ->
                         MediContent(Modifier.fillMaxSize().padding(padding)) {
                             when {
-                                screen.startsWith("settings") || screen.startsWith("restore") -> SettingsContent(AppSettings(), data.access(exact = screen != "settingsAttention"),
+                                screen.startsWith("settings") || screen.startsWith("restore") || screen.startsWith("password") -> SettingsContent(AppSettings(), data.access(exact = screen != "settingsAttention"),
                                     "1.2-debug", {}, {}) { BackupRows(false, {}, {}) }
                                 else -> HistoryScreen(when (screen) {
                                     "historyEmpty" -> data.snapshot.copy(logs = emptyList())
@@ -76,7 +78,8 @@ class Phase5ScreenshotTest(private val screen: String, private val dark: Boolean
                             }
                         }
                         if (screen.startsWith("filter")) HistoryFilterSheet(HistoryFilter(), {}, {})
-                        if (screen.startsWith("restore")) BackupPreview(BackupSummary(1_800_000_000_000, 2, 3, 5, data.today.minusDays(5), data.today), {}, {})
+                        if (screen.startsWith("restore")) BackupPreview(BackupSummary(1_800_000_000_000, 2, 3, 5, data.today.minusDays(5), data.today), {}, {}, screen.startsWith("restoreLegacy"))
+                        if (screen.startsWith("password")) BackupPasswordDialog(screen.startsWith("passwordExport"), {}, { it.fill('\u0000') })
                     }
                 }
             }
@@ -101,7 +104,11 @@ class Phase5ScreenshotTest(private val screen: String, private val dark: Boolean
             compose.onNodeWithText("Planlanan dozlar").assertIsDisplayed()
             save("$screen-bottom")
         }
-        if (!screen.startsWith("filter") && !screen.startsWith("restore")) {
+        if (screen.startsWith("password")) {
+            compose.onNodeWithText("İptal").performScrollTo().assertIsDisplayed()
+            save("$screen-actions")
+        }
+        if (!screen.startsWith("filter") && !screen.startsWith("restore") && !screen.startsWith("password")) {
             compose.onNode(hasText("Ayarlar") and isSelectable()).performScrollTo().assertIsDisplayed()
         }
     }

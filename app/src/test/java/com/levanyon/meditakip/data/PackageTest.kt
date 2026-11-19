@@ -100,7 +100,7 @@ class PackageTest {
         val before = repo.snapshot()
         val text = BackupCodec.encode(before, AppSettings(), System.currentTimeMillis(), "test")
         val decoded = BackupCodec.decode(text)
-        repo.replaceAll(Snapshot()); Backups(repo, Preferences(RuntimeEnvironment.getApplication()), RuntimeEnvironment.getApplication().filesDir, "test").restore(decoded)
+        repo.replaceAll(Snapshot()); Backups(repo, Preferences(RuntimeEnvironment.getApplication()), RuntimeEnvironment.getApplication().filesDir, "test", safetyCipher = testSafetyCipher()).restore(decoded)
         assertEquals(before, repo.snapshot())
         for (version in listOf(2, 3)) {
             val root = JSONObject(text).put("schemaVersion", version); root.remove("packages")

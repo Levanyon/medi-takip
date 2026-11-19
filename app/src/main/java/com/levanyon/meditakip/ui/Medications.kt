@@ -83,13 +83,13 @@ fun MedicationDetail(snapshot: Snapshot, medicationId: String, today: LocalDate,
             if (editable) item { PrimaryAction(stringResource(R.string.edit_medication), Icons.Default.Edit) { edit(person, schedule) } }
             // Archived: restore is the only action, and only once the person is active again.
             if (medication.archived) item {
-                if (person.archived) Text(stringResource(R.string.restore_person_first), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (person.archived) Text(stringResource(R.string.restore_person_first), style = MaterialTheme.typography.bodyLarge, color = careColors.secondaryInk)
                 else PrimaryAction(stringResource(R.string.restore), Icons.Default.Unarchive, action = restore)
             }
             item { SectionHeader(stringResource(R.string.last_seven_days)) }
-            if (matrix.rows.isEmpty()) item { Text(stringResource(R.string.empty_history_body), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            if (matrix.rows.isEmpty()) item { Text(stringResource(R.string.empty_history_body), color = careColors.secondaryInk) }
             else historyTable(matrix, today, scroll, available, sticky = false) { opened = it }
-            if (editable) item { Box(Modifier.padding(top = MediSpace.large)) { QuietAction(stringResource(R.string.archive_medication), Icons.Default.Archive, action = archive) } }
+            if (editable) item { Box(Modifier.padding(top = MediSpace.large)) { DangerAction(stringResource(R.string.archive_medication), archive) } }
         }
     }
     opened?.let { HistoryCellDetail(it, { opened = null }, today, corrections) }
@@ -111,7 +111,7 @@ fun MedicationDetail(snapshot: Snapshot, medicationId: String, today: LocalDate,
                 days?.let { Text(stringResource(R.string.stock_days, it), style = MaterialTheme.typography.bodyMedium) }
             }
         }
-        Text(stringResource(R.string.medication_threshold, StockPlan.format(medication.stockThreshold)), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(stringResource(R.string.medication_threshold, StockPlan.format(medication.stockThreshold)), style = MaterialTheme.typography.bodySmall, color = careColors.secondaryInk)
         if (low) MedicationStatusChip(stringResource(R.string.stock_low), true)
         if (editable) FilledTonalButton(onClick = add, shape = MaterialTheme.shapes.large, modifier = Modifier.fillMaxWidth().heightIn(min = MediSize.touch)) {
             Icon(Icons.Default.Add, null); Spacer(Modifier.width(MediSpace.small)); Text(stringResource(R.string.stock_add), style = MaterialTheme.typography.labelLarge)

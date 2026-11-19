@@ -30,7 +30,7 @@ import com.levanyon.meditakip.R
                     Box(Modifier.size(56.dp), contentAlignment = Alignment.Center) { Icon(painterResource(R.drawable.ic_phase5_restore), null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onTertiaryContainer) }
                 }
                 Text(stringResource(R.string.backup_restore_title), style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
-                Text(stringResource(R.string.restore_v2_body), style = phase5Body, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.restore_v2_body), style = phase5Body, color = careColors.secondaryInk)
                 details()
                 Surface(shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.tertiaryContainer) {
                     Text(stringResource(R.string.restore_v2_warning), style = phase5Label, color = MaterialTheme.colorScheme.onTertiaryContainer,

@@ -11,7 +11,8 @@ import java.time.Instant
 class ReminderLog(private val file: File) {
     data class Entry(val at: Long, val place: String, val message: String)
 
-    @Synchronized fun record(place: String, error: Throwable) = record(place, "${error::class.java.simpleName}: ${error.message.orEmpty()}")
+    // Provider/parser exception messages may contain SQL values, identifiers or document content.
+    @Synchronized fun record(place: String, error: Throwable) = record(place, error::class.java.simpleName)
 
     @Synchronized fun record(place: String, message: String) {
         val line = "${Instant.now().toEpochMilli()}\t${place.clean()}\t${message.clean().take(300)}"

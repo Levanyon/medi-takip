@@ -49,19 +49,19 @@ import com.levanyon.meditakip.data.AppSettings
                 stringResource(if (access.state.exact) R.string.status_on else R.string.settings_permission_needed), warning = !access.state.exact, enabled = !access.busy) {
                 if (access.state.exact) openReminderStatus() else access.exact()
             }
+            SettingsDivider()
+            SettingsRow(stringResource(R.string.v3_lock_title), stringResource(R.string.v3_lock_subtitle), R.drawable.ic_phase5_lock, onClick = openLockScreen)
         } }
-        item { SettingsSection(stringResource(R.string.appearance)) {
-            SettingsRow(stringResource(R.string.settings_theme), stringResource(R.string.settings_theme_help), R.drawable.ic_phase5_moon,
-                stringResource(when (value.theme) { "Light" -> R.string.theme_light; "Dark" -> R.string.theme_dark; else -> R.string.theme_system })) { dialog = "theme" }
-        } }
-        item { SettingsSection("Kilit ekranı") {
-            SettingsRow("Kilit ekranında göster", "Sıradaki dozu görünür tut, ayrıntıyı sen seç.", R.drawable.ic_phase5_lock, onClick = openLockScreen)
-        } }
+        item { SectionHeader(stringResource(R.string.v3_data_security)) }
         item { backup() }
         item { SettingsSection(stringResource(R.string.settings_privacy)) {
             SettingsRow(stringResource(R.string.settings_data), stringResource(R.string.settings_data_help), R.drawable.ic_phase5_lock) { dialog = "privacy" }
             SettingsDivider()
             SettingsRow(stringResource(R.string.about_section), stringResource(R.string.settings_about_help), R.drawable.ic_phase5_info, version) { dialog = "about" }
+        } }
+        item { SettingsSection(stringResource(R.string.appearance)) {
+            SettingsRow(stringResource(R.string.settings_theme), stringResource(R.string.settings_theme_help), R.drawable.ic_phase5_moon,
+                stringResource(when (value.theme) { "Light" -> R.string.theme_light; "Dark" -> R.string.theme_dark; else -> R.string.theme_system })) { dialog = "theme" }
         } }
     }
     when (dialog) {

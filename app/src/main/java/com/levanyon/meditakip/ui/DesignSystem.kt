@@ -41,8 +41,8 @@ object MediSize {
 /** Controls are distinct from cards; only identity avatars use circles. */
 object MediRadius {
     val detail = 10.dp
-    val control = 14.dp
-    val card = 20.dp
+    val control = 16.dp
+    val card = 16.dp
     val prominent = 24.dp
     val dialog = 28.dp
 }
@@ -108,7 +108,7 @@ fun AdaptivePair(leading: @Composable () -> Unit, trailing: @Composable () -> Un
 }
 
 /**
- * Floating navigation shell used throughout MediTakip V2.
+ * Floating navigation shell used throughout MediTakip V3.
  *
  * The outer spacing separates navigation from the content and device edge;
  * the low-contrast border keeps it crisp in both light and dark themes.
@@ -123,7 +123,7 @@ fun MediNavigationBar(
 ) {
     val textMeasurer = rememberTextMeasurer()
     val density = LocalDensity.current
-    val labelStyle = MaterialTheme.typography.labelMedium
+    val labelStyle = MaterialTheme.typography.labelSmall
     val labelWidth = labels.maxOf { textMeasurer.measure(it, style = labelStyle).size.width }
     val itemWidth = maxOf(MediSize.touch, with(density) { labelWidth.toDp() } + MediSpace.regular)
     val barHeight = with(density) { labelStyle.lineHeight.toDp() } + MediSize.icon + MediSpace.extraLarge
@@ -135,7 +135,7 @@ fun MediNavigationBar(
     ) {
         Surface(
             shape = MaterialTheme.shapes.extraLarge,
-            color = MaterialTheme.colorScheme.surfaceContainerLow,
+            color = MaterialTheme.colorScheme.surfaceContainer,
             border = mediSurfaceBorder(),
             tonalElevation = MediElevation.flat,
             shadowElevation = MediElevation.navigation
@@ -164,8 +164,8 @@ fun MediNavigationBar(
                                     indicatorColor = MaterialTheme.colorScheme.primaryContainer,
                                     selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
                                     selectedTextColor = MaterialTheme.colorScheme.primary,
-                                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                    unselectedIconColor = careColors.secondaryInk,
+                                    unselectedTextColor = careColors.secondaryInk
                                 )
                             )
                         }

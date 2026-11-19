@@ -67,7 +67,7 @@ import java.time.*
     val appDetails = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))
     LazyColumn(contentPadding = ScreenPadding, verticalArrangement = Arrangement.spacedBy(MediSpace.medium)) {
         item { BackHeader(stringResource(R.string.reminder_status_title), back) }
-        item { Text(stringResource(R.string.reminder_status_subtitle), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        item { Text(stringResource(R.string.reminder_status_subtitle), style = MaterialTheme.typography.bodyLarge, color = careColors.secondaryInk) }
         item { OverallStatus(health) }
         item {
             StatusRow(stringResource(R.string.status_reminders_label), health.remindersOn, stringResource(R.string.status_on), stringResource(R.string.status_off), Icons.Default.NotificationsActive) {
@@ -111,7 +111,7 @@ import java.time.*
                 Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainerLow) {
                     Column(Modifier.fillMaxWidth().padding(MediSpace.page), verticalArrangement = Arrangement.spacedBy(MediSpace.tiny)) {
                         Text(reminderTimeText(problem.at), style = MaterialTheme.typography.titleSmall)
-                        Text("${problem.place} · ${problem.message}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("${problem.place} · ${problem.message}", style = MaterialTheme.typography.bodyMedium, color = careColors.secondaryInk)
                         QuietAction(stringResource(R.string.clear_problems)) { app.reminderLog.clear() }
                     }
                 }
@@ -143,12 +143,12 @@ import java.time.*
     Surface(shape = MaterialTheme.shapes.large, color = scheme.surfaceContainerLow) {
         Column(Modifier.fillMaxWidth().padding(MediSpace.regular), verticalArrangement = Arrangement.spacedBy(MediSpace.small)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MediSpace.medium)) {
-                Icon(icon, null, tint = scheme.onSurfaceVariant)
+                Icon(icon, null, tint = careColors.secondaryInk)
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(label, style = MaterialTheme.typography.titleMedium)
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MediSpace.tiny)) {
                         Icon(if (ok) Icons.Default.CheckCircle else if (advisory) Icons.Default.Info else Icons.Default.Error, null, Modifier.size(18.dp), tint = if (ok) scheme.primary else scheme.tertiary)
-                        Text(if (ok) okText else problemText, style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant)
+                        Text(if (ok) okText else problemText, style = MaterialTheme.typography.bodyMedium, color = careColors.secondaryInk)
                     }
                 }
             }

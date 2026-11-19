@@ -195,7 +195,7 @@ private const val SETTINGS = 3
         val editing = snapshot.schedules.find { it.id == editScheduleId }
         val medication = editing?.let { e -> snapshot.medications.find { it.id == e.medicationId } }
         val stock = medication?.let { StockSettings(it.stockEnabled, it.stockQuantity, it.stockPerDose, it.stockThreshold) }
-        key(id, editScheduleId) { MedicationEditor(person, editing, { medicationPersonId = null; if (setupPending) vm.finishSetup() }, initialStock = stock, initialPrescription = medication?.let(Prescription::from) ?: Prescription()) { schedule, stockSettings, prescription ->
+        key(id, editScheduleId) { MedicationEditor(person, editing, { medicationPersonId = null; if (setupPending) vm.finishSetup() }, initialStock = stock, initialPrescription = medication?.let(Prescription::from) ?: Prescription(), archive = editing?.let { { medicationId = it.medicationId; archiveMedication = true } }) { schedule, stockSettings, prescription ->
             vm.medication(person, editing?.medicationId, schedule, stockSettings, prescription) { medicationPersonId = null; if (setupPending) finishFirstSetup() }
         } }
     } }
@@ -209,7 +209,7 @@ private const val SETTINGS = 3
     if (archivePerson) snapshot.people.find { it.id == editPersonId }?.let { person -> ArchiveConfirmation(stringResource(R.string.archive_person_message, person.name), { archivePerson = false }) {
         vm.archivePerson(person) { archivePerson = false; personEditor = false; personId = null; if (selectedPerson == person.id) vm.selectPerson(null) }
     } }
-    if (archiveMedication) snapshot.schedules.lastOrNull { it.medicationId == medicationId }?.let { schedule -> ArchiveConfirmation(stringResource(R.string.archive_medication_message, schedule.name), { archiveMedication = false }) { vm.archiveMedication(schedule.medicationId) { archiveMedication = false; medicationId = null } } }
+    if (archiveMedication) snapshot.schedules.lastOrNull { it.medicationId == medicationId }?.let { schedule -> ArchiveConfirmation(stringResource(R.string.archive_medication_message, schedule.name), { archiveMedication = false }) { vm.archiveMedication(schedule.medicationId) { archiveMedication = false; medicationId = null; medicationPersonId = null } } }
 }
 
 /**
@@ -249,28 +249,28 @@ private const val SETTINGS = 3
             val tabs = people.map { p -> PersonTab(p.id, p.name, entries.count { it.personId == p.id && !it.handled }) }
             PersonSelector(tabs, person.id, selectPerson, tonal = true)
         }
-        if (warning != null) item { TodayAlert(stringResource(warning), Icons.Default.NotificationsOff, stringResource(R.string.fix), openSettings) }
-        // Existing low-stock information only; no prescription or treatment calculations.
-        items(StockPlan.low(snapshot, person.id), key = { "low:${it.medicationId}" }) { low -> LowStockBanner(low) { openMedication(low.medicationId) } }
         if (doses.isEmpty()) {
             val hasMedication = snapshot.medications.any { it.personId == person.id && !it.archived }
             item { EmptyState(stringResource(if (hasMedication) R.string.today_no_doses else R.string.empty_medications_title),
                 stringResource(if (hasMedication) R.string.empty_today_person_body else R.string.empty_person_medications_body, person.name), Icons.Default.EventAvailable,
                 stringResource(R.string.add_medication_for, person.name)) { addMedication(person.id) } }
         } else {
-            item { DaySummary(DailyProgress.from(doses), focus) }
             if (focus != null) item(key = focus.key) {
                 ScheduledDoseRow(focus, editable = true, status = status(focus), highlight = true,
-                    onTaken = { markTaken(focus) }, onUndo = { vm.undo(focus) }, onSkip = { skip(focus) }, onChangeTime = { changeTime(focus) })
+                    onTaken = { markTaken(focus) }, onUndo = { vm.undo(focus) }, onSkip = { skip(focus) }, onChangeTime = { changeTime(focus) },
+                    onDetail = { openMedication(focus.schedule.medicationId) }, now = now)
             } else item {
                 EmptyState(stringResource(R.string.today_complete_title), stringResource(R.string.today_complete_body), Icons.Default.Check)
             }
+            item { DaySummary(DailyProgress.from(doses), focus) }
             if (timeline.isNotEmpty()) item { SectionHeader(stringResource(R.string.today_timeline)) }
             items(timeline, key = { it.key }) { item ->
                 ScheduledDoseRow(item, editable = true, status = status(item), highlight = false,
                     onTaken = { markTaken(item) }, onUndo = { vm.undo(item) }, onSkip = { skip(item) }, onChangeTime = { changeTime(item) })
             }
         }
+        if (warning != null) item { TodayAlert(stringResource(warning), Icons.Default.NotificationsOff, stringResource(R.string.fix), openSettings) }
+        items(StockPlan.low(snapshot, person.id), key = { "low:${it.medicationId}" }) { low -> LowStockBanner(low) { openMedication(low.medicationId) } }
         item { Box(Modifier.padding(top = MediSpace.small)) { QuietAction(stringResource(R.string.edit_medications, person.name), Icons.Default.Edit) { manage(person.id) } } }
         if (BackupReminder.due(snapshot.people.isNotEmpty(), lastBackup, vm.backupStartedAt, now.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli())) item {
             QuietAction(stringResource(if (lastBackup == 0L) R.string.backup_first_due else R.string.backup_due), Icons.Default.Save, action = openBackup)

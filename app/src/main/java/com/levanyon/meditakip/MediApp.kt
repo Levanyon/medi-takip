@@ -3,6 +3,7 @@ package com.levanyon.meditakip
 import android.app.Application
 import androidx.room.Room
 import com.levanyon.meditakip.data.*
+import kotlinx.coroutines.launch
 
 class MediApp : Application() {
     // Explicit migrations only: an unknown version makes Room fail loudly instead of wiping data.
@@ -13,5 +14,11 @@ class MediApp : Application() {
     val reminderLog by lazy { com.levanyon.meditakip.reminders.ReminderLog(java.io.File(filesDir, "reminder-log.txt")) }
     val reminders by lazy { com.levanyon.meditakip.reminders.Reminders(this) }
     val backups by lazy { Backups(repository, preferences, filesDir, packageManager.getPackageInfo(packageName, 0).versionName ?: "") }
-    override fun onCreate() { super.onCreate(); reminders.channel() }
+    override fun onCreate() {
+        super.onCreate(); reminders.channel()
+        reminders.scope.launch {
+            try { backups.migrateSafetyCopy() }
+            catch (e: Exception) { reminderLog.record("safety-copy-migration", e) }
+        }
+    }
 }

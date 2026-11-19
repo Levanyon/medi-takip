@@ -1,6 +1,10 @@
 package com.levanyon.meditakip.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -32,6 +36,10 @@ import com.levanyon.meditakip.R
 
 @Composable internal fun OnboardingPage(step: OnboardingStep, index: Int, count: Int, recovery: Boolean = false,
     busy: Boolean = false, primary: () -> Unit, secondary: () -> Unit) {
+    if (step == OnboardingStep.WELCOME) {
+        HumanCareWelcome(busy, count, primary)
+        return
+    }
     val title = when {
         recovery && step == OnboardingStep.NOTIFICATIONS -> R.string.onboarding_notification_denied_title
         recovery -> R.string.onboarding_exact_denied_title
@@ -84,7 +92,7 @@ import com.levanyon.meditakip.R
                     Text(stringResource(title), Modifier.widthIn(max = 320.dp).semantics { heading() },
                         style = MaterialTheme.typography.headlineSmall.copy(fontSize = 24.sp), textAlign = TextAlign.Center)
                     Text(stringResource(body), Modifier.widthIn(max = 316.dp), style = phase5Body,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+                        color = careColors.secondaryInk, textAlign = TextAlign.Center)
                     if (recovery) RecoveryHint()
                     else if (step != OnboardingStep.READY) PrivacyHint(stringResource(when (step) {
                         OnboardingStep.WELCOME -> R.string.onboarding_privacy
@@ -117,6 +125,45 @@ import com.levanyon.meditakip.R
     }
 }
 
+@Composable private fun HumanCareWelcome(busy: Boolean, count: Int, start: () -> Unit) {
+    MediContent(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).safeDrawingPadding()) {
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(MediSpace.page),
+            verticalArrangement = Arrangement.spacedBy(MediSpace.large)) {
+            OnboardingProgress(0, count, visible = true)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MediSpace.medium)) {
+                Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary) {
+                    Icon(Icons.Default.Medication, null, Modifier.padding(MediSpace.medium).size(MediSize.icon), tint = MaterialTheme.colorScheme.onPrimary)
+                }
+                Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleLarge)
+            }
+            Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.primaryContainer) {
+                Box(Modifier.fillMaxWidth().heightIn(min = 180.dp), contentAlignment = Alignment.Center) {
+                    Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.primary) {
+                        Icon(Icons.Default.Add, null, Modifier.padding(MediSpace.extraLarge).size(48.dp), tint = MaterialTheme.colorScheme.onPrimary)
+                    }
+                }
+            }
+            Text(stringResource(R.string.v3_welcome_title), style = MaterialTheme.typography.headlineLarge, modifier = Modifier.semantics { heading() })
+            Text(stringResource(R.string.v3_welcome_body), style = MaterialTheme.typography.bodyLarge, color = careColors.secondaryInk)
+            PrivacyHint(stringResource(R.string.onboarding_privacy))
+            listOf(Triple(R.string.v3_clear, R.string.v3_clear_help, Icons.Default.Check),
+                Triple(R.string.v3_timely, R.string.v3_timely_help, Icons.Default.Schedule),
+                Triple(R.string.v3_private_feature, R.string.v3_private_feature_help, Icons.Default.Lock)).forEach { (title, body, icon) ->
+                Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surface) {
+                    Row(Modifier.fillMaxWidth().padding(MediSpace.regular), horizontalArrangement = Arrangement.spacedBy(MediSpace.medium)) {
+                        Icon(icon, null, tint = MaterialTheme.colorScheme.primary)
+                        Column(Modifier.weight(1f)) {
+                            Text(stringResource(title), style = MaterialTheme.typography.labelLarge)
+                            Text(stringResource(body), style = MaterialTheme.typography.labelSmall, color = careColors.secondaryInk)
+                        }
+                    }
+                }
+            }
+            PrimaryAction(stringResource(R.string.onboarding_start), Icons.AutoMirrored.Filled.ArrowForward, !busy, start)
+        }
+    }
+}
+
 @Composable private fun OnboardingProgress(index: Int, count: Int, visible: Boolean) {
     val label = stringResource(R.string.step_count, index + 1, count)
     Row(Modifier.height(7.dp).semantics {
@@ -135,7 +182,7 @@ import com.levanyon.meditakip.R
         Row(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(MediSpace.small)) {
             Icon(painterResource(R.drawable.ic_phase6_shield), null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
-            Text(text, Modifier.weight(1f, fill = false), style = phase5Caption, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(text, Modifier.weight(1f, fill = false), style = phase5Caption, color = careColors.secondaryInk)
         }
     }
 }
@@ -144,10 +191,10 @@ import com.levanyon.meditakip.R
     Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surfaceContainerLow) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Icon(painterResource(R.drawable.ic_phase6_settings), null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(painterResource(R.drawable.ic_phase6_settings), null, Modifier.size(20.dp), tint = careColors.secondaryInk)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(stringResource(R.string.onboarding_recovery_hint), style = phase5Label)
-                Text(stringResource(R.string.onboarding_recovery_path), style = phase5Caption, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.onboarding_recovery_path), style = phase5Caption, color = careColors.secondaryInk)
             }
         }
     }

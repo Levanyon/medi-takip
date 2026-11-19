@@ -64,10 +64,10 @@ class Phase9NotificationTest {
         assertEquals(Notification.VISIBILITY_PUBLIC, current().visibility)
         assertFalse(text(current().publicVersion).contains(schedule.name)); assertFalse(text(current().publicVersion).contains(person.name))
     }
-    @Test fun masterOffRequestsSecretButRetainsShadeStatus() {
+    @Test fun masterOffCancelsNextDoseStatus() {
+        post()
         app.preferences.saveLockScreen(LockScreenSettings(visible = false, detailed = true)); post()
-        assertEquals(Notification.VISIBILITY_SECRET, current().visibility)
-        assertTrue(current().flags and Notification.FLAG_ONGOING_EVENT != 0)
+        assertFalse(manager.activeNotifications.any { it.id == LockScreenNotifications.ID })
     }
     @Test fun ongoingIsSilentAndOnlyAlertsOnce() {
         post(); post()
@@ -78,12 +78,25 @@ class Phase9NotificationTest {
         assertNull(channel.sound); assertFalse(channel.shouldVibrate())
         assertEquals(1, manager.activeNotifications.size)
     }
+    @Test fun nativeCountdownUsesTheScheduledTimestamp() {
+        post()
+        assertEquals(NextDose.next(data, date)!!.instant(ZoneId.systemDefault()).toEpochMilli(), current().`when`)
+        assertTrue(current().extras.getBoolean(Notification.EXTRA_SHOW_CHRONOMETER))
+        assertTrue(current().extras.getBoolean(Notification.EXTRA_CHRONOMETER_COUNT_DOWN))
+    }
+    @Test fun disabledStatusChannelFailsSafely() {
+        post()
+        manager.createNotificationChannel(NotificationChannel(LockScreenNotifications.CHANNEL, "Status", NotificationManager.IMPORTANCE_NONE))
+        post()
+        assertTrue(manager.activeNotifications.isEmpty())
+    }
     @Test fun noOccurrenceCancelsPreviouslyPostedStatus() {
         post(); post(Snapshot()); assertTrue(manager.activeNotifications.isEmpty())
     }
-    @Test fun disablingPersistentStatusCancelsIt() {
+    @Test fun disablingOngoingKeepsDismissibleStatus() {
         post(); app.preferences.saveLockScreen(LockScreenSettings(ongoing = false)); post()
-        assertTrue(manager.activeNotifications.isEmpty())
+        assertEquals(0, current().flags and Notification.FLAG_ONGOING_EVENT)
+        assertEquals(1, manager.activeNotifications.size)
     }
     @Test fun disablingRemindersCancelsStatus() {
         post(); app.preferences.save(AppSettings(notifications = false)); post()
@@ -315,7 +328,7 @@ class Phase9NotificationTest {
         val ids = manager.activeNotifications.map { it.tag to it.id }.toSet()
         for (detailed in listOf(true, false)) {
             app.preferences.saveLockScreen(LockScreenSettings(visible = false, detailed = detailed)); reminders.rebuild(false)
-            assertEquals(ids, manager.activeNotifications.map { it.tag to it.id }.toSet())
+            assertEquals(ids.filter { it.second != LockScreenNotifications.ID }.toSet(), manager.activeNotifications.map { it.tag to it.id }.toSet())
             manager.activeNotifications.forEach {
                 assertEquals(Notification.VISIBILITY_SECRET, it.notification.visibility)
                 assertIdentityFree(it.notification.publicVersion)
@@ -323,6 +336,86 @@ class Phase9NotificationTest {
             }
         }
     }
+
+    private suspend fun restoreFixture(snapshot: Snapshot) {
+        val backups = Backups(app.repository, app.preferences, app.filesDir, "test", Clock.fixed(now, ZoneId.systemDefault()), safetyCipher = testSafetyCipher())
+        val json = BackupCodec.encode(snapshot, AppSettings(), now.toEpochMilli(), "test")
+        backups.restore(backups.inspect(json.byteInputStream()))
+    }
+
+    @Test fun restoredColonScheduleIdsResolveAndRefreshFromCurrentModel() = runBlocking {
+        val restored = data.copy(schedules = listOf(schedule.copy(id = "s:legacy:import")))
+        restoreFixture(restored)
+        val item = NextDose.next(app.repository.snapshot(), date)!!
+        assertEquals("s:legacy:import", item.schedule.id)
+        assertEquals(item, NextDose.resolve(app.repository.snapshot(), item.key))
+        assertNull(NextDose.resolve(restored, "${item.key}:junk"))
+        val due = item.instant(ZoneId.systemDefault())
+        val reminders = Reminders(app, Clock.fixed(due, ZoneId.systemDefault()))
+        app.preferences.saveLockScreen(LockScreenSettings(detailed = true))
+        app.preferences.nextAlarm = due.toEpochMilli(); reminders.rebuild(true)
+        assertTrue(text(notification(Reminders.DOSE_ID)).contains(schedule.name))
+        val before = app.repository.snapshot()
+        app.preferences.saveLockScreen(LockScreenSettings()); reminders.rebuild(false)
+        assertEquals(item.key, manager.activeNotifications.single { it.id == Reminders.DOSE_ID }.tag)
+        assertIdentityFree(notification(Reminders.DOSE_ID))
+        assertIdentityFree(notification(Reminders.DOSE_ID).publicVersion)
+        assertEquals(before, app.repository.snapshot())
+        app.database.dao().saveSchedule(restored.schedules.single().copy(name = "Current imported medication"))
+        app.preferences.saveLockScreen(LockScreenSettings(detailed = true)); reminders.rebuild(false)
+        assertTrue(text(notification(Reminders.DOSE_ID)).contains("Current imported medication"))
+        assertFalse(text(notification(Reminders.DOSE_ID)).contains(schedule.name))
+    }
+
+    private suspend fun unresolvedRestoredDosesAreCanceled(validCount: Int) {
+        val invalidSchedules = listOf(schedule.copy(times = "12:00"),
+            schedule.copy(id = "s2", medicationId = "m2", times = "12:00"))
+        val validSchedules = (1..validCount).map {
+            schedule.copy(id = "valid$it", medicationId = "vm$it", name = "Current medicine $it", times = "12:00")
+        }
+        val fixture = Snapshot(listOf(person, PersonEntity("q", "Current owner")),
+            listOf(MedicationEntity("m", "p"), MedicationEntity("m2", "p")) +
+                (1..validCount).map { MedicationEntity("vm$it", "q") }, invalidSchedules + validSchedules)
+        restoreFixture(fixture)
+        val due = date.atTime(12, 0).atZone(ZoneId.systemDefault()).toInstant()
+        val reminders = Reminders(app, Clock.fixed(due, ZoneId.systemDefault()))
+        app.preferences.saveLockScreen(LockScreenSettings(detailed = true))
+        app.preferences.nextAlarm = due.toEpochMilli(); reminders.rebuild(true)
+        val oldDose = notification(Reminders.DOSE_ID)
+        assertTrue(text(oldDose).contains(person.name)); assertTrue(text(oldDose).contains(schedule.name))
+        assertTrue(text(oldDose).contains(schedule.dose))
+        assertTrue(text(notification(Reminders.SUMMARY_ID)).contains(schedule.name))
+
+        // Accepted restore data: the planner still sees these doses, but the resolver rejects their archived owner.
+        restoreFixture(fixture.copy(people = listOf(person.copy(archived = true), PersonEntity("q", "Current owner"))))
+        val before = app.repository.snapshot()
+        val unresolvedKeys = Schedule.day(before, date).filter { it.personId == "p" }.map { it.key }.toSet()
+        unresolvedKeys.forEach { assertNull(NextDose.resolve(before, it)) }
+        assertTrue(ReminderPlan.events(before, AppSettings(), due, ZoneId.systemDefault()).map { it.occurrence.key }.containsAll(unresolvedKeys))
+        val dispatches = app.database.dao().dispatches()
+        for (detailed in listOf(false, true, false)) {
+            app.preferences.saveLockScreen(LockScreenSettings(detailed = detailed)); reminders.rebuild(false)
+            val posted = manager.activeNotifications
+            assertFalse(posted.any { it.id == Reminders.DOSE_ID && it.tag in unresolvedKeys })
+            assertEquals(validCount, posted.count { it.id == Reminders.DOSE_ID })
+            assertEquals(if (validCount >= 2) 1 else 0, posted.count { it.id == Reminders.SUMMARY_ID })
+            posted.forEach {
+                val content = text(it.notification) + it.notification.extras.getCharSequenceArray(Notification.EXTRA_TEXT_LINES)?.joinToString() + it.notification.sortKey
+                assertFalse(content.contains(person.name)); assertFalse(content.contains(schedule.name))
+                assertFalse(content.contains(text(oldDose)))
+                if (!detailed) assertIdentityFree(it.notification)
+                assertIdentityFree(it.notification.publicVersion)
+            }
+            if (detailed && validCount > 0) assertTrue(text(notification(Reminders.DOSE_ID)).contains("Current medicine"))
+            if (detailed && validCount >= 2) assertTrue(text(notification(Reminders.SUMMARY_ID)).contains("Current medicine"))
+            assertEquals(before, app.repository.snapshot())
+            assertEquals(dispatches, app.database.dao().dispatches())
+        }
+    }
+
+    @Test fun unresolvedRestoredDosesLeaveNoNotificationOrSummary() = runBlocking { unresolvedRestoredDosesAreCanceled(0) }
+    @Test fun unresolvedRestoredDosesDoNotHideTheOneRemainingValidDose() = runBlocking { unresolvedRestoredDosesAreCanceled(1) }
+    @Test fun unresolvedRestoredDosesCannotContributeToSurvivingSummary() = runBlocking { unresolvedRestoredDosesAreCanceled(2) }
 
     @Test fun timezoneAndDstKeepScheduleInstantSemantics() {
         val spring = LocalDate.of(2026, 3, 29)

@@ -50,7 +50,7 @@ import java.util.UUID
 }
 
 @OptIn(ExperimentalLayoutApi::class)
-@Composable fun MedicationEditor(person: PersonEntity, schedule: MedicationScheduleEntity?, dismiss: () -> Unit, initialStock: StockSettings? = null, initialPrescription: Prescription = Prescription(), scannedName: String? = null, scannedGtin: String? = null, save: (MedicationScheduleEntity, StockSettings, Prescription) -> Unit) {
+@Composable fun MedicationEditor(person: PersonEntity, schedule: MedicationScheduleEntity?, dismiss: () -> Unit, initialStock: StockSettings? = null, initialPrescription: Prescription = Prescription(), scannedName: String? = null, scannedGtin: String? = null, archive: (() -> Unit)? = null, save: (MedicationScheduleEntity, StockSettings, Prescription) -> Unit) {
     val context = rememberPickerContext()
     var name by rememberSaveable { mutableStateOf(schedule?.name ?: scannedName ?: "") }
     var scanReviewed by rememberSaveable { mutableStateOf(false) }
@@ -136,14 +136,14 @@ import java.util.UUID
                     OutlinedTextField(leadDays, { leadDays = it }, label = { Text(stringResource(R.string.renewal_lead_days)) },
                         singleLine = true, shape = MaterialTheme.shapes.small,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
-                    Text(stringResource(R.string.renewal_time_hint), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.renewal_time_hint), style = MaterialTheme.typography.bodyMedium, color = careColors.secondaryInk)
                 }
             }
         }
         MedicationInfoGroup(stringResource(R.string.medication_stock)) {
             // Optional stock tracking (D3.7): decimals allowed ("0,5"); an empty threshold means no warning.
             SettingToggle(stringResource(R.string.stock_tracking), stockEnabled) { stockEnabled = it }
-            Text(stringResource(R.string.stock_tracking_help), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.stock_tracking_help), style = MaterialTheme.typography.bodyMedium, color = careColors.secondaryInk)
             if (stockEnabled) {
                 NumberField(stockQuantity, { stockQuantity = it }, stringResource(R.string.stock_quantity))
                 NumberField(stockPerDose, { stockPerDose = it }, stringResource(R.string.stock_per_dose))
@@ -153,8 +153,8 @@ import java.util.UUID
         if (scannedGtin != null) ScanSafety()
         OutlinedTextField(note, { note = it }, label = { Text(stringResource(R.string.notes_optional)) }, shape = MaterialTheme.shapes.small, minLines = 2, modifier = Modifier.fillMaxWidth())
         SettingToggle(stringResource(R.string.active_toggle), active) { active = it }
-        Text(stringResource(R.string.active_toggle_help), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        if (schedule != null) Text(stringResource(R.string.schedule_edit_note), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(stringResource(R.string.active_toggle_help), style = MaterialTheme.typography.bodyMedium, color = careColors.secondaryInk)
+        if (schedule != null) Text(stringResource(R.string.schedule_edit_note), style = MaterialTheme.typography.bodyMedium, color = careColors.secondaryInk)
         if (scannedGtin != null) SettingToggle(stringResource(R.string.scan_review_confirm), scanReviewed) { scanReviewed = it }
         error?.let { Text(stringResource(it), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }) }
@@ -173,6 +173,7 @@ import java.util.UUID
             }
             if (error == null) save(MedicationScheduleEntity("", "", person.name, name.trim(), dose.trim(), note, times, days, start, end, active, LocalDate.now().toEpochDay()), if (stockEnabled) stockSettings(stockQuantity, stockPerDose, stockThreshold)!! else stockStart.copy(enabled = false), Prescription(written, renewal, renewalEnabled, leadDays.toInt()))
         }
+        archive?.let { DangerAction(stringResource(R.string.archive_medication), it) }
     }
 }
 
@@ -219,11 +220,11 @@ private fun stockSettings(quantity: String, perDose: String, threshold: String):
     }
 }
 
-/** Archiving is reversible (Arşivden Çıkar), so the confirmation uses the normal primary action, not a red one. */
+/** Archive keeps the existing explicit confirmation and uses the V3 destructive role. */
 @Composable fun ArchiveConfirmation(message: String, dismiss: () -> Unit, confirm: () -> Unit) {
     MediDialog(stringResource(R.string.archive_title), dismiss) {
         Text(message, style = MaterialTheme.typography.bodyLarge)
-        PrimaryAction(stringResource(R.string.archive), Icons.Default.Archive, action = confirm)
+        DangerAction(stringResource(R.string.archive), confirm)
         CancelAction(dismiss)
     }
 }

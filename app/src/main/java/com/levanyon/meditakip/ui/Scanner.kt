@@ -92,7 +92,7 @@ fun ScannerFlow(snapshot: Snapshot, person: PersonEntity, catalog: MedicationCat
                     Icon(painterResource(R.drawable.ic_scan_check), null, Modifier.padding(18.dp).size(28.dp), tint = MaterialTheme.colorScheme.primary)
                 }
                 Text(stringResource(if (lookup == null) R.string.scan_loading else if (product != null) R.string.scan_found else R.string.scan_unknown), style = MaterialTheme.typography.headlineSmall)
-                Text(stringResource(R.string.scan_decoded), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.scan_decoded), color = careColors.secondaryInk)
             }
             MedicationInfoGroup {
                 if (product != null) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -150,28 +150,29 @@ fun ScannerFlow(snapshot: Snapshot, person: PersonEntity, catalog: MedicationCat
                 Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 28.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) { Icon(painterResource(R.drawable.ic_scan_camera), null, Modifier.padding(22.dp).size(28.dp), tint = MaterialTheme.colorScheme.primary) }
                     Text(stringResource(R.string.scan_permission_title), style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
-                    Text(stringResource(when(access.state) { CameraAccess.UNAVAILABLE -> R.string.scan_unavailable; CameraAccess.DENIED, CameraAccess.SETTINGS -> R.string.scan_denied; else -> R.string.scan_permission_body }), textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(when(access.state) { CameraAccess.UNAVAILABLE -> R.string.scan_unavailable; CameraAccess.DENIED, CameraAccess.SETTINGS -> R.string.scan_denied; else -> R.string.scan_permission_body }), textAlign = TextAlign.Center, color = careColors.secondaryInk)
+                    Text(stringResource(R.string.v3_camera_why), style = MaterialTheme.typography.bodyMedium)
                     Text(stringResource(R.string.scan_no_recording), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge)
                     if (access.state != CameraAccess.UNAVAILABLE) ScanButton(stringResource(if (access.state == CameraAccess.SETTINGS) R.string.scan_settings else R.string.scan_enable), R.drawable.ic_scan_camera, enabled = !access.busy, fullWidth = false, action = access.request)
                 }
             }
             QuietAction(stringResource(R.string.scan_manual_want)) { manual = true }
         } else {
-            Text(stringResource(R.string.scan_frame), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.scan_frame), color = careColors.secondaryInk)
             var torch by remember { mutableStateOf(false) }
             var flash by remember { mutableStateOf(false) }
             var ready by remember { mutableStateOf(false) }
             var failed by remember { mutableStateOf(false) }
             val previewHeight = 470.dp + 180.dp * (LocalDensity.current.fontScale - 1f).coerceAtLeast(0f)
-            Box(Modifier.fillMaxWidth().height(previewHeight).clip(RoundedCornerShape(24.dp)).background(Color(0xFF0B120F))) {
+            Box(Modifier.fillMaxWidth().height(previewHeight).clip(RoundedCornerShape(24.dp)).background(Color(0xFF121017))) {
                 if (!failed) preview(Modifier.matchParentSize(), torch, ::decode, { flash = it }, { ready = true }, { failed = true })
                 Column(Modifier.fillMaxSize().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Spacer(Modifier.height(68.dp))
-                    Box(Modifier.align(Alignment.Start).width(230.dp).height(2.dp).background(Color(0xCC8FD6BD)))
+                    Box(Modifier.align(Alignment.Start).width(230.dp).height(2.dp).background(MaterialTheme.colorScheme.secondary))
                     Spacer(Modifier.height(28.dp))
-                    Icon(painterResource(R.drawable.ic_scan_corners), null, Modifier.widthIn(max = 270.dp).fillMaxWidth().height(180.dp), tint = Color.Unspecified)
+                    Icon(painterResource(R.drawable.ic_scan_corners), null, Modifier.widthIn(max = 270.dp).fillMaxWidth().height(180.dp), tint = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.height(30.dp))
-                    Text(stringResource(if (failed) R.string.scan_unavailable else if (!ready) R.string.scan_starting else R.string.scan_distance), color = Color(0xFFB8C7BF), textAlign = TextAlign.Center, style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(if (failed) R.string.scan_unavailable else if (!ready) R.string.scan_starting else R.string.scan_distance), color = Color(0xFFF6F2F8), textAlign = TextAlign.Center, style = MaterialTheme.typography.bodySmall)
                     Spacer(Modifier.height(16.dp))
                     IconButton(onClick = { torch = !torch }, enabled = ready && flash && !failed, modifier = Modifier.size(48.dp).background(Color.White.copy(alpha = .1f), CircleShape)) {
                         Icon(painterResource(R.drawable.ic_scan_flash), stringResource(if (flash) R.string.scan_flash else R.string.scan_no_flash), Modifier.size(22.dp), tint = Color.White)
@@ -180,7 +181,7 @@ fun ScannerFlow(snapshot: Snapshot, person: PersonEntity, catalog: MedicationCat
             }
             if (invalid) Text(stringResource(R.string.scan_invalid), color = MaterialTheme.colorScheme.error)
             ScanButton(stringResource(R.string.scan_manual), secondary = true, grouped = true) { manual = true }
-            Text(stringResource(R.string.scan_camera_only), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.scan_camera_only), style = MaterialTheme.typography.labelSmall, color = careColors.secondaryInk)
         }
     }
 }
@@ -188,7 +189,7 @@ fun ScannerFlow(snapshot: Snapshot, person: PersonEntity, catalog: MedicationCat
 @Composable internal fun ScanHeader(back: () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         IconButton(back, Modifier.size(48.dp).background(MaterialTheme.colorScheme.surfaceContainerLow, RoundedCornerShape(14.dp))) {
-            Icon(painterResource(R.drawable.ic_scan_back), stringResource(R.string.back), Modifier.size(24.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(painterResource(R.drawable.ic_scan_back), stringResource(R.string.back), Modifier.size(24.dp), tint = careColors.secondaryInk)
         }
         Text(stringResource(R.string.scan_title), style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() })
     }
@@ -202,10 +203,10 @@ fun ScannerFlow(snapshot: Snapshot, person: PersonEntity, catalog: MedicationCat
     }
 }
 @Composable internal fun ScanSafety() {
-    Surface(color = MaterialTheme.colorScheme.surfaceContainerLow, shape = RoundedCornerShape(16.dp)) {
+    Surface(color = MaterialTheme.colorScheme.tertiaryContainer, shape = MaterialTheme.shapes.medium) {
         Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-            Text(stringResource(R.string.scan_safety), style = MaterialTheme.typography.labelLarge)
-            Text(stringResource(R.string.scan_safety_body), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.v3_scan_dose_warning), style = MaterialTheme.typography.labelLarge)
+            Text(stringResource(R.string.scan_safety_body), color = careColors.secondaryInk)
         }
     }
 }

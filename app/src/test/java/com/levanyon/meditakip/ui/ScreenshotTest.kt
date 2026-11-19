@@ -117,7 +117,7 @@ class ScreenshotTest(private val screen: String, private val dark: Boolean) {
         compose.waitForIdle()
         saveScreenshot(screen)
         if (screen == "todayLargeFont") {
-            compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Sıradaki"))
+            compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Sıradaki doz"))
             compose.waitForIdle()
             saveScreenshot("todayLargeFont-hero")
         }

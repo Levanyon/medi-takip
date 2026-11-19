@@ -17,7 +17,7 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 
-/** Verify the redesigned rows still launch the real local-document contracts, never a new format. */
+/** Verify the existing Settings rows retain local-document contracts and encrypted-export guidance. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], application = MediApp::class, qualifiers = "w390dp-h844dp-mdpi")
 class SettingsFileFlowTest {
@@ -32,15 +32,15 @@ class SettingsFileFlowTest {
         compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(text))
         compose.onNodeWithText(text).performClick()
     }
-    @Test fun exportPreservesPrivacyGuidanceAndLocalJsonContract() {
+    @Test fun exportPreservesPrivacyGuidanceAndLocalEncryptedContract() {
         show(); clickRow("Yedek oluştur")
-        compose.onNodeWithText("Yedek sağlık bilgilerinizi içerir ve şifrelenmez.", substring = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Yedek sağlık bilgilerinizi içerir ve parolanızla şifrelenir.", substring = true).performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Yedek Oluştur").performScrollTo().performClick()
         val intent = shadowOf(compose.activity).nextStartedActivityForResult.intent
         assertEquals(Intent.ACTION_CREATE_DOCUMENT, intent.action)
-        assertEquals("application/json", intent.type)
+        assertEquals("application/octet-stream", intent.type)
         assertTrue(intent.getBooleanExtra(Intent.EXTRA_LOCAL_ONLY, false))
-        assertTrue(intent.getStringExtra(Intent.EXTRA_TITLE)!!.endsWith(".json"))
+        assertTrue(intent.getStringExtra(Intent.EXTRA_TITLE)!!.endsWith(".medibackup"))
     }
     @Test fun restoreOpensExistingLocalPickerWithoutRestoring() {
         show(); clickRow("Yedekten geri yükle")

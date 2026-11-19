@@ -23,7 +23,7 @@ import java.time.LocalDate
 data class BackupSummary(val exportedAt: Long, val people: Int, val medications: Int, val records: Int, val firstDate: LocalDate?, val lastDate: LocalDate?)
 
 /** A validated backup, ready to replace all data. */
-data class BackupContent(val exportedAt: Long, val snapshot: Snapshot, val settings: AppSettings) {
+data class BackupContent(val exportedAt: Long, val snapshot: Snapshot, val settings: AppSettings, val legacyUnencrypted: Boolean = true) {
     val summary get() = BackupSummary(exportedAt, snapshot.people.size, snapshot.medications.size, snapshot.logs.size,
         snapshot.logs.minOfOrNull { it.date }?.let(LocalDate::ofEpochDay), snapshot.logs.maxOfOrNull { it.date }?.let(LocalDate::ofEpochDay))
 }
@@ -82,7 +82,7 @@ object BackupCodec {
     }
 
     // org.json accepts malformed JSON (comments, trailing data and coercions). Reject these first.
-    private fun validateJson(text: String) {
+    internal fun validateJson(text: String) {
         JsonReader(StringReader(text)).use { reader ->
             reader.isLenient = false
             fun value(depth: Int) {
@@ -224,33 +224,75 @@ object BackupCodec {
  * Export, inspect and restore (DECISIONS D4.2/D4.3). Restoring first keeps a private safety copy of the
  * current data, then replaces everything in one transaction, then resets device-local runtime state.
  */
-class Backups(private val repository: Repository, private val preferences: Preferences, private val filesDir: File, private val appVersion: String, private val clock: Clock = Clock.systemUTC()) {
+class Backups(private val repository: Repository, private val preferences: Preferences, private val filesDir: File, private val appVersion: String, private val clock: Clock = Clock.systemUTC(), private val safetyCipher: SafetyCopyCipher = SafetyCopyCipher()) {
+    // Keep the existing path so an older safety copy can be migrated without losing recovery data.
     val safetyCopy get() = File(filesDir, "before-restore.json")
 
-    suspend fun export(output: OutputStream) {
-        val text = BackupCodec.encode(repository.snapshot(), preferences.state.value, clock.millis(), appVersion)
-        require(text.toByteArray(Charsets.UTF_8).size <= BackupCodec.MAX_BYTES) { "Backup exceeds import limit" }
-        output.bufferedWriter(Charsets.UTF_8).use { it.write(text) }
+    @Synchronized fun inspectSafetyCopy(): BackupContent {
+        migrateSafetyCopy()
+        val bytes = AtomicFile(safetyCopy).openRead().use { it.readNBytesCompat(safetyCipher.maxBytes + 1) }
+        val plain = safetyCipher.open(bytes)
+        return try { BackupCodec.decode(plain.toString(Charsets.UTF_8)).copy(legacyUnencrypted = false) }
+        finally { plain.fill(0) }
+    }
+
+    /** Atomic replacement retains the previous recovery file if encryption or verification fails. */
+    @Synchronized fun migrateSafetyCopy() {
+        val file = AtomicFile(safetyCopy)
+        if (!safetyCopy.exists() && !File(safetyCopy.path + ".bak").exists()) return
+        val bytes = file.openRead().use { it.readNBytesCompat(safetyCipher.maxBytes + 1) }
+        try {
+            if (bytes.firstOrNull { it.toInt().toChar() !in " \r\n\t" } == '{'.code.toByte()) {
+                BackupCodec.decode(bytes.toString(Charsets.UTF_8))
+                writeSafetyCopy(bytes)
+            }
+        } finally { bytes.fill(0) }
+    }
+
+    @Synchronized private fun writeSafetyCopy(plain: ByteArray) {
+        val encrypted = safetyCipher.seal(plain)
+        val verified = safetyCipher.open(encrypted)
+        try { check(verified.contentEquals(plain)) } finally { verified.fill(0) }
+        val file = AtomicFile(safetyCopy)
+        val stream = file.startWrite()
+        try { stream.write(encrypted); file.finishWrite(stream) }
+        catch (e: Exception) { file.failWrite(stream); throw e }
+        check(file.openRead().use { it.readNBytesCompat(safetyCipher.maxBytes + 1) }.contentEquals(encrypted))
+    }
+
+    suspend fun export(output: OutputStream, password: CharArray) {
+        val bytes = encryptedExport(password)
+        output.use { it.write(bytes); it.flush() }
         preferences.lastBackupAt = clock.millis()
     }
 
-    fun inspect(input: InputStream): BackupContent {
-        val bytes = input.use { it.readNBytesCompat(BackupCodec.MAX_BYTES + 1) }
-        if (bytes.size > BackupCodec.MAX_BYTES) throw BackupException(BackupProblem.TOO_LARGE, "${bytes.size} bytes")
-        return BackupCodec.decode(bytes.toString(Charsets.UTF_8))
+    suspend fun encryptedExport(password: CharArray): ByteArray {
+        val plain = BackupCodec.encode(repository.snapshot(), preferences.state.value, clock.millis(), appVersion).toByteArray(Charsets.UTF_8)
+        return try { EncryptedBackup.seal(plain, password) } finally { plain.fill(0) }
+    }
+
+    fun open(input: InputStream): BackupImport {
+        val bytes = input.use { it.readNBytesCompat(EncryptedBackup.MAX_FILE_BYTES + 1) }
+        try {
+            if (bytes.size > EncryptedBackup.MAX_FILE_BYTES) throw EncryptedBackupException()
+            val text = bytes.toString(Charsets.UTF_8)
+            val format = try { BackupCodec.validateJson(text); JSONObject(text).optString("format") } catch (_: Exception) { throw EncryptedBackupException() }
+            return if (format == BackupCodec.FORMAT) BackupImport.Legacy(BackupCodec.decode(text))
+            else BackupImport.Encrypted(EncryptedBackup.parse(text))
+        } finally { bytes.fill(0) }
+    }
+
+    fun inspect(input: InputStream, password: CharArray? = null): BackupContent = when (val file = open(input)) {
+        is BackupImport.Legacy -> file.content
+        is BackupImport.Encrypted -> file.envelope.open(password ?: throw EncryptedBackupException())
     }
 
     suspend fun restore(content: BackupContent) = withContext(NonCancellable) {
         // Validate again at the write boundary, including callers other than the document picker.
         BackupCodec.decode(BackupCodec.encode(content.snapshot, content.settings, content.exportedAt, appVersion))
         repository.replaceAll(content.snapshot) { current ->
-            val text = BackupCodec.encode(current, preferences.state.value, clock.millis(), appVersion)
-            require(text.toByteArray(Charsets.UTF_8).size <= BackupCodec.MAX_BYTES) { "Safety copy exceeds import limit" }
-            val file = AtomicFile(safetyCopy)
-            val stream = file.startWrite()
-            try { stream.write(text.toByteArray(Charsets.UTF_8)); file.finishWrite(stream) }
-            catch (e: Exception) { file.failWrite(stream); throw e }
-            check(file.openRead().use { it.readBytes() }.contentEquals(text.toByteArray(Charsets.UTF_8))) { "Safety copy could not be verified" }
+            val plain = BackupCodec.encode(current, preferences.state.value, clock.millis(), appVersion).toByteArray(Charsets.UTF_8)
+            try { writeSafetyCopy(plain) } finally { plain.fill(0) }
         }
         preferences.save(content.settings)
         preferences.snoozes = emptyMap()

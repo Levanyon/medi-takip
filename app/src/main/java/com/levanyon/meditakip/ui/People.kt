@@ -34,7 +34,8 @@ fun PeopleScreen(snapshot: Snapshot, open: (String) -> Unit, today: LocalDate, a
         } else {
             items(people, key = { it.id }) { person ->
                 PersonSummaryCard(person, current.count { owners[it.medicationId] == person.id && it.active },
-                    DailyProgress.from(doses[person.id].orEmpty())) { open(person.id) }
+                    DailyProgress.from(doses[person.id].orEmpty()), next = snapshot.medications.filter { it.personId == person.id }
+                        .mapNotNull { NextDose.forMedication(snapshot, it.id, today) }.minWithOrNull(compareBy({ it.date }, { it.minute }))) { open(person.id) }
             }
         }
         if (archived.isNotEmpty()) {
@@ -63,22 +64,31 @@ fun PersonDetail(
     LazyColumn(contentPadding = PeoplePadding, verticalArrangement = Arrangement.spacedBy(MediSpace.page)) {
         item { PersonHeader(person, active.size, back) }
         if (person.note.isNotBlank()) item {
-            Text(person.note, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(person.note, style = MaterialTheme.typography.bodyLarge, color = careColors.secondaryInk)
         }
         if (person.archived) {
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(MediSpace.medium)) {
                     StatusChip(stringResource(R.string.archived), icon = Icons.Default.Archive)
-                    Text(stringResource(R.string.archived_person_body), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.archived_person_body), style = MaterialTheme.typography.bodyLarge, color = careColors.secondaryInk)
                     PrimaryAction(stringResource(R.string.restore), Icons.Default.Unarchive, action = restore)
                 }
             }
         } else {
             // No fake 0/0 progress: an empty person follows the approved empty composition.
-            if (progress.total > 0 || medications.isNotEmpty()) item { PersonTodaySummary(progress) }
+            val next = owned.mapNotNull { NextDose.forMedication(snapshot, it.id, today) }.minWithOrNull(compareBy({ it.date }, { it.minute }))
+            if (next != null) item {
+                Surface(onClick = { openMedication(next.schedule.medicationId) }, shape = MaterialTheme.shapes.large, color = careColors.accentSoft) {
+                    Column(Modifier.fillMaxWidth().padding(MediSpace.regular), verticalArrangement = Arrangement.spacedBy(MediSpace.small)) {
+                        Text(stringResource(R.string.next_label), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium)
+                        Text("${next.time} · ${next.schedule.name}", style = MaterialTheme.typography.titleMedium)
+                        if (next.date != today) Text(TurkishFormat.date(next.date), style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+            } else if (progress.total > 0 || medications.isNotEmpty()) item { PersonTodaySummary(progress) }
             item { PersonMedicationActions(addMedication, scan) }
             if (medications.isEmpty()) item { PersonMedicationsEmptyState() }
-            if (active.isNotEmpty()) item { PersonMedicationGroup(active, lowStock, openMedication) }
+            if (active.isNotEmpty()) item { PersonMedicationGroup(active, lowStock, openMedication, owned.associateBy { it.id }) }
             // Existing stopped medications remain reachable, without calling them active.
             if (inactive.isNotEmpty()) {
                 item { SectionHeader(stringResource(R.string.person_inactive_medications)) }

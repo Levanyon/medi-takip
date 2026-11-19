@@ -72,7 +72,8 @@ class TodayRedesignTest(private val dark: Boolean) {
     }
     private fun reach(text: String) {
         compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(text))
-        compose.onNodeWithText(text).assertIsDisplayed()
+        // A large-font hero can exceed the viewport; also scroll to its actual child.
+        compose.onNodeWithText(text).performScrollTo().assertIsDisplayed()
     }
     private fun textFits(text: String) {
         val results = mutableListOf<TextLayoutResult>()
@@ -94,7 +95,7 @@ class TodayRedesignTest(private val dark: Boolean) {
         reach("Kişi Ekle")
         compose.onNodeWithText("Kişi Ekle").performClick()
         assertTrue(added)
-        compose.onNodeWithText("Sıradaki").assertDoesNotExist()
+        compose.onNodeWithText("Sıradaki doz").assertDoesNotExist()
     }
 
     @Test fun noMedicationOffersCreationForSelectedPerson() {
@@ -113,14 +114,14 @@ class TodayRedesignTest(private val dark: Boolean) {
         reach("Bugün için planlanan ilaç yok.")
         compose.onNodeWithText("Henüz ilaç eklenmemiş").assertDoesNotExist()
         compose.onNodeWithText("Bugün tamamlandı").assertDoesNotExist()
-        compose.onNodeWithText("Sıradaki").assertDoesNotExist()
+        compose.onNodeWithText("Sıradaki doz").assertDoesNotExist()
     }
 
     @Test fun upcomingHeroPrecedesCompletedTimelineAndKeepsNoteAndTimeChange() {
         var changed: Occurrence? = null
         show { TodayScreen(fixture.copy(logs = listOf(log(480))), date.atTime(12, 0), "p", {}, viewModel(), {}, {}, {}, {}, changeTime = { changed = it }) }
-        reach("Sıradaki")
-        compose.onNodeWithText("Sıradaki").assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
+        reach("Sıradaki doz")
+        compose.onNodeWithText("Sıradaki doz").assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
         compose.onNodeWithText("19:30").assertIsDisplayed()
         textFits("19:30")
         reach("Tok karnına")
@@ -158,7 +159,7 @@ class TodayRedesignTest(private val dark: Boolean) {
         compose.onNodeWithText("Atla").performClick()
         assertEquals(1170, skipped?.minute)
         reach("Bugün tamamlandı")
-        compose.onNodeWithText("Sıradaki").assertDoesNotExist()
+        compose.onNodeWithText("Sıradaki doz").assertDoesNotExist()
         reach("Atlandı")
         reach("Not: Dışarıdaydım")
         reach("Geri Al")
@@ -170,7 +171,7 @@ class TodayRedesignTest(private val dark: Boolean) {
         reach("2 / 2 tamamlandı")
         reach("Bugün tamamlandı")
         reach("Planlanan tüm ilaçlar işlendi.")
-        compose.onNodeWithText("Sıradaki").assertDoesNotExist()
+        compose.onNodeWithText("Sıradaki doz").assertDoesNotExist()
         compose.onNodeWithText("İçildi").assertDoesNotExist()
         reach("✓ İçildi • 19:33")
     }

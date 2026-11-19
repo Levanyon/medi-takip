@@ -34,14 +34,14 @@ val ScreenPadding = PaddingValues(start = MediSpace.page, end = MediSpace.page, 
 
 @Composable fun ScreenHeading(title: String, subtitle: String? = null) {
     Column(verticalArrangement = Arrangement.spacedBy(MediSpace.tiny), modifier = Modifier.padding(top = MediSpace.small, bottom = MediSpace.tiny)) {
-        Text(title, style = MaterialTheme.typography.headlineLarge, modifier = Modifier.semantics { heading() })
-        subtitle?.let { Text(it, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        Text(title, style = MaterialTheme.typography.headlineMedium, modifier = Modifier.semantics { heading() })
+        subtitle?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = careColors.secondaryInk) }
     }
 }
 @Composable fun SectionHeader(title: String, subtitle: String? = null) {
     Column(Modifier.padding(top = MediSpace.medium, bottom = MediSpace.tiny), verticalArrangement = Arrangement.spacedBy(MediSpace.tiny)) {
-        Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
-        subtitle?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        Text(title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { heading() })
+        subtitle?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = careColors.secondaryInk) }
     }
 }
 @Composable fun BackHeader(title: String, back: () -> Unit) {
@@ -75,7 +75,7 @@ val ScreenPadding = PaddingValues(start = MediSpace.page, end = MediSpace.page, 
         Column(Modifier.padding(horizontal = MediSpace.large, vertical = MediSpace.extraLarge), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(MediSpace.regular)) {
             Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.primaryContainer) { Icon(icon, null, Modifier.padding(MediSpace.regular).size(MediSize.featureIcon), tint = MaterialTheme.colorScheme.onPrimaryContainer) }
             Text(title, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center, modifier = Modifier.semantics { heading() })
-            Text(body, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+            Text(body, style = MaterialTheme.typography.bodyLarge, color = careColors.secondaryInk, textAlign = TextAlign.Center)
             if (action != null && actionLabel != null) PrimaryAction(actionLabel, action = action)
         }
     }
@@ -90,8 +90,8 @@ val ScreenPadding = PaddingValues(start = MediSpace.page, end = MediSpace.page, 
     }
 }
 @Composable fun StatusChip(label: String, completed: Boolean = false, showIcon: Boolean = true, icon: ImageVector? = null) {
-    Surface(shape = MaterialTheme.shapes.extraSmall, color = if (completed) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
-        contentColor = if (completed) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant) {
+    Surface(shape = CircleShape, color = if (completed) careColors.successContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
+        contentColor = if (completed) careColors.successInk else careColors.secondaryInk) {
         Row(Modifier.padding(horizontal = MediSpace.medium, vertical = MediSpace.small), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MediSpace.small)) {
             if (showIcon) Icon(icon ?: if (completed) Icons.Default.CheckCircle else Icons.Default.Schedule, null, Modifier.size(MediSize.statusIcon))
             Text(label, style = MaterialTheme.typography.labelMedium)
@@ -143,14 +143,16 @@ data class PersonTab(val id: String, val name: String, val remaining: Int = 0, v
 @Composable fun DaySummary(progress: DailyProgress, next: Occurrence?) {
     val fraction by animateFloatAsState(progress.fraction, animationSpec = tween(MediMotion.progressMillis), label = "progress")
     val summary = stringResource(R.string.completed_fraction, progress.completed, progress.total)
-    Column(Modifier.padding(vertical = MediSpace.small), verticalArrangement = Arrangement.spacedBy(MediSpace.small)) {
+    Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface, border = mediSurfaceBorder()) {
+    Column(Modifier.padding(MediSpace.regular), verticalArrangement = Arrangement.spacedBy(MediSpace.small)) {
         AdaptivePair(
-            leading = { Text(stringResource(R.string.today_medications), style = MaterialTheme.typography.titleSmall, modifier = Modifier.semantics { heading() }) },
-            trailing = { Text(summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            leading = { Text(stringResource(R.string.v3_daily_progress), style = MaterialTheme.typography.titleSmall, modifier = Modifier.semantics { heading() }) },
+            trailing = { Text(summary, style = MaterialTheme.typography.bodySmall, color = careColors.secondaryInk) }
         )
         LinearProgressIndicator(progress = { fraction }, modifier = Modifier.fillMaxWidth().height(MediSpace.tiny).semantics { contentDescription = summary },
-            color = MaterialTheme.colorScheme.primary, trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            color = careColors.success, trackColor = careColors.progressTrack,
             gapSize = 0.dp, drawStopIndicator = {})
+    }
     }
 }
 
@@ -166,29 +168,32 @@ fun ScheduledDoseRow(
     item: Occurrence, editable: Boolean = false, busy: Boolean = false, status: DoseStatus = defaultStatus(item, editable),
     highlight: Boolean = status == DoseStatus.NEXT, last: Boolean = true,
     onTaken: () -> Unit = {}, onUndo: () -> Unit = {}, onSkip: () -> Unit = {}, onChangeTime: () -> Unit = {},
+    onDetail: (() -> Unit)? = null, now: java.time.LocalDateTime? = null,
 ) {
     if (highlight && !item.handled) {
-        NextDoseHero(item, status) {
-            if (editable) DoseActions(item, true, busy, onTaken, onUndo, onSkip, onChangeTime)
+        NextDoseHero(item, status, now) {
+            if (editable) DoseActions(item, true, busy, onTaken, onUndo, onSkip, onChangeTime, onDetail)
         }
         return
     }
     val scheme = MaterialTheme.colorScheme
-    Column(Modifier.fillMaxWidth().padding(vertical = MediSpace.small), verticalArrangement = Arrangement.spacedBy(MediSpace.tiny)) {
+    Surface(shape = MaterialTheme.shapes.medium, color = scheme.surface, border = mediSurfaceBorder()) {
+    Column(Modifier.fillMaxWidth().padding(MediSpace.regular), verticalArrangement = Arrangement.spacedBy(MediSpace.tiny)) {
         AdaptivePair(
-            leading = { Text(item.time.toString(), style = MaterialTheme.typography.headlineSmall, color = if (item.handled) scheme.onSurfaceVariant else scheme.onSurface) },
+            leading = { Text(item.time.toString(), style = MaterialTheme.typography.headlineSmall, color = if (item.handled) careColors.secondaryInk else scheme.onSurface) },
             trailing = { DoseStatusLabel(status, item) }
         )
-        Text(item.schedule.name, style = MaterialTheme.typography.titleMedium, color = if (item.handled) scheme.onSurfaceVariant else scheme.onSurface)
-        Text(item.schedule.dose, style = MaterialTheme.typography.bodyLarge, color = scheme.onSurfaceVariant)
-        if (item.schedule.note.isNotBlank() && !item.handled) Text(item.schedule.note, style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant)
-        if (item.skipped && !item.note.isNullOrBlank()) Text(stringResource(R.string.skipped_note, item.note), style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant)
+        Text(item.schedule.name, style = MaterialTheme.typography.titleMedium, color = if (item.handled) careColors.secondaryInk else scheme.onSurface)
+        Text(item.schedule.dose, style = MaterialTheme.typography.bodyLarge, color = careColors.secondaryInk)
+        if (item.schedule.note.isNotBlank() && !item.handled) Text(item.schedule.note, style = MaterialTheme.typography.bodyMedium, color = careColors.secondaryInk)
+        if (item.skipped && !item.note.isNullOrBlank()) Text(stringResource(R.string.skipped_note, item.note), style = MaterialTheme.typography.bodyMedium, color = careColors.secondaryInk)
         if (editable) DoseActions(item, false, busy, onTaken, onUndo, onSkip, onChangeTime)
+    }
     }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
-@Composable private fun DoseActions(item: Occurrence, highlight: Boolean, busy: Boolean, onTaken: () -> Unit, onUndo: () -> Unit, onSkip: () -> Unit, onChangeTime: () -> Unit) {
+@Composable private fun DoseActions(item: Occurrence, highlight: Boolean, busy: Boolean, onTaken: () -> Unit, onUndo: () -> Unit, onSkip: () -> Unit, onChangeTime: () -> Unit, onDetail: (() -> Unit)? = null) {
     val undoDescription = stringResource(R.string.undo_action_description, item.personName, item.schedule.name, item.time.toString())
     if (item.handled) {
         // Quiet, text-only secondary actions: one line at normal sizes, wrapping (never clipping) at large fonts.
@@ -209,12 +214,19 @@ fun ScheduledDoseRow(
             val takenDescription = stringResource(R.string.dose_action_description, item.personName, item.schedule.name, item.time.toString())
             val skipDescription = stringResource(R.string.skip_action_description, item.personName, item.schedule.name, item.time.toString())
             val takenModifier = (if (highlight) Modifier.weight(1f) else Modifier).heightIn(min = if (highlight) MediSize.primaryAction else MediSize.touch).semantics { contentDescription = takenDescription }
-            if (highlight) Button(shape = MaterialTheme.shapes.small, onClick = onTaken, enabled = !busy, modifier = takenModifier) {
+            if (highlight) Button(shape = MaterialTheme.shapes.small, onClick = onTaken, enabled = !busy, modifier = takenModifier,
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surface, contentColor = MaterialTheme.colorScheme.onSurface)) {
                 Icon(Icons.Default.Check, null); Spacer(Modifier.width(MediSpace.small)); Text(stringResource(R.string.taken), style = MaterialTheme.typography.labelLarge)
             } else TextButton(shape = MaterialTheme.shapes.small, onClick = onTaken, enabled = !busy, modifier = takenModifier) {
                 Icon(Icons.Default.Check, null); Spacer(Modifier.width(MediSpace.small)); Text(stringResource(R.string.taken), style = MaterialTheme.typography.labelLarge)
             }
-            TextButton(onClick = onSkip, enabled = !busy, shape = MaterialTheme.shapes.small, modifier = Modifier.heightIn(min = MediSize.touch).semantics { contentDescription = skipDescription }) {
+            if (highlight && onDetail != null) OutlinedButton(onClick = onDetail, modifier = Modifier.heightIn(min = MediSize.touch),
+                colors = ButtonDefaults.outlinedButtonColors(containerColor = MaterialTheme.colorScheme.surface, contentColor = MaterialTheme.colorScheme.onSurface)) {
+                Text(stringResource(R.string.v3_detail))
+            }
+            TextButton(onClick = onSkip, enabled = !busy, shape = MaterialTheme.shapes.small,
+                colors = ButtonDefaults.textButtonColors(contentColor = if (highlight) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary),
+                modifier = Modifier.heightIn(min = MediSize.touch).semantics { contentDescription = skipDescription }) {
                 Text(stringResource(R.string.skip), style = MaterialTheme.typography.labelLarge)
             }
         }
@@ -235,9 +247,14 @@ fun defaultStatus(item: Occurrence, editable: Boolean) = when {
         DoseStatus.PENDING -> stringResource(R.string.pending) to null
         DoseStatus.MISSED -> stringResource(R.string.not_marked) to Icons.Outlined.Circle
     }
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MediSpace.small)) {
-        icon?.let { Icon(it, null, Modifier.size(MediSize.statusIcon), tint = MaterialTheme.colorScheme.onSurfaceVariant) }
-        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    val completed = status == DoseStatus.TAKEN
+    Surface(shape = CircleShape,
+        color = if (completed) careColors.successContainer else if (status == DoseStatus.NEXT) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+        contentColor = if (completed) careColors.successInk else careColors.secondaryInk) {
+        Row(Modifier.padding(horizontal = MediSpace.small, vertical = MediSpace.tiny), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MediSpace.small)) {
+            icon?.let { Icon(it, null, Modifier.size(MediSize.statusIcon)) }
+            Text(label, style = MaterialTheme.typography.labelSmall)
+        }
     }
 }
 
@@ -252,9 +269,9 @@ fun defaultStatus(item: Occurrence, editable: Boolean) = when {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(person.name, style = MaterialTheme.typography.titleLarge)
                 if (person.archived) StatusChip(stringResource(R.string.archived), icon = Icons.Default.Archive)
-                else Text(stringResource(R.string.active_count, activeCount), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                else Text(stringResource(R.string.active_count, activeCount), style = MaterialTheme.typography.bodyMedium, color = careColors.secondaryInk)
             }
-            Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(Icons.Default.ChevronRight, null, tint = careColors.secondaryInk)
         }
     }
 }
@@ -265,16 +282,16 @@ fun defaultStatus(item: Occurrence, editable: Boolean) = when {
     Surface(onClick = open, shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainerLow, modifier = Modifier.fillMaxWidth().heightIn(min = MediSize.primaryAction)) {
         Row(Modifier.padding(MediSpace.regular), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MediSpace.regular)) {
             Surface(shape = MaterialTheme.shapes.medium, color = if (inUse) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh) {
-                Icon(Icons.Default.Medication, null, tint = if (inUse) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(MediSpace.medium).size(24.dp))
+                Icon(Icons.Default.Medication, null, tint = if (inUse) MaterialTheme.colorScheme.onSecondaryContainer else careColors.secondaryInk, modifier = Modifier.padding(MediSpace.medium).size(24.dp))
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(schedule.name, style = MaterialTheme.typography.titleLarge)
-                Text(schedule.dose, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(timesText(schedule.times) + if (schedule.days != 127) " • " + daysText(schedule.days, short = true) else "", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(schedule.dose, color = careColors.secondaryInk)
+                Text(timesText(schedule.times) + if (schedule.days != 127) " • " + daysText(schedule.days, short = true) else "", style = MaterialTheme.typography.bodyMedium, color = careColors.secondaryInk)
                 if (archived) Box(Modifier.padding(top = MediSpace.tiny)) { StatusChip(stringResource(R.string.archived), icon = Icons.Default.Archive) }
                 else if (!schedule.active) Box(Modifier.padding(top = MediSpace.tiny)) { StatusChip(stringResource(R.string.inactive), icon = Icons.Default.PauseCircle) }
             }
-            Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(Icons.Default.ChevronRight, null, tint = careColors.secondaryInk)
         }
     }
 }
@@ -284,5 +301,5 @@ fun timesText(times: String) = times.replace(", ", " • ").replace(",", " • "
     return if (days == 127) stringResource(R.string.every_day) else names.filterIndexed { i, _ -> days and (1 shl i) != 0 }.joinToString(" • ")
 }
 @Composable fun LabelValue(label: String, value: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) { Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(value, style = MaterialTheme.typography.bodyLarge) }
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) { Text(label, style = MaterialTheme.typography.labelLarge, color = careColors.secondaryInk); Text(value, style = MaterialTheme.typography.bodyLarge) }
 }

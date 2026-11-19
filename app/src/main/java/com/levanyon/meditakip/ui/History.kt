@@ -101,14 +101,14 @@ fun LazyListScope.historyTable(matrix: HistoryMatrix, today: LocalDate, scroll: 
     val overflows = metrics.date + metrics.cell * matrix.columns.size > available
     Column(Modifier.fillMaxWidth().padding(bottom = MediSpace.small), verticalArrangement = Arrangement.spacedBy(MediSpace.small)) {
         FlowRow(horizontalArrangement = Arrangement.spacedBy(MediSpace.regular), verticalArrangement = Arrangement.spacedBy(MediSpace.tiny)) {
-            LegendItem({ Icon(Icons.Default.CheckCircle, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary) }, stringResource(R.string.legend_taken))
-            LegendItem({ Icon(Icons.Outlined.Circle, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.outline) }, stringResource(R.string.legend_open))
-            LegendItem({ Icon(Icons.Default.DoNotDisturbOn, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant) }, stringResource(R.string.legend_skipped))
-            LegendItem({ Text("–", color = MaterialTheme.colorScheme.onSurfaceVariant) }, stringResource(R.string.legend_none))
+            LegendItem({ Icon(Icons.Default.CheckCircle, null, Modifier.size(18.dp), tint = careColors.success) }, stringResource(R.string.legend_taken))
+            LegendItem({ Icon(Icons.Outlined.Circle, null, Modifier.size(18.dp), tint = careColors.secondaryInk) }, stringResource(R.string.legend_open))
+            LegendItem({ Icon(Icons.Default.DoNotDisturbOn, null, Modifier.size(18.dp), tint = careColors.secondaryInk) }, stringResource(R.string.legend_skipped))
+            LegendItem({ Text("–", color = careColors.secondaryInk) }, stringResource(R.string.legend_none))
         }
         if (overflows) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MediSpace.small)) {
             Icon(Icons.Default.SwipeLeft, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
-            Text(stringResource(R.string.history_hint_scroll), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.history_hint_scroll), style = MaterialTheme.typography.bodyMedium, color = careColors.secondaryInk)
         }
     }
 }
@@ -122,7 +122,7 @@ fun LazyListScope.historyTable(matrix: HistoryMatrix, today: LocalDate, scroll: 
     Box(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).padding(vertical = MediSpace.tiny), contentAlignment = Alignment.TopCenter) {
         Row(Modifier.clip(MaterialTheme.shapes.medium).background(MaterialTheme.colorScheme.surfaceContainerHigh).height(IntrinsicSize.Min)) {
             Box(Modifier.width(metrics.date).fillMaxHeight().padding(MediSpace.small), contentAlignment = Alignment.BottomStart) {
-                Text(stringResource(R.string.history_date_header), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.semantics { heading() })
+                Text(stringResource(R.string.history_date_header), style = MaterialTheme.typography.labelLarge, color = careColors.secondaryInk, modifier = Modifier.semantics { heading() })
             }
             Row(Modifier.weight(1f, fill = false).horizontalScroll(scroll)) {
                 matrix.columns.forEach { column ->
@@ -144,7 +144,7 @@ fun LazyListScope.historyTable(matrix: HistoryMatrix, today: LocalDate, scroll: 
             Column(Modifier.width(metrics.date).fillMaxHeight().padding(horizontal = MediSpace.small, vertical = MediSpace.small), verticalArrangement = Arrangement.Center) {
                 Text(TurkishFormat.shortDate(row.date), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                 Text(if (row.date == today) stringResource(R.string.today) else TurkishFormat.weekday(row.date), style = MaterialTheme.typography.bodySmall,
-                    color = if (row.date == today) scheme.primary else scheme.onSurfaceVariant)
+                    color = if (row.date == today) scheme.primary else careColors.secondaryInk)
             }
             Row(Modifier.weight(1f, fill = false).horizontalScroll(scroll)) {
                 matrix.columns.forEach { column -> HistoryCell(column, row, metrics.cell, open) }
@@ -170,14 +170,14 @@ fun LazyListScope.historyTable(matrix: HistoryMatrix, today: LocalDate, scroll: 
         when {
             occurrence == null -> Text("–", style = MaterialTheme.typography.titleMedium, color = scheme.outlineVariant)
             occurrence.takenAt != null -> {
-                Icon(Icons.Default.CheckCircle, null, Modifier.size(22.dp), tint = scheme.primary)
+                Icon(Icons.Default.CheckCircle, null, Modifier.size(22.dp), tint = careColors.success)
                 Text(TurkishFormat.time(occurrence.takenAt), style = MaterialTheme.typography.labelLarge, color = scheme.onSurface)
             }
             occurrence.skipped -> {
-                Icon(Icons.Default.DoNotDisturbOn, null, Modifier.size(22.dp), tint = scheme.onSurfaceVariant)
-                Text(stringResource(R.string.skipped), style = MaterialTheme.typography.labelLarge, color = scheme.onSurfaceVariant)
+                Icon(Icons.Default.DoNotDisturbOn, null, Modifier.size(22.dp), tint = careColors.secondaryInk)
+                Text(stringResource(R.string.skipped), style = MaterialTheme.typography.labelLarge, color = careColors.secondaryInk)
             }
-            else -> Icon(Icons.Outlined.Circle, null, Modifier.size(22.dp), tint = scheme.outline)
+            else -> Icon(Icons.Outlined.Circle, null, Modifier.size(22.dp), tint = careColors.secondaryInk)
         }
     }
 }
@@ -219,7 +219,7 @@ fun LazyListScope.historyTable(matrix: HistoryMatrix, today: LocalDate, scroll: 
         skipping && corrections != null ->
             SkipDialog(occurrence, { skipping = false }, dateNotice = if (past) context.getString(R.string.history_confirm_skip, date, dose) else null) { note -> corrections.skip(occurrence, note); dismiss() }
         else -> MediDialog(occurrence.schedule.name, dismiss) {
-        Text(occurrence.schedule.dose, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(occurrence.schedule.dose, style = MaterialTheme.typography.bodyLarge, color = careColors.secondaryInk)
         LabelValue(stringResource(R.string.detail_date), TurkishFormat.longWeekdayDate(occurrence.date))
         LabelValue(stringResource(R.string.detail_planned), occurrence.time.toString())
         LabelValue(stringResource(R.string.detail_taken), when {

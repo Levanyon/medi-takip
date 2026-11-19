@@ -55,7 +55,7 @@ class PrescriptionPersistenceTest {
         val before=repo.snapshot()
         val text=BackupCodec.encode(before,AppSettings(),System.currentTimeMillis(),"test")
         assertEquals(4,JSONObject(text).getInt("schemaVersion"))
-        val backups=Backups(repo,Preferences(context),context.filesDir,"test")
+        val backups=Backups(repo,Preferences(context),context.filesDir,"test", safetyCipher = testSafetyCipher())
         repo.replaceAll(Snapshot())
         backups.restore(BackupCodec.decode(text))
         assertEquals(before,repo.snapshot())
@@ -68,7 +68,7 @@ class PrescriptionPersistenceTest {
         val m=root.getJSONArray("medications").getJSONObject(0)
         listOf("prescriptionDate","renewalDate","renewalReminderEnabled","renewalLeadDays").forEach { m.remove(it) }
         repo.replaceAll(Snapshot())
-        Backups(repo,Preferences(context),context.filesDir,"test").restore(BackupCodec.decode(root.toString()))
+        Backups(repo,Preferences(context),context.filesDir,"test", safetyCipher = testSafetyCipher()).restore(BackupCodec.decode(root.toString()))
         assertEquals(before,repo.snapshot())
     }
     @Test fun newBackupRejectsMissingCoercedOverflowAndInvalidFields() = runBlocking {

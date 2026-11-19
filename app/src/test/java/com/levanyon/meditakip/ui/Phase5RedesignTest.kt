@@ -105,6 +105,7 @@ class Phase5RedesignTest {
     @Test fun themeRowRetainsAllThreeExistingPreferences() {
         var selected: AppSettings? = null
         settings(change = { selected = it })
+        scroll("Tema")
         compose.onNodeWithText("Tema").performClick()
         compose.onNode(hasText("Sistem") and isSelectable()).assertIsSelected()
         compose.onNode(hasText("Açık") and isSelectable()).assertIsDisplayed()
@@ -124,9 +125,9 @@ class Phase5RedesignTest {
         compose.onNodeWithText("Yedek oluştur").assertIsNotEnabled()
         compose.onNodeWithText("Yedekten geri yükle").assertIsNotEnabled()
     }
-    @Test fun privacyExplainsLocalStorageAndUnencryptedExports() {
+    @Test fun privacyExplainsLocalStorageAndEncryptedExports() {
         settings()
         scroll("Veriler"); compose.onNodeWithText("Veriler").performClick()
-        compose.onNodeWithText("Yedek sağlık bilgilerinizi içerir ve şifrelenmez.", substring = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Yedek sağlık bilgilerinizi içerir ve parolanızla şifrelenir.", substring = true).performScrollTo().assertIsDisplayed()
     }
 }

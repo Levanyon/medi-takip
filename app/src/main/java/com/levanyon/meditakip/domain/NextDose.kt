@@ -21,9 +21,9 @@ object NextDose {
 
     /** Resolve a notification against current data, never trust identity or history from Intent extras. */
     fun resolve(snapshot: Snapshot, key: String): Occurrence? {
-        val parts = key.split(':')
-        if (parts.size != 3) return null
-        val date = runCatching { LocalDate.ofEpochDay(parts[1].toLong()) }.getOrNull() ?: return null
+        // IDs from supported backups may contain colons; only the final two fields are numeric.
+        val dateAndId = key.substringBeforeLast(':', "")
+        val date = runCatching { LocalDate.ofEpochDay(dateAndId.substringAfterLast(':', "").toLong()) }.getOrNull() ?: return null
         return Schedule.day(snapshot, date).firstOrNull { item ->
             item.key == key && !item.handled && item.schedule.active && item.schedule.effectiveTo == null &&
                 snapshot.medications.any { it.id == item.schedule.medicationId && !it.archived } &&

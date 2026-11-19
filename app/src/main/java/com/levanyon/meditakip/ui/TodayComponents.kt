@@ -34,9 +34,9 @@ internal fun TodayPersonSelector(people: List<PersonTab>, selected: String?, onS
                     else -> stringResource(R.string.person_done_description, person.name)
                 }
                 Surface(
-                    shape = MaterialTheme.shapes.small,
-                    color = if (active) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent,
-                    contentColor = if (active) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                    shape = androidx.compose.foundation.shape.CircleShape,
+                    color = if (active) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = if (active) MaterialTheme.colorScheme.primary else careColors.secondaryInk,
                     modifier = Modifier.widthIn(min = MediSize.touch, max = availableWidth).heightIn(min = MediSize.touch)
                         .selectable(active, role = Role.Tab) { onSelect(person.id) }
                         .semantics(mergeDescendants = true) { contentDescription = description }
@@ -55,21 +55,30 @@ internal fun TodayPersonSelector(people: List<PersonTab>, selected: String?, onS
 
 /** One focal surface for the existing earliest-unhandled dose, including overdue doses. */
 @Composable
-internal fun NextDoseHero(item: Occurrence, status: DoseStatus, actions: @Composable () -> Unit) {
+internal fun NextDoseHero(item: Occurrence, status: DoseStatus, now: java.time.LocalDateTime? = null, actions: @Composable () -> Unit) {
     Surface(modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        color = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary,
         border = mediSurfaceBorder(), tonalElevation = MediElevation.flat, shadowElevation = MediElevation.card) {
         Column(Modifier.padding(MediSpace.page), verticalArrangement = Arrangement.spacedBy(MediSpace.small)) {
             AdaptivePair(
                 leading = { Text(stringResource(R.string.next_label), style = MaterialTheme.typography.labelLarge, modifier = Modifier.semantics { heading() }) },
                 trailing = {
                     if (status == DoseStatus.OVERDUE) Text(stringResource(R.string.overdue), style = MaterialTheme.typography.labelMedium)
+                    else if (now != null) {
+                        val minutes = java.time.Duration.between(now, item.date.atTime(item.time)).toMinutes().coerceAtLeast(0)
+                        Surface(shape = androidx.compose.foundation.shape.CircleShape, color = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer) {
+                            Text(stringResource(R.string.v3_relative_time, minutes / 60, minutes % 60),
+                                Modifier.padding(MediSpace.small), style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
                 }
             )
             Text(item.time.toString(), style = MaterialTheme.typography.headlineLarge.copy(
                 fontFeatureSettings = MaterialTheme.typography.headlineSmall.fontFeatureSettings))
             Column(verticalArrangement = Arrangement.spacedBy(MediSpace.tiny)) {
                 Text(item.schedule.name, style = MaterialTheme.typography.titleLarge)
+                Text(stringResource(R.string.for_person, item.personName), style = MaterialTheme.typography.bodyLarge)
                 Text(item.schedule.dose, style = MaterialTheme.typography.bodyLarge)
                 if (item.schedule.note.isNotBlank()) Text(item.schedule.note, style = MaterialTheme.typography.bodyMedium)
             }
@@ -90,7 +99,7 @@ internal fun TodayAlert(text: String, icon: ImageVector, actionLabel: String? = 
                 Text(text, style = MaterialTheme.typography.bodySmall)
                 actionLabel?.let { Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary) }
             }
-            Icon(Icons.Default.ChevronRight, null, Modifier.size(MediSize.statusIcon), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(Icons.Default.ChevronRight, null, Modifier.size(MediSize.statusIcon), tint = careColors.secondaryInk)
         }
     }
 }

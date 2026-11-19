@@ -14,6 +14,14 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
+/** Additional semantic roles absent from Material's ColorScheme; ink roles preserve text contrast. */
+data class CareColors(val success: Color, val successContainer: Color, val successInk: Color,
+    val progressTrack: Color, val accentSoft: Color, val secondaryInk: Color)
+internal val LightCareColors = CareColors(Color(0xFF2E8B67), Color(0xFFDDF4EA), Color(0xFF206348), Color(0xFFDDD6E2), Color(0xFFF3EEFF), Color(0xFF625C69))
+internal val DarkCareColors = CareColors(Color(0xFF76D4A8), Color(0xFF173C30), Color(0xFF76D4A8), Color(0xFF3A3440), Color(0xFF29233D), Color(0xFFAEA7B4))
+val careColors: CareColors
+    @Composable get() = if (MaterialTheme.colorScheme.background.luminance() < .5f) DarkCareColors else LightCareColors
+
 @Composable
 fun rememberPickerContext(): Context {
     val context = LocalContext.current
@@ -27,102 +35,98 @@ fun rememberPickerContext(): Context {
 }
 
 /**
- * MediTakip V2 — Quiet Luxury Healthcare.
- *
- * Warm neutral surfaces keep the app calm while deep petrol and jade accents make
- * important actions feel intentional. The palette deliberately avoids bright
- * hospital-blue tones and keeps contrast high for everyday use.
+ * MediTakip V3 — Human Care. Wallpaper colors never override these approved roles.
  */
 internal val LightColors = lightColorScheme(
-    primary = Color(0xFF0B5A4C),
+    primary = Color(0xFF5E4AE3),
     onPrimary = Color(0xFFFFFFFF),
-    primaryContainer = Color(0xFFD6EEE6),
-    onPrimaryContainer = Color(0xFF073C33),
+    primaryContainer = Color(0xFFEAE6FF),
+    onPrimaryContainer = Color(0xFF342C63),
 
-    secondary = Color(0xFF52665E),
-    onSecondary = Color(0xFFFFFFFF),
-    secondaryContainer = Color(0xFFE3ECE7),
-    onSecondaryContainer = Color(0xFF2D443B),
+    secondary = Color(0xFFE86F51),
+    onSecondary = Color(0xFF1A1720),
+    secondaryContainer = Color(0xFFFFE7DF),
+    onSecondaryContainer = Color(0xFF5A2D23),
 
-    tertiary = Color(0xFF8A6338),
-    onTertiary = Color(0xFFFFFFFF),
-    tertiaryContainer = Color(0xFFF4E7D4),
-    onTertiaryContainer = Color(0xFF59401F),
+    tertiary = Color(0xFFB36E12),
+    onTertiary = Color(0xFF121017),
+    tertiaryContainer = Color(0xFFFFF0D7),
+    onTertiaryContainer = Color(0xFF704000),
 
-    background = Color(0xFFF5F7F3),
-    onBackground = Color(0xFF18231F),
-    surface = Color(0xFFFAFBF8),
-    onSurface = Color(0xFF18231F),
+    background = Color(0xFFF7F4F0),
+    onBackground = Color(0xFF1A1720),
+    surface = Color(0xFFFFFFFF),
+    onSurface = Color(0xFF1A1720),
 
     surfaceContainerLowest = Color(0xFFFFFFFF),
-    surfaceContainerLow = Color(0xFFF1F4EF),
-    surfaceContainer = Color(0xFFE9EEE9),
-    surfaceContainerHigh = Color(0xFFE2E8E3),
-    surfaceContainerHighest = Color(0xFFDBE3DD),
+    surfaceContainerLow = Color(0xFFFFFFFF),
+    surfaceContainer = Color(0xFFF0ECE7),
+    surfaceContainerHigh = Color(0xFFECE7E1),
+    surfaceContainerHighest = Color(0xFFECE7E1),
 
-    surfaceVariant = Color(0xFFE3E9E5),
-    onSurfaceVariant = Color(0xFF53615B),
-    outline = Color(0xFF718078),
-    outlineVariant = Color(0xFFC9D2CD),
+    surfaceVariant = Color(0xFFECE7E1),
+    onSurfaceVariant = Color(0xFF706A79),
+    outline = Color(0xFFD8D0D9),
+    outlineVariant = Color(0xFFD8D0D9),
 
-    surfaceTint = Color(0xFF0B5A4C),
-    surfaceBright = Color(0xFFFAFBF8),
-    surfaceDim = Color(0xFFDBE3DD),
-    inverseSurface = Color(0xFF25322C),
-    inverseOnSurface = Color(0xFFF1F4EF),
-    inversePrimary = Color(0xFF8FD7BE),
+    surfaceTint = Color(0xFF5E4AE3),
+    surfaceBright = Color(0xFFFFFFFF),
+    surfaceDim = Color(0xFFECE7E1),
+    inverseSurface = Color(0xFF24212B),
+    inverseOnSurface = Color(0xFFF6F2F8),
+    inversePrimary = Color(0xFFB7A7FF),
     scrim = Color(0xFF000000),
 
-    error = Color(0xFFBA4B4B),
+    error = Color(0xFFB44747),
     onError = Color(0xFFFFFFFF),
-    errorContainer = Color(0xFFFFDAD8),
-    onErrorContainer = Color(0xFF410006)
+    errorContainer = Color(0xFFFFE2E1),
+    onErrorContainer = Color(0xFF512626)
 )
 
 internal val DarkColors = darkColorScheme(
-    primary = Color(0xFF8FD7BE),
-    onPrimary = Color(0xFF053A30),
-    primaryContainer = Color(0xFF174A3F),
-    onPrimaryContainer = Color(0xFFD5F3E7),
+    primary = Color(0xFFB7A7FF),
+    onPrimary = Color(0xFF1E143E),
+    primaryContainer = Color(0xFF342C63),
+    onPrimaryContainer = Color(0xFFEAE6FF),
 
-    secondary = Color(0xFFB4CAC0),
-    onSecondary = Color(0xFF20362E),
-    secondaryContainer = Color(0xFF2A4037),
-    onSecondaryContainer = Color(0xFFD6E9E0),
+    secondary = Color(0xFFFFAB93),
+    onSecondary = Color(0xFF1A1720),
+    secondaryContainer = Color(0xFF5A2D23),
+    onSecondaryContainer = Color(0xFFFFE7DF),
 
-    tertiary = Color(0xFFE4C18F),
-    onTertiary = Color(0xFF402D12),
-    tertiaryContainer = Color(0xFF503D25),
-    onTertiaryContainer = Color(0xFFFFE6C3),
+    tertiary = Color(0xFFF1BC6D),
+    onTertiary = Color(0xFF1A1720),
+    tertiaryContainer = Color(0xFF4A351A),
+    onTertiaryContainer = Color(0xFFF1BC6D),
 
-    background = Color(0xFF0D1512),
-    onBackground = Color(0xFFE0E9E4),
-    surface = Color(0xFF111B17),
-    onSurface = Color(0xFFE0E9E4),
+    background = Color(0xFF121017),
+    onBackground = Color(0xFFF6F2F8),
+    surface = Color(0xFF1B1822),
+    onSurface = Color(0xFFF6F2F8),
 
-    surfaceContainerLowest = Color(0xFF09100D),
-    surfaceContainerLow = Color(0xFF17211D),
-    surfaceContainer = Color(0xFF1D2924),
-    surfaceContainerHigh = Color(0xFF25322C),
-    surfaceContainerHighest = Color(0xFF2D3B34),
+    surfaceContainerLowest = Color(0xFF121017),
+    surfaceContainerLow = Color(0xFF1B1822),
+    surfaceContainer = Color(0xFF1A1720),
+    surfaceContainerHigh = Color(0xFF24212B),
+    surfaceContainerHighest = Color(0xFF24212B),
 
-    surfaceVariant = Color(0xFF33413A),
-    onSurfaceVariant = Color(0xFFBCCAC3),
-    outline = Color(0xFF87968E),
-    outlineVariant = Color(0xFF405149),
+    surfaceVariant = Color(0xFF24212B),
+    onSurfaceVariant = Color(0xFFAEA7B4),
+    outline = Color(0xFF413A48),
+    outlineVariant = Color(0xFF413A48),
 
-    surfaceTint = Color(0xFF8FD7BE),
-    surfaceBright = Color(0xFF2D3B34),
-    surfaceDim = Color(0xFF0D1512),
-    inverseSurface = Color(0xFFE0E9E4),
-    inverseOnSurface = Color(0xFF18231F),
-    inversePrimary = Color(0xFF0B5A4C),
+    surfaceTint = Color(0xFFB7A7FF),
+    surfaceBright = Color(0xFF24212B),
+    surfaceDim = Color(0xFF121017),
+    inverseSurface = Color(0xFFF6F2F8),
+    inverseOnSurface = Color(0xFF1A1720),
+    inversePrimary = Color(0xFF5E4AE3),
     scrim = Color(0xFF000000),
 
-    error = Color(0xFFFFB4AB),
-    onError = Color(0xFF690005),
-    errorContainer = Color(0xFF93000A),
-    onErrorContainer = Color(0xFFFFDAD6)
+    error = Color(0xFFFFA0A0),
+    onError = Color(0xFF512626),
+    errorContainer = Color(0xFF512626),
+    onErrorContainer = Color(0xFFFFE2E1)
 )
 
 @Composable
@@ -142,33 +146,33 @@ fun MediTheme(theme: String, content: @Composable () -> Unit) {
             headlineMedium = TextStyle(
                 fontFamily = FontFamily.SansSerif,
                 fontWeight = FontWeight.Bold,
-                fontSize = 28.sp,
-                lineHeight = 34.sp,
+                fontSize = 26.sp,
+                lineHeight = 32.sp,
                 letterSpacing = (-0.25).sp
             ),
             headlineSmall = TextStyle(
                 fontFamily = FontFamily.SansSerif,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 23.sp,
-                lineHeight = 30.sp,
+                fontWeight = FontWeight.Bold,
+                fontSize = 20.sp,
+                lineHeight = 26.sp,
                 // Scheduled times use headlineSmall: stable digit widths aid scanning.
                 fontFeatureSettings = "tnum"
             ),
             titleLarge = TextStyle(
                 fontFamily = FontFamily.SansSerif,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 fontSize = 20.sp,
                 lineHeight = 26.sp
             ),
             titleMedium = TextStyle(
                 fontFamily = FontFamily.SansSerif,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 18.sp,
+                fontWeight = FontWeight.Medium,
+                fontSize = 16.sp,
                 lineHeight = 24.sp
             ),
             titleSmall = TextStyle(
                 fontFamily = FontFamily.SansSerif,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Medium,
                 fontSize = 16.sp,
                 lineHeight = 24.sp
             ),
@@ -189,21 +193,21 @@ fun MediTheme(theme: String, content: @Composable () -> Unit) {
             ),
             labelLarge = TextStyle(
                 fontFamily = FontFamily.SansSerif,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 16.sp,
-                lineHeight = 22.sp
+                fontWeight = FontWeight.Medium,
+                fontSize = 14.sp,
+                lineHeight = 20.sp
             ),
             labelMedium = TextStyle(
                 fontFamily = FontFamily.SansSerif,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Medium,
                 fontSize = 14.sp,
                 lineHeight = 20.sp
             ),
             labelSmall = TextStyle(
                 fontFamily = FontFamily.SansSerif,
                 fontWeight = FontWeight.Medium,
-                fontSize = 14.sp,
-                lineHeight = 20.sp
+                fontSize = 12.sp,
+                lineHeight = 16.sp
             )
         ),
         content = content

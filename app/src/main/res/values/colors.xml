@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Brand green (Theme.kt primary) and window backgrounds matching the Compose themes, so the
+    <!-- Brand violet (Theme.kt primary) and window backgrounds matching the Compose themes, so the
          window, splash screen and first frame never flash a different colour. -->
-    <color name="brand_green">#FF20695D</color>
-    <color name="window_background">#FFF5F7F3</color>
-    <color name="launch_container">#D6EEE6</color>
-    <color name="launch_primary">#0B5A4C</color>
+    <color name="brand_green">#FF5E4AE3</color>
+    <color name="window_background">#FFF7F4F0</color>
+    <color name="launch_container">#EAE6FF</color>
+    <color name="launch_primary">#5E4AE3</color>
     <color name="launch_on_primary">#FFFFFF</color>
 </resources>

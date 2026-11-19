@@ -30,7 +30,7 @@ class ReminderIntegrationTest {
         app = RuntimeEnvironment.getApplication() as MediApp
         runBlocking(kotlinx.coroutines.Dispatchers.IO) { app.database.clearAllTables() }
         app.preferences.save(AppSettings()); app.preferences.snoozes = emptyMap(); app.reminderLog.clear()
-        // These tests isolate actual reminder delivery; Phase9NotificationTest covers ongoing defaults.
+        // Phase9NotificationTest covers the independently dismissible next-dose status.
         app.preferences.saveLockScreen(LockScreenSettings(detailed = true, ongoing = false, takenAction = true))
     }
     @After fun close() { app.database.close() }
@@ -51,8 +51,13 @@ class ReminderIntegrationTest {
         app.reminders.sendTestNotification()
         assertTrue(notifications.activeNotifications.isNotEmpty())
         val text = BackupCodec.encode(app.repository.snapshot(), app.preferences.state.value, System.currentTimeMillis(), "test")
-        app.reminders.restoreData { app.backups.restore(BackupCodec.decode(text)) }
-        assertTrue(notifications.activeNotifications.isEmpty())
+        val backups = Backups(app.repository, app.preferences, app.filesDir, "test", safetyCipher = testSafetyCipher())
+        app.reminders.restoreData { backups.restore(BackupCodec.decode(text)) }
+        assertTrue(doseNotifications().isEmpty())
+        assertFalse(notifications.activeNotifications.any { it.id == Reminders.TEST_ID })
+        assertEquals(listOf(com.levanyon.meditakip.reminders.LockScreenNotifications.ID), notifications.activeNotifications.map { it.id })
+        assertEquals(BackupCodec.decode(text).snapshot, app.repository.snapshot())
+        assertFalse(backups.safetyCopy.readText().contains("Mother"))
         assertTrue(app.preferences.nextAlarm > System.currentTimeMillis())
         assertEquals(2, shadowOf(app.getSystemService(AlarmManager::class.java)).scheduledAlarms.size)
     }
@@ -191,10 +196,12 @@ class ReminderIntegrationTest {
     }
     @Test fun reminderLogKeepsTheLatestFiftyProblems() {
         val log = ReminderLog(File(app.filesDir, "log-test.txt")).also { it.clear() }
-        repeat(60) { log.record("alarm", IllegalStateException("problem $it")) }
+        repeat(60) { log.record("alarm-$it", IllegalStateException("private medical payload $it")) }
         assertEquals(50, log.entries().size)
-        assertEquals("IllegalStateException: problem 59", log.latest()!!.message)
-        assertEquals("alarm", log.latest()!!.place)
+        assertEquals("IllegalStateException", log.latest()!!.message)
+        assertEquals("alarm-59", log.latest()!!.place)
+        assertEquals((10..59).map { "alarm-$it" }.toSet(), log.entries().map { it.place }.toSet())
+        assertFalse(File(app.filesDir, "log-test.txt").readText().contains("private medical payload"))
     }
     @Test fun occurrenceDateIsReadFromTheKey() {
         assertEquals(LocalDate.ofEpochDay(20352), Reminders.occurrenceDate("abc-123:20352:480"))

@@ -97,15 +97,15 @@ class PeopleRedesignTest(private val dark: Boolean) {
         assertTrue(added)
         targets()
     }
-    @Test fun multiplePeopleShowTheirOwnCountsAndTodayState() {
+    @Test fun multiplePeopleShowTheirOwnCountsAndNextUnhandledDose() {
         show { PeopleScreen(data, {}, date) {} }
-        compose.onNode(hasText("Anne") and hasText("3 aktif ilaç") and hasText("Bugün 2 doz kaldı")).assertExists()
-        compose.onNode(hasText("Kardeşim") and hasText("1 aktif ilaç") and hasText("Bugün tamamlandı")).assertExists()
-        compose.onNode(hasText("Mert") and hasText("Bugün 2 doz kaldı")).assertExists()
+        compose.onNode(hasText("Anne") and hasText("3 aktif ilaç") and hasText("Sıradaki 6 Eki · 08:00")).assertExists()
+        compose.onNode(hasText("Kardeşim") and hasText("1 aktif ilaç") and hasText("Sıradaki 7 Eki · 09:00")).assertExists()
+        compose.onNode(hasText("Mert") and hasText("Sıradaki 6 Eki · 08:00")).assertExists()
     }
     @Test fun noDoseDayDoesNotPretendToBeComplete() {
         show { PeopleScreen(PeopleTestData.single, {}, date.minusDays(10)) {} }
-        compose.onNodeWithText("Bugün planlanan doz yok").assertExists()
+        compose.onNodeWithText("Sıradaki 1 Eki · 08:00").assertExists()
         compose.onNodeWithText("Bugün tamamlandı").assertDoesNotExist()
     }
     @Test fun detailEmptyKeepsAddEditBackWithoutFakeProgress() {
@@ -125,12 +125,13 @@ class PeopleRedesignTest(private val dark: Boolean) {
         targets()
         compose.onNodeWithText("İlaç tara").assertDoesNotExist()
     }
-    @Test fun detailSummaryUsesExistingProgressAndOpensMedication() {
+    @Test fun detailSummaryUsesEarliestUnhandledDoseAndOpensMedication() {
         var opened = ""
         show { PersonDetail(data, person, {}, {}, {}, { opened = it }, today = date) }
-        reach("3 / 5 tamamlandı")
-        compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo))
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.ProgressBarRangeInfo, ProgressBarRangeInfo(0.6f, 0f..1f)))
+        reach("08:00 · Levotiron 50 mcg")
+        compose.onNodeWithText("08:00 · Levotiron 50 mcg").assertHeightIsAtLeast(48.dp).performClick()
+        assertEquals("c", opened)
+        assertEquals(0.6f, DailyProgress.from(Schedule.day(data, date).filter { it.personId == person.id }).fraction)
         reach("Beloc ZOK 50 mg")
         compose.onNodeWithText("Beloc ZOK 50 mg").assertHeightIsAtLeast(48.dp).performClick()
         assertEquals("a", opened)
@@ -143,16 +144,29 @@ class PeopleRedesignTest(private val dark: Boolean) {
             var state by remember { mutableStateOf(PeopleTestData.single) }
             PersonDetail(state, person, {}, {}, { state = state.copy(logs = listOf(PeopleTestData.log("a", 480), PeopleTestData.log("a", 720, true))) }, {}, today = date)
         }
-        reach("0 / 2 tamamlandı")
+        reach("08:00 · Beloc ZOK 50 mg")
         reach("İlaç ekle"); compose.onNodeWithText("İlaç ekle").performClick()
-        reach("2 / 2 tamamlandı")
-        reach("Bugün tamamlandı")
+        reach("08:00 · Beloc ZOK 50 mg")
+        reach(TurkishFormat.date(date.plusDays(1)))
+        compose.onNodeWithText("12:00 · Beloc ZOK 50 mg").assertDoesNotExist()
     }
     @Test fun zeroDoseDetailDoesNotHaveProgressBar() {
         show { PersonDetail(PeopleTestData.single, person, {}, {}, {}, {}, today = date.minusDays(10)) }
-        reach("Bugün planlanan doz yok")
+        reach("08:00 · Beloc ZOK 50 mg")
+        reach(TurkishFormat.date(date.minusDays(5)))
         compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo)).assertDoesNotExist()
         reach("Beloc ZOK 50 mg")
+    }
+    @Test fun completedFinalDayKeepsProgressWhenThereIsNoNextDose() {
+        val completed = PeopleTestData.single.copy(
+            schedules = PeopleTestData.single.schedules.map { it.copy(end = date.toEpochDay()) },
+            logs = listOf(PeopleTestData.log("a", 480), PeopleTestData.log("a", 720, true)))
+        show { PersonDetail(completed, person, {}, {}, {}, {}, today = date) }
+        reach("2 / 2 tamamlandı")
+        reach("Bugün tamamlandı")
+        compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.ProgressBarRangeInfo, ProgressBarRangeInfo(1f, 0f..1f)))
+        compose.onNodeWithText("Sıradaki doz").assertDoesNotExist()
     }
     @Test fun lowStockComesFromCurrentStockLogicAndHasSemantics() {
         show { PersonDetail(PeopleTestData.lowStock, person, {}, {}, {}, {}, today = date) }
@@ -188,7 +202,7 @@ class PeopleRedesignTest(private val dark: Boolean) {
         val long = PeopleTestData.single.copy(people = listOf(person.copy(name = PeopleTestData.longName)))
         show(2f) { PeopleScreen(long, {}, date) {} }
         reach(PeopleTestData.longName); fits(PeopleTestData.longName)
-        reach("Bugün 2 doz kaldı"); fits("Bugün 2 doz kaldı")
+        reach("Sıradaki 6 Eki · 08:00"); fits("Sıradaki 6 Eki · 08:00")
         val row = compose.onNodeWithText(PeopleTestData.longName).fetchSemanticsNode().boundsInRoot
         val nav = compose.onNodeWithTag("navigation").fetchSemanticsNode().boundsInRoot
         assertTrue(row.right <= 300f && row.bottom <= nav.top)

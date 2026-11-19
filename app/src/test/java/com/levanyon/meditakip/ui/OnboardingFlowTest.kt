@@ -34,7 +34,7 @@ class OnboardingFlowTest {
     private fun start() { show(); click("Başla") }
     @Test fun welcomeExplainsLocalDataWithoutRequestingPermissions() {
         show()
-        compose.onNodeWithText("İlaç takibini sade ve güvenli hale getir.").assertIsDisplayed()
+        compose.onNodeWithText("İlaç takibini kafandan çıkar.").assertIsDisplayed()
         compose.onNodeWithText("Verilerin cihazında tutulur.").assertIsDisplayed()
         assertEquals(0, notificationRequests); assertEquals(0, exactRequests); assertNull(completed)
         compose.onNodeWithContentDescription("Adım 1 / 4").assertExists()

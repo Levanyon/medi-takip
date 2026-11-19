@@ -89,7 +89,7 @@
     <!-- Redesign: daily flow, management hub, simplified onboarding -->
     <string name="edit_medications">%1$s için ilaçları yönet</string>
     <string name="add_medication_for">%1$s için ilaç ekle</string>
-    <string name="next_label">Sıradaki</string>
+    <string name="next_label">Sıradaki doz</string>
     <string name="overdue">Saati geçti</string>
     <string name="taken_status">✓ İçildi • %1$s</string>
     <string name="empty_today_person_body">%1$s için bugüne planlanmış ilaç bulunmuyor.</string>
@@ -247,7 +247,19 @@
     <string name="backup_too_large">Dosya bir yedek için fazla büyük.</string>
     <string name="backup_damaged">Yedek dosyası bozuk veya eksik. Mevcut verileriniz değişmedi.</string>
     <string name="backup_busy">Devam eden işlem tamamlandıktan sonra tekrar deneyin.</string>
-    <string name="backup_privacy">Yedek sağlık bilgilerinizi içerir ve şifrelenmez. Güvendiğiniz yerel bir klasör seçin.</string>
+    <string name="backup_privacy">Yedek sağlık bilgilerinizi içerir ve parolanızla şifrelenir. Güvendiğiniz yerel bir klasör seçin.</string>
+    <string name="backup_encrypt">Yedeği şifrele</string>
+    <string name="backup_password">Yedek parolası</string>
+    <string name="backup_password_confirm">Parolayı tekrar gir</string>
+    <string name="backup_password_help">Bu parola olmadan yedek geri yüklenemez. En az 12 karakter kullanın; boşluk ve Unicode karakterler kullanılabilir.</string>
+    <string name="backup_password_length">Parola 12–1024 karakter olmalı.</string>
+    <string name="backup_password_mismatch">Parolalar eşleşmiyor.</string>
+    <string name="backup_password_show">Parolayı göster</string>
+    <string name="backup_password_hide">Parolayı gizle</string>
+    <string name="backup_unlock_help">Bu yedek şifreli. Devam etmek için parolayı gir.</string>
+    <string name="backup_unlock">Yedeği aç</string>
+    <string name="backup_unlock_failed">Yedek açılamadı. Parola yanlış veya dosya bozuk olabilir.</string>
+    <string name="backup_legacy_warning">Bu eski yedek şifrelenmemiş. İçeriği hassas bilgiler içerebilir.</string>
     <string name="backup_first_due">Kayıtlarınızı korumak için ilk yedeğinizi oluşturabilirsiniz.</string>
     <string name="backup_safety">Geri yükleme öncesi kopyayı incele</string>
     <string name="backup_no_records">Bu yedekte kullanım kaydı yok.</string>

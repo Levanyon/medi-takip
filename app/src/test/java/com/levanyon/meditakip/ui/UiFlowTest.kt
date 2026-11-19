@@ -110,7 +110,7 @@ class UiFlowTest {
     @Test fun onboardingSkipsPermissionStepsThatAreAlreadyGranted() {
         compose.setContent { MediTheme("Light") { Onboarding(viewModel()) } }
         // Android 9 skips permission screens, preserving Welcome -> Ready -> optional setup.
-        compose.onNodeWithText("İlaç takibini sade ve güvenli hale getir.").assertIsDisplayed()
+        compose.onNodeWithText("İlaç takibini kafandan çıkar.").assertIsDisplayed()
         compose.onNodeWithText("Başla").performScrollTo().performClick()
         compose.onNodeWithText("Her şey hazır").assertIsDisplayed()
         compose.onNodeWithText("Bildirimleri etkinleştir").assertDoesNotExist()

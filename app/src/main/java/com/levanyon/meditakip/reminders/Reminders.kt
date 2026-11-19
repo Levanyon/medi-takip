@@ -79,12 +79,12 @@ class Reminders(private val app: MediApp, private val clock: Clock = Clock.syste
         notifications.activeNotifications.filter { it.id == DOSE_ID && it.tag != null && it.tag !in outstanding }.forEach { notifications.cancel(it.tag, DOSE_ID) }
         notifyLowStock(snapshot)
         updatePrivacy(snapshot)
-        updateSummaries()
-        LockScreenNotifications.refresh(app, snapshot, now)
+        updateSummaries(snapshot)
+        LockScreenNotifications.refresh(app, snapshot, now, events)
         alarms.cancel(alarmIntent(1)); alarms.cancel(alarmIntent(2))
         // Reuse the one existing alarm path for the daily status rollover, never a second scheduler.
         val today = now.atZone(ZoneId.systemDefault()).toLocalDate()
-        val rollover = if (app.preferences.lockScreen.value.ongoing && NextDose.next(snapshot, today)?.date == today)
+        val rollover = if (app.preferences.lockScreen.value.visible && NextDose.next(snapshot, today)?.date == today)
             now.atZone(ZoneId.systemDefault()).toLocalDate().plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant() else null
         val reminderNext = if (notificationAllowed()) listOfNotNull(ReminderPlan.next(events, dispatched, now)?.at, RenewalPlan.next(renewals, dispatched, now)?.at).minOrNull() else null
         app.preferences.nextReminderEvent = if (settings.notifications) reminderNext?.toEpochMilli() ?: 0 else 0
@@ -179,13 +179,22 @@ class Reminders(private val app: MediApp, private val clock: Clock = Clock.syste
     }
 
     /** One summary per group of two or more visible doses (DECISIONS D2.3); removed when the group shrinks. */
-    private fun updateSummaries() {
+    private fun updateSummaries(snapshot: Snapshot) {
         val active = notifications.activeNotifications
-        val groups = active.filter { it.id == DOSE_ID }.groupBy { it.notification.group }
+        val groups = active.filter { it.id == DOSE_ID }.mapNotNull { posted ->
+            posted.tag?.let { NextDose.resolve(snapshot, it) }?.let { posted to it }
+        }.groupBy { it.first.notification.group }
         active.filter { it.id == SUMMARY_ID && (groups[it.tag]?.size ?: 0) < 2 }.forEach { notifications.cancel(it.tag, SUMMARY_ID) }
         groups.filter { (group, members) -> group != null && members.size >= 2 }.forEach { (group, members) ->
-            val lines = members.map { it.notification.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty() }.sorted()
-            val time = members.first().notification.`when`.let { Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalTime().withSecond(0).withNano(0) }
+            // Never use cached notification text as medical identity, even after a cancellation.
+            val lines = members.map { (posted, item) ->
+                val retry = posted.notification.`when` > item.instant(ZoneId.systemDefault()).toEpochMilli() &&
+                    posted.notification.extras.getCharSequence(Notification.EXTRA_SUB_TEXT) == null
+                if (app.preferences.lockScreen.value.detailed) app.getString(
+                    if (retry) R.string.notification_followup_title else R.string.notification_dose_title,
+                    item.personName, item.schedule.name) else "İlaç zamanı"
+            }.sorted()
+            val time = members.first().first.notification.`when`.let { Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalTime().withSecond(0).withNano(0) }
             val title = app.getString(R.string.notification_group_title, members.size, time.toString())
             val style = Notification.InboxStyle().setBigContentTitle(title).also { s -> lines.forEach { s.addLine(it) } }
             val summary = Notification.Builder(app, CHANNEL).setSmallIcon(R.drawable.ic_medication).setContentTitle(title)
@@ -209,12 +218,19 @@ class Reminders(private val app: MediApp, private val clock: Clock = Clock.syste
         val renewals = RenewalPlan.events(snapshot, app.preferences.state.value, clock.instant(), ZoneId.systemDefault()).associateBy { it.key }
         val lowStock = StockPlan.low(snapshot).associateBy { it.medicationId }
         notifications.activeNotifications.filter { it.notification.channelId == CHANNEL }.forEach { active ->
+            // Summaries are rebuilt below exclusively from currently resolvable doses.
+            if (active.id == SUMMARY_ID) return@forEach
+            val dose = if (active.id == DOSE_ID) active.tag?.let { NextDose.resolve(snapshot, it) } else null
+            if (active.id == DOSE_ID && dose == null) {
+                notifications.cancel(active.tag, active.id)
+                return@forEach
+            }
             val builder = Notification.Builder.recoverBuilder(app, active.notification)
                 .setVisibility(LockScreenNotifications.visibility(privacy)).setOnlyAlertOnce(true)
                 .setPublicVersion(Notification.Builder(app, CHANNEL).setSmallIcon(R.drawable.ic_medication)
                     .setContentTitle(app.getString(R.string.app_name)).setContentText(app.getString(R.string.notification_public_text)).build())
             if (active.id == DOSE_ID && active.tag != null) {
-                NextDose.resolve(snapshot, active.tag)?.let { item ->
+                dose?.let { item ->
                     val retry = active.notification.`when` > item.instant(ZoneId.systemDefault()).toEpochMilli() &&
                         active.notification.extras.getCharSequence(Notification.EXTRA_SUB_TEXT) == null
                     val time = item.time.toString() + if (item.date != clock.instant().atZone(ZoneId.systemDefault()).toLocalDate()) " (${TurkishFormat.shortDate(item.date)})" else ""
@@ -236,9 +252,6 @@ class Reminders(private val app: MediApp, private val clock: Clock = Clock.syste
                 val item = lowStock[active.tag]
                 if (item == null) { notifications.cancel(active.tag, active.id); return@forEach }
                 builder.lowStockContent(item)
-            }
-            if (!privacy.detailed && active.id == SUMMARY_ID) {
-                builder.setContentText(app.getString(R.string.notification_public_text)).setStyle(Notification.BigTextStyle().bigText(app.getString(R.string.notification_public_text)))
             }
             notifications.notify(active.tag, active.id, builder.build())
         }

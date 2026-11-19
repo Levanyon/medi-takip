@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="window_background">#FF0D1512</color>
-    <color name="launch_container">#174A3F</color>
-    <color name="launch_primary">#8FD7BE</color>
-    <color name="launch_on_primary">#053A30</color>
+    <color name="window_background">#FF121017</color>
+    <color name="launch_container">#342C63</color>
+    <color name="launch_primary">#B7A7FF</color>
+    <color name="launch_on_primary">#1E143E</color>
 </resources>

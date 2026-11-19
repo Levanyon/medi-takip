@@ -22,15 +22,15 @@ import com.levanyon.meditakip.domain.DailyProgress
 internal val PeoplePadding = PaddingValues(start = MediSpace.page, end = MediSpace.page, top = 28.dp, bottom = MediSpace.extraLarge)
 
 // Scoped Figma type roles inherit the Phase 1 font family; other screens retain their typography.
-private val peopleLabel @Composable get() = MaterialTheme.typography.labelMedium.copy(fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.Medium)
-private val peopleBody @Composable get() = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp, lineHeight = 22.sp)
+private val peopleLabel @Composable get() = MaterialTheme.typography.labelMedium
+private val peopleBody @Composable get() = MaterialTheme.typography.bodyLarge
 
 @Composable
 internal fun PeopleHeading(showAdd: Boolean, add: () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MediSpace.medium)) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(MediSpace.tiny)) {
-            Text(stringResource(R.string.people), style = MaterialTheme.typography.headlineLarge, modifier = Modifier.semantics { heading() })
-            Text(stringResource(R.string.people_v2_subtitle), style = peopleBody, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.people), style = MaterialTheme.typography.headlineMedium, modifier = Modifier.semantics { heading() })
+            Text(stringResource(R.string.people_v2_subtitle), style = peopleBody, color = careColors.secondaryInk)
         }
         if (showAdd) {
             val description = stringResource(R.string.people_add_person)
@@ -47,7 +47,7 @@ internal fun PeopleHeading(showAdd: Boolean, add: () -> Unit) {
 }
 
 @Composable
-internal fun PersonSummaryCard(person: PersonEntity, activeCount: Int, progress: DailyProgress, open: () -> Unit) {
+internal fun PersonSummaryCard(person: PersonEntity, activeCount: Int, progress: DailyProgress, next: com.levanyon.meditakip.domain.Occurrence? = null, open: () -> Unit) {
     val status = when {
         progress.total == 0 -> stringResource(R.string.people_today_no_doses)
         progress.remaining == 0 -> stringResource(R.string.today_complete_title)
@@ -59,8 +59,8 @@ internal fun PersonSummaryCard(person: PersonEntity, activeCount: Int, progress:
             Avatar(person.name, large = false, primary = true)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(MediSpace.tiny)) {
                 Text(person.name, style = MaterialTheme.typography.titleMedium)
-                Text(stringResource(R.string.people_active_count, activeCount), style = peopleLabel, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(status, style = peopleLabel, color = MaterialTheme.colorScheme.primary)
+                Text(stringResource(R.string.people_active_count, activeCount), style = peopleLabel, color = careColors.secondaryInk)
+                Text(next?.let { stringResource(R.string.v3_next_summary, "${com.levanyon.meditakip.domain.TurkishFormat.shortDate(it.date)} · ${it.time}") } ?: status, style = peopleLabel, color = MaterialTheme.colorScheme.primary)
             }
             PeopleChevron()
         }
@@ -71,14 +71,14 @@ internal fun PersonSummaryCard(person: PersonEntity, activeCount: Int, progress:
 internal fun PersonHeader(person: PersonEntity, activeCount: Int, back: () -> Unit) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         FilledTonalIconButton(onClick = back, modifier = Modifier.size(MediSize.touch), shape = MaterialTheme.shapes.small,
-            colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow, contentColor = MaterialTheme.colorScheme.onSurfaceVariant)) {
+            colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow, contentColor = careColors.secondaryInk)) {
             Icon(painterResource(R.drawable.ic_people_back), stringResource(R.string.back), Modifier.size(20.dp))
         }
         Avatar(person.name, large = false, size = 52.dp, primary = true)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(person.name, style = MaterialTheme.typography.headlineSmall.copy(fontSize = 24.sp), modifier = Modifier.semantics { heading() })
             if (!person.archived) Text(if (activeCount == 0) stringResource(R.string.people_no_active) else stringResource(R.string.people_active_count, activeCount),
-                style = peopleLabel, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                style = peopleLabel, color = careColors.secondaryInk)
         }
     }
 }
@@ -93,13 +93,13 @@ internal fun PersonTodaySummary(progress: DailyProgress) {
         modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}) {
         Column(Modifier.padding(MediSpace.regular), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             if (progress.total == 0) {
-                Text(title, style = peopleLabel, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(title, style = peopleLabel, color = careColors.secondaryInk)
                 Text(stringResource(R.string.people_today_no_doses), style = MaterialTheme.typography.titleMedium)
             } else {
                 AdaptivePair(
                     leading = {
                         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text(title, style = peopleLabel, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(title, style = peopleLabel, color = careColors.secondaryInk)
                             Text(summary, style = MaterialTheme.typography.titleMedium)
                         }
                     },
@@ -125,7 +125,7 @@ internal fun PersonAddMedication(add: () -> Unit) {
 }
 
 @Composable
-internal fun PersonMedicationGroup(medications: List<MedicationScheduleEntity>, lowStock: Set<String>, open: (String) -> Unit) {
+internal fun PersonMedicationGroup(medications: List<MedicationScheduleEntity>, lowStock: Set<String>, open: (String) -> Unit, stock: Map<String, MedicationEntity> = emptyMap()) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(stringResource(R.string.person_active_medications), style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { heading() })
         Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surface, border = mediSurfaceBorder()) {
@@ -133,6 +133,15 @@ internal fun PersonMedicationGroup(medications: List<MedicationScheduleEntity>, 
                 medications.forEachIndexed { index, schedule ->
                     if (index > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     MedicationSummaryRow(schedule, schedule.medicationId in lowStock) { open(schedule.medicationId) }
+                    stock[schedule.medicationId]?.takeIf { it.stockEnabled }?.let { medication ->
+                        Column(Modifier.padding(horizontal = MediSpace.regular, vertical = MediSpace.small)) {
+                            Text(stringResource(R.string.stock_remaining, com.levanyon.meditakip.domain.StockPlan.format(medication.stockQuantity)), style = MaterialTheme.typography.labelSmall)
+                            // No invented package capacity: progress represents the configured low-stock threshold.
+                            LinearProgressIndicator(progress = { (medication.stockQuantity / maxOf(medication.stockQuantity, medication.stockThreshold, 1.0)).toFloat().coerceIn(0f, 1f) },
+                                modifier = Modifier.fillMaxWidth(), color = if (medication.id in lowStock) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary,
+                                trackColor = careColors.progressTrack)
+                        }
+                    }
                 }
             }
         }
@@ -155,8 +164,8 @@ internal fun MedicationSummaryRow(schedule: MedicationScheduleEntity, lowStock: 
                     leading = {
                         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text(schedule.name, style = MaterialTheme.typography.titleSmall.copy(lineHeight = 21.sp))
-                            Text(stringResource(R.string.person_medication_schedule, timesText(schedule.times), schedule.dose), style = peopleLabel, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            if (schedule.days != 127) Text(daysText(schedule.days, short = true), style = peopleLabel, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(stringResource(R.string.person_medication_schedule, timesText(schedule.times), schedule.dose), style = peopleLabel, color = careColors.secondaryInk)
+                            if (schedule.days != 127) Text(daysText(schedule.days, short = true), style = peopleLabel, color = careColors.secondaryInk)
                         }
                     },
                     trailing = { MedicationStatusChip(status, lowStock) }
@@ -172,20 +181,20 @@ internal fun MedicationStatusChip(label: String, lowStock: Boolean) {
     Surface(shape = MaterialTheme.shapes.extraSmall,
         color = if (lowStock) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.primaryContainer,
         contentColor = if (lowStock) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onPrimaryContainer) {
-        Text(label, style = peopleLabel.copy(fontSize = 11.sp, lineHeight = 14.sp), modifier = Modifier.padding(horizontal = MediSpace.small, vertical = 5.dp))
+        Text(label, style = peopleLabel, modifier = Modifier.padding(horizontal = MediSpace.small, vertical = 5.dp))
     }
 }
 
 @Composable
 private fun PeopleChevron() {
-    Icon(painterResource(R.drawable.ic_people_chevron), null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+    Icon(painterResource(R.drawable.ic_people_chevron), null, Modifier.size(20.dp), tint = careColors.secondaryInk)
 }
 
 @Composable
 internal fun PersonEditAction(name: String, edit: () -> Unit) {
     val description = stringResource(R.string.edit_person_description, name)
     FilledTonalButton(onClick = edit, shape = MaterialTheme.shapes.small,
-        colors = ButtonDefaults.filledTonalButtonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow, contentColor = MaterialTheme.colorScheme.onSurfaceVariant),
+        colors = ButtonDefaults.filledTonalButtonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow, contentColor = careColors.secondaryInk),
         modifier = Modifier.heightIn(min = MediSize.touch).semantics { contentDescription = description }, contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp)) {
         Text(stringResource(R.string.person_edit), style = peopleLabel)
     }
@@ -216,7 +225,7 @@ private fun PersonEmptyState(title: String, body: String, icon: Int, people: Boo
                 }
             }
             Text(title, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center, modifier = Modifier.semantics { heading() })
-            Text(body, style = peopleBody, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+            Text(body, style = peopleBody, color = careColors.secondaryInk, textAlign = TextAlign.Center)
             action?.invoke()
         }
     }
