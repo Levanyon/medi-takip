@@ -72,4 +72,4 @@ Bu raporun hazırlandığı aşamada **GitHub'a push yapılmadı**. Yayın tamam
 
 ### Yayın onayı — 19 Kasım 2026
 
-Kullanıcı mevcut public deponun güncellenmesini onayladı. Tanıtıma GitHub profilindeki Mustafa Mert Uçak adı eklendi. Claude görseli/katkıcı görünümü değişikliği talebi geri çekildi; Git geçmişi korunarak normal push uygulanacak. Yukarıdaki “push yapılmadı” ifadesi yayın öncesi inceleme anını kaydeder.
+Kullanıcı mevcut public deponun güncellenmesini onayladı. Tanıtıma GitHub profilindeki Mustafa Mert Uçak adı eklendi. İlk yayın Git geçmişi korunarak normal push ile yapıldı. Yukarıdaki “push yapılmadı” ifadesi yayın öncesi inceleme anını kaydeder.

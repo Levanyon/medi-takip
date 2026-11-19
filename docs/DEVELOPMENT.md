@@ -1,4 +1,4 @@
-# MediTakip — rules for Claude Code
+# MediTakip — development rules
 
 Stable rules only. Visual design details live in `DESIGN.md`; scope and order of work live in `docs/ROADMAP.md`; the current state of the code is described in `docs/AUDIT.md`.
 

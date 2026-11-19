@@ -1,6 +1,6 @@
 # MediTakip — decision log
 
-From 2026-09-25 the developer asked Claude Code to run Phases 2 → 5 → 3 → 4 → 6 without waiting for approval between steps. Each phase starts with a short plan here; every important decision is recorded with its reason, so it can be reviewed later. Claude Code stops and asks only for: data-loss risk, a new library dependency (except `androidx.room:room-testing`, pre-approved for Phase 3), irreversible actions, and anything involving the release key.
+From 2026-09-25 the developer authorized work on Phases 2 → 5 → 3 → 4 → 6 without waiting for approval between steps. Each phase starts with a short plan here; every important decision is recorded with its reason, so it can be reviewed later. Work stops for confirmation only for: data-loss risk, a new library dependency (except `androidx.room:room-testing`, pre-approved for Phase 3), irreversible actions, and anything involving the release key.
 
 Decisions the developer made in advance are marked **(developer)**.
 

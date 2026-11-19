@@ -9,7 +9,7 @@ Native offline Android app, minimum Android 8 (API 26). A single Gradle applicat
 `reminders/`: AlarmManager integration and recovery receiver.
 `ui/`: four destinations — Bugün (`Home.kt`), Kişiler with person and medication detail (`People.kt`, `Medications.kt`), Geçmiş (`History.kt`) and Ayarlar (`Settings.kt`) — plus editors (`Editors.kt`) and shared components.
 
-Rules for working on the code are in `CLAUDE.md`; the verified current state is in `docs/AUDIT.md`.
+Rules for working on the code are in `docs/DEVELOPMENT.md`; the verified current state is in `docs/AUDIT.md`.
 
 ## Data relationships
 

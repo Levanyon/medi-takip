@@ -6,7 +6,7 @@ Primary real user: one mother managing medications for herself and her child, on
 
 "Professional" here means: correct data, reliable reminders, tested logic, safe updates, accessible UI. It does NOT mean more features.
 
-## 0. Working rules for Claude Code (apply to every phase)
+## 0. Working rules for development (apply to every phase)
 
 1. One phase per session. Never start the next phase without explicit approval. Follow the "Order of work" section below, not the phase numbers.
 2. Plan first. At the start of a phase, read the relevant code, then present a short plan: files to change, schema impact, risks, test plan. Wait for approval.
@@ -16,7 +16,7 @@ Primary real user: one mother managing medications for herself and her child, on
 6. Data safety is absolute. No destructive migrations, no silent resets, no hard deletes of anything that has history. Every schema change = explicit `Migration` + migration test.
 7. Windows native only. Use PowerShell and `.\gradlew.bat`. No WSL/Docker/VM.
 8. Never give medical advice in UI text, notifications, or reports. The app only records what the user entered.
-9. Do not regress existing behavior listed in `CLAUDE.md` (navigation structure, form insets / reachable Kaydet button, History matrix, Taken/Undo).
+9. Do not regress existing behavior listed in `docs/DEVELOPMENT.md` (navigation structure, form insets / reachable Kaydet button, History matrix, Taken/Undo).
 10. End of phase report: what changed, what was tested, a manual test checklist for a real Samsung device, known limitations, and update the checkboxes in this file.
 
 Useful commands:
@@ -54,9 +54,9 @@ Goal: understand exactly what exists before changing anything, and make every la
   - how reminders/notifications currently work (or that they do not exist)
   - existing tests and what they cover
   - bugs, risks and gaps compared to this roadmap
-- [x] Create or tighten `CLAUDE.md` in the repo root: concise (target under ~150 lines), containing only stable rules (product purpose, stack, navigation, data safety, form rules, History rules, Windows rules, commands). Design details stay in `DESIGN.md`.
+- [x] Create or tighten `docs/DEVELOPMENT.md` in the docs directory: concise (target under ~150 lines), containing only stable rules (product purpose, stack, navigation, data safety, form rules, History rules, Windows rules, commands). Design details stay in `DESIGN.md`.
 
-Done when: project builds, `AUDIT.md` and `CLAUDE.md` exist, v1 schema is committed, developer has reviewed the audit.
+Done when: project builds, `AUDIT.md` and `docs/DEVELOPMENT.md` exist, v1 schema is committed, developer has reviewed the audit.
 
 Status (2026-09-25): all items complete; 64/64 tests pass; waiting for the developer to review `docs/AUDIT.md`. Also added: `tools/env.ps1` (project-local JDK/Gradle), `.gitattributes`.
 
